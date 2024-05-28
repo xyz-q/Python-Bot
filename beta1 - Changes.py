@@ -1356,7 +1356,7 @@ async def on_error(event, *args, **kwargs):
     if channel:
 
         # Attempt to reconnect the bot
-        await channel.send(":orange_circle: Network interruption, attempting to reconnect...")
+        await channel.send(":orange_circle: Network interruption, reconnecting...")
         await bot.close()
         await asyncio.sleep(5)  # Wait for 5 seconds before reconnecting
         await bot.start(TOKEN)

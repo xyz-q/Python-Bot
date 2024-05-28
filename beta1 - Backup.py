@@ -113,8 +113,8 @@ commands_list = [
     ("/ticket", "Creates a ticket"),
     (",user <@user>", "Displays info on user"),
     (",volume <1-100>", "Sets the bot's volume"),
-
 ]
+
 # Global variable for pagination
 per_page = 5
 
@@ -168,7 +168,19 @@ async def list(ctx, page: int = 1):
             await message.remove_reaction(reaction.emoji, user)
 
     except asyncio.TimeoutError:
-        await message.delete()  # Delete the message after 60 seconds
+        await message.delete()  # Delete the message after timeout
+
+# Handle command errors to prevent the bot from exiting unexpectedly
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.send("Command not found.")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Missing required argument.")
+    else:
+        await ctx.send("An error occurred.")
+        print(f"An error occurred: {error}")
+
 # List : End of the list
 
 # Variable to track the bot's current status
@@ -185,7 +197,7 @@ idle_activity = discord.Activity(type=discord.ActivityType.listening, name="@.zx
 async def hello(interaction: discord.Interaction):
     help_message = (
         "To set up the bot with your server, you need to:\n"
-        "1. Add a role named `.trusted`\n"
+        "1. Create a role named `.trusted`\n"
         "2. Create a text channel named `admin-commands`\n"
         "3. Also create a text channel named `tickets`\n\n"
         "After that, you can execute commands in the `admin-commands` channel.\n\n"
@@ -592,90 +604,136 @@ async def mute_error(ctx, error):
     elif isinstance(error, commands.MissingRequiredArgument):
         await ctx.send("Please specify a user to mute.")
 
+
 # Event : Auto play sound
 @bot.event
 async def on_voice_state_update(member, before, after):
-    # Check if the member is the bot itself
     if member == bot.user:
-        # Check if the bot moved to a different voice channel (before and after channel are different)
         if before.channel != after.channel:
             if after.channel is not None:
-                # Bot joined a voice channel
                 print(f"The bot has joined voice channel: {after.channel.name}")
-                # Add a delay to ensure proper connection
                 await asyncio.sleep(2)
-                # Construct the path to the mp3 file
+
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 mp3_file = os.path.join(current_dir, 'soundboard', 'uwu.mp3')
-                # Check if the mp3 file exists
+
                 if not os.path.exists(mp3_file):
                     print("uwu.mp3 file not found.")
                     return
-                # Connect to the voice channel if not already connected
-                if not bot.voice_clients:
-                    voice_client = await after.channel.connect()
-                else:
-                    voice_client = bot.voice_clients[0]
-                # Play the mp3 file
-                voice_client.play(discord.FFmpegPCMAudio(mp3_file))
-            else:
-                # Bot left a voice channel
-                print("The bot has left voice channel.")
-                # Disconnect from the voice channel if connected
-                if bot.voice_clients:
-                    await bot.voice_clients[0].disconnect()
 
-# Command : Play mp3 command
+                try:
+                    if not bot.voice_clients:
+                        voice_client = await after.channel.connect()
+                    else:
+                        voice_client = bot.voice_clients[0]
+
+                    if not voice_client.is_playing():
+                        voice_client.play(discord.FFmpegPCMAudio(mp3_file))
+                        while voice_client.is_playing():
+                            await asyncio.sleep(1)
+                except Exception as e:
+                    print(f"Error playing mp3: {e}")
+
+
+# Command: `playmp3`
 @bot.command()
-async def playmp3(ctx, sound_name: str):
-    # Check if the user is in a voice channel
+async def playmp3(ctx, *keywords: str):
     if not ctx.author.voice or not ctx.author.voice.channel:
         await ctx.send("You need to be in a voice channel to play a sound.")
         return
 
-    # Get the voice channel of the user
     voice_channel = ctx.author.voice.channel
 
-    # Connect to the user's voice channel
-    if ctx.voice_client is None:
-        voice_client = await voice_channel.connect()
+    try:
+        if ctx.voice_client is None:
+            voice_client = await voice_channel.connect()
+        else:
+            voice_client = ctx.voice_client
+
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        soundboard_dir = os.path.join(current_dir, 'soundboard')
+
+        # Get all mp3 files in the soundboard directory
+        mp3_files = [file for file in os.listdir(soundboard_dir) if file.endswith('.mp3')]
+
+        # Find mp3 files that match any of the keywords
+        matched_files = []
+        for keyword in keywords:
+            for mp3_file in mp3_files:
+                if keyword.lower() in mp3_file.lower():
+                    matched_files.append(mp3_file)
+
+        if not matched_files:
+            await ctx.send("No matching mp3 files found.")
+            return
+
+        # If multiple matches found, inform the user and let them choose
+        if len(matched_files) > 1:
+            await ctx.send(f"Multiple matching files found: {', '.join(matched_files)}. Please specify a more specific keyword.")
+            return
+
+        mp3_file = os.path.join(soundboard_dir, matched_files[0])
+
+        if not os.path.exists(mp3_file):
+            await ctx.send(f"{matched_files[0]} file not found in the soundboard.")
+            return
+
+        if not voice_client.is_playing():
+            voice_client.play(discord.FFmpegPCMAudio(mp3_file))
+            await ctx.send(f"Playing {matched_files[0]}.")
+            while voice_client.is_playing():
+                await asyncio.sleep(1)
+    except Exception as e:
+        print(f"Error playing mp3: {e}")
+        await ctx.send("An error occurred while trying to play the mp3.")
+
+
+
+# Event : Play mp3 on join [ autoplay ]
+@bot.event
+async def on_voice_state_update(member, before, after):
+    if member == bot.user:
+        if before.channel != after.channel:
+            if after.channel is not None:
+                print(f"The bot has joined voice channel: {after.channel.name}")
+                await asyncio.sleep(2)
+
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                mp3_file = os.path.join(current_dir, 'soundboard', 'uwu.mp3')
+
+                if not os.path.exists(mp3_file):
+                    print("uwu.mp3 file not found.")
+                    return
+
+                try:
+                    if not bot.voice_clients:
+                        voice_client = await after.channel.connect()
+                    else:
+                        voice_client = bot.voice_clients[0]
+
+                    if not voice_client.is_playing():
+                        voice_client.play(discord.FFmpegPCMAudio(mp3_file))
+                        while voice_client.is_playing():
+                            await asyncio.sleep(1)
+                except Exception as e:
+                    print(f"Error playing mp3: {e}")
+
+
+
+
+
+# Command : Stop mp3
+async def stop_audio(ctx):
+    if ctx.voice_client is not None and ctx.voice_client.is_playing():
+        ctx.voice_client.stop()
+        await ctx.send("Audio playback stopped.")
     else:
-        voice_client = ctx.voice_client
+        await ctx.send("No audio is currently playing.")
 
-    # Construct the path to the mp3 file
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    soundboard_dir = os.path.join(current_dir, 'soundboard')
-    mp3_file = os.path.join(soundboard_dir, f'{sound_name}.mp3')
-
-    # Check if the mp3 file exists
-    if not os.path.exists(mp3_file):
-        await ctx.send(f"{sound_name}.mp3 file not found in the soundboard.")
-        return
-
-    # Play the mp3 file
-    voice_client.play(discord.FFmpegPCMAudio(mp3_file))
-
-    await ctx.send(f"Playing {sound_name}.mp3.")
-
-#to stop http?!
-async def fetch_data(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status != 200:
-                print(f"Error: Failed to fetch data from {url}. Status code: {response.status}")
-                return None
-            try:
-                data = await response.json()
-                return data
-            except aiohttp.ContentTypeError:
-                print(f"Error: Unexpected content type received from {url}.")
-                return None
-
-async def data():
-    url = "https://example.com/api/data"
-    data = await fetch_data(url)
-    if data:
-        print(data)
+# Command to stop audio playback
+@bot.command()
+async def stop(ctx):
+    await stop_audio(ctx)
 
 
 # Command to list songs in file
@@ -1259,6 +1317,17 @@ async def on_ready():
         else:
             print("\033[91mChannel not found.\033[0m")
 
+    # Join channel automatically?
+
+    owner = bot.get_user(110927272210354176)
+    if owner:
+        for guild in bot.guilds:
+            member = guild.get_member(110927272210354176)
+            if member and member.voice:
+                voice_channel = member.voice.channel
+                await voice_channel.connect()
+                break
+
 trusted_role_name = ".trusted"
 allowed_channel_name = "admin-commands"
 trusted_role_id = 1084779817775411210  # Replace this with the ID of your trusted role
@@ -1285,8 +1354,6 @@ async def on_error(event, *args, **kwargs):
     channel = discord.utils.get(guild.text_channels, name="bot-status")
 
     if channel:
-        # Log the error message to the channel
-        await channel.send(f":exclamation: An error occurred in event `{event}`")
 
         # Attempt to reconnect the bot
         await channel.send(":orange_circle: Network interruption, reconnecting...")
@@ -1395,17 +1462,6 @@ async def update_bot_username(ctx):
     except discord.HTTPException as e:
         print(f"Failed to update bot's nickname: {e}")
 
-# Define error handling
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.CommandNotFound):
-        # Delete the user's command message
-        await ctx.message.delete()
-        # Send the error message with the command name
-        error_message = await ctx.send(f"Command '{ctx.message.content}' not found.")
-        # Delete the error message after 4 seconds
-        await asyncio.sleep(4)
-        await error_message.delete()
 
 # Event : Check for user Role/Channel status
 @bot.event
@@ -1450,7 +1506,7 @@ async def on_message(message):
             await message.delete()
 
             # Send a warning message
-            warning_message = f"Warning: Message by {message.author.mention} in admin-commands channel doesn't start with the command prefix!"
+            warning_message = f"Warning: Message by {message.author.mention} in admin-commands channel doesn't start with the command prefix!  ','"
             warning_response = await message.channel.send(warning_message)
 
             # Delay the bot's response by 4 seconds
@@ -1458,6 +1514,15 @@ async def on_message(message):
 
             # Delete the warning message
             await warning_response.delete()
+
+
+    # Check if user is typing in the status channel
+    if message.channel.id == 1234310879072223292 and not message.author.bot:
+        await message.delete()
+        warning_msg = await message.channel.send(
+            f'{message.author.mention}, sending messages in this channel is not allowed.')
+        await asyncio.sleep(4)
+        await warning_msg.delete()
 
 
     # Process commands here, including the setup command
@@ -1486,8 +1551,8 @@ root_logger.addHandler(file_handler)
 
 # Event
 # Run the event loop
-loop = asyncio.get_event_loop()
-loop.run_until_complete(data())
+
+
 
 
 # Async run
