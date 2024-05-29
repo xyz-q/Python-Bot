@@ -187,7 +187,7 @@ async def on_command_error(ctx, error):
 is_dnd = True
 
 # Activity to set when the bot is in Do Not Disturb mode
-dnd_activity = discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/jJ8QcTB3")
+dnd_activity = discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/VGucfdymCm")
 
 # Activity to set when the bot is in Online mode
 idle_activity = discord.Activity(type=discord.ActivityType.listening, name="@.zxpq")
