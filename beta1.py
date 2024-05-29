@@ -1227,8 +1227,15 @@ async def names(ctx, member: discord.Member):
 
 # Command : Shows user info
 @bot.command()
-async def user(ctx, member: discord.Member = None):
-    member = member or ctx.author
+async def user(ctx, member: discord.Member = None, user_id: int = None):
+    if user_id:
+        try:
+            member = await ctx.guild.fetch_member(user_id)
+        except discord.NotFound:
+            await ctx.send("User not found.")
+            return
+    else:
+        member = member or ctx.author
 
     embed = discord.Embed(title=f"User Info - {member.display_name}", color=member.color)
 
@@ -1260,8 +1267,15 @@ async def user(ctx, member: discord.Member = None):
 
 # Command : Gets users avatar
 @bot.command()
-async def avatar(ctx, *, user: discord.User = None):
-    user = user or ctx.author
+async def avatar(ctx, user: discord.User = None, user_id: int = None):
+    if user_id:
+        try:
+            user = await bot.fetch_user(user_id)
+        except discord.NotFound:
+            await ctx.send("User not found.")
+            return
+    else:
+        user = user or ctx.author
 
     if user.avatar:
         avatar_url = user.avatar.url
@@ -1356,7 +1370,7 @@ async def on_error(event, *args, **kwargs):
     if channel:
 
         # Attempt to reconnect the bot
-        await channel.send(":orange_circle: Network interruption, attempting to reconnect...")
+        await channel.send(":orange_circle: Network interruption, 557350704935862273attempting to reconnect...")
         await bot.close()
         await asyncio.sleep(5)  # Wait for 5 seconds before reconnecting
         await bot.start(TOKEN)
