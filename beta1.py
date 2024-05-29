@@ -1160,12 +1160,32 @@ async def role(ctx, *, args: str):
 async def hello(ctx):
     await ctx.send("Hello world!")
 
-# Event : Welcome message
-@bot.event
-async def on_member_join(member):
+# Event : Welcome message  and ticket
+# Channel ID where the ticket message will be sent
+TICKET_CHANNEL_ID = 1241495094205354104  # Replace with your tickets channel ID
+# Channel name for welcome messages
+WELCOME_CHANNEL_NAME = "welcome"  # Replace with your welcome channel name
+# Role ID to assign when a user is accepted
+ROLE_ID = 1056996133081186395  # Replace with the role ID you want to assign
+
+# Button View class
+class AcceptView(discord.ui.View):
+    def __init__(self, user: discord.Member):
+        super().__init__(timeout=None)
+        self.user = user
+
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.green)
+    async def accept_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        role = interaction.guild.get_role(ROLE_ID)
+        await self.user.add_roles(role)
+        await interaction.response.send_message(f"{self.user.mention} has been accepted and given the {role.name} role.", ephemeral=True)
+        await interaction.message.delete()  # Optionally delete the button message after accepting
+
+# Function to send a welcome message
+async def send_welcome_message(member: discord.Member):
     # Find the channel to send the welcome message
     for guild in bot.guilds:
-        channel = discord.utils.get(guild.channels, name="welcome", type=discord.ChannelType.text)
+        channel = discord.utils.get(guild.channels, name=WELCOME_CHANNEL_NAME, type=discord.ChannelType.text)
         if channel:
             break
 
@@ -1183,6 +1203,26 @@ async def on_member_join(member):
         await channel.send(embed=embed)
     else:
         print("Error: Could not find the specified channel for welcome messages.")
+
+# Function to send a ticket message
+async def send_ticket_message(member: discord.Member):
+    ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
+    if ticket_channel:
+        embed = discord.Embed(
+            title="New Member Request",
+            description=f"{member.mention} has joined the server. Click the button below to accept and assign them a role.",
+            color=discord.Color.blue()
+        )
+        view = AcceptView(member)
+        await ticket_channel.send(embed=embed, view=view)
+    else:
+        print("Error: Could not find the specified channel for ticket messages.")
+
+# Event to detect when a member joins the server
+@bot.event
+async def on_member_join(member: discord.Member):
+    await send_welcome_message(member)
+    await send_ticket_message(member)
 
 # Event: Farewell message
 @bot.event
