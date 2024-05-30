@@ -96,7 +96,7 @@ commands_list = [
     (",leave", "Leaves the channel the bot is in"),
     (",mock <@user>", "Mocks target user(s)"),
     (",mute <@user>", "Mutes target user"),
-    (",names <@user>", "Gets the old nickname of a user"),
+    (",names <@user>", "Gets the old nicknames of a user"),
     (",online ", "Sets bot status as 'Online'"),
     (",offline", "Sets bot status as 'Offline'"),
     (",play <URL>", "Plays youtube URL"),
@@ -1168,20 +1168,46 @@ WELCOME_CHANNEL_NAME = "welcome"  # Replace with your welcome channel name
 # Role ID to assign when a user is accepted
 ROLE_ID = 1056996133081186395  # Replace with the role ID you want to assign
 
-# Button View class
-class AcceptView(discord.ui.View):
-    def __init__(self, user: discord.Member):
+
+# Role ID to assign when a user is accepted
+ROLE_ID = 1056996133081186395  # Replace with the role ID you want to assign
+
+class AcceptDeclineView(discord.ui.View):
+    def __init__(self, user: discord.Member, guild: discord.Guild, message: discord.Message):
         super().__init__(timeout=None)
         self.user = user
+        self.guild = guild
+        self.message = message
 
-    @discord.ui.button(label="Accept", style=discord.ButtonStyle.green)
-    async def accept_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        role = interaction.guild.get_role(ROLE_ID)
-        await self.user.add_roles(role)
-        await interaction.response.send_message(f"{self.user.mention} has been accepted and given the {role.name} role.", ephemeral=True)
-        await interaction.message.delete()  # Optionally delete the button message after accepting
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success)
+    async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
+        role = self.guild.get_role(ROLE_ID)
+        if role and self.user:
+            await self.user.add_roles(role)
+            await self.user.send("Welcome to the server! Enjoy your stay.")
+            await self.message.delete()  # Delete the original message
 
-# Function to send a welcome message
+    @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
+    async def decline(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await self.user.kick(reason="Declined membership.")
+        await self.user.send("Access to the server has been declined by an Admin.")
+        await self.message.delete()  # Delete the original message
+
+# Function to send a ticket message
+async def send_ticket_message(member: discord.Member, guild: discord.Guild):
+    ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
+    if ticket_channel:
+        embed = discord.Embed(
+            title="New Member Request",
+            description=f"{member.mention} has joined the server. Would you like to accept or decline their request?",
+            color=discord.Color.blue()
+        )
+        message = await ticket_channel.send(embed=embed)
+        view = AcceptDeclineView(member, guild, message)
+        await message.edit(view=view)
+    else:
+        print("Error: Could not find the specified channel for ticket messages.")
+
 async def send_welcome_message(member: discord.Member):
     # Find the channel to send the welcome message
     for guild in bot.guilds:
@@ -1192,8 +1218,8 @@ async def send_welcome_message(member: discord.Member):
     if channel:
         # Create an embed for the welcome message
         embed = discord.Embed(
-            title=f"{member.display_name} pulled up ",
-            description=" ",
+            title=f"{member.display_name} pulled up",
+            description=f"Username: {member.name}",
             color=discord.Color.red()
         )
         embed.set_thumbnail(url=member.avatar.url)
@@ -1201,28 +1227,19 @@ async def send_welcome_message(member: discord.Member):
 
         # Send the welcome message
         await channel.send(embed=embed)
+
     else:
         print("Error: Could not find the specified channel for welcome messages.")
 
-# Function to send a ticket message
-async def send_ticket_message(member: discord.Member):
-    ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
-    if ticket_channel:
-        embed = discord.Embed(
-            title="New Member Request",
-            description=f"{member.mention} has joined the server. Click the button below to accept and assign them a role.",
-            color=discord.Color.blue()
-        )
-        view = AcceptView(member)
-        await ticket_channel.send(embed=embed, view=view)
-    else:
-        print("Error: Could not find the specified channel for ticket messages.")
+
+
 
 # Event to detect when a member joins the server
 @bot.event
 async def on_member_join(member: discord.Member):
     await send_welcome_message(member)
-    await send_ticket_message(member)
+    await send_ticket_message(member, member.guild)
+
 
 # Event: Farewell message
 @bot.event
@@ -1322,7 +1339,7 @@ async def avatar(ctx, user: discord.User = None, user_id: int = None):
     else:
         avatar_url = user.default_avatar.url
 
-    embed = discord.Embed(title=f"{user.display_name}'s Avatar", color=ctx.author.color)
+    embed = discord.Embed(title=f"{user.name}'s Avatar", color=ctx.author.color)
     embed.set_image(url=avatar_url)
 
     await ctx.send(embed=embed)
