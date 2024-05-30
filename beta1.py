@@ -1000,6 +1000,7 @@ class TicketButtons(discord.ui.View):
         if trusted_role in interaction.user.roles:
             # Send rejection message to the user
             await self.ticket_user.send(f"Your ticket has been rejected by {interaction.user.name}.")
+            await interaction.message.delete()
         else:
             await interaction.response.send_message("You do not have permission to reject this ticket.", ephemeral=True)
 
