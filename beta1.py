@@ -22,8 +22,7 @@ import atexit
 import random
 import aiohttp
 
-# Set default encoding to 'utf-8'
-sys.stdout.reconfigure(encoding='utf-8')
+
 
 
 
@@ -1589,17 +1588,9 @@ async def before_follow_user():
     await bot.wait_until_ready()  # Wait for the bot to be fully ready before starting the loop
 
 
-# Register a function to be called when the script is about to exit
-def exit_handler():
-    exit_code = sys.exc_info()[0]
-    with open('bot_output.log', mode='a') as f:
-        end_time = datetime.now().strftime('%B %d, %Y - %I:%M:%S %p')
-        f.write(f"\n{separator2}\nScript exited with exit code: {exit_code} at: {end_time}\n{separator2}\n\n\n")
 
-# Cleanup function to log end time if the bot exits cleanly
-async def cleanup():
-    await client.close()
-    exit_handler()
+
+
 
 
 
