@@ -1098,13 +1098,7 @@ async def role(ctx, *, args: str):
 
     member_str, role_str = args
     member = discord.utils.get(ctx.guild.members, mention=member_str)
-
-    # Extract role from mention
-    if role_str.startswith("<@&") and role_str.endswith(">"):
-        role_id = role_str[3:-1]
-        role = discord.utils.get(ctx.guild.roles, id=int(role_id))
-    else:
-        role = discord.utils.get(ctx.guild.roles, name=role_str)
+    role = discord.utils.get(ctx.guild.roles, name=role_str)
 
     # Check if a member and role are provided
     if member is None or role is None:
