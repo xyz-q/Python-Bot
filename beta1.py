@@ -3,7 +3,7 @@ from discord import FFmpegPCMAudio
 from discord import app_commands
 import discord.ext.commands as commands
 from dotenv import load_dotenv
-import youtube_dl
+# import youtube-dl
 import asyncio
 from discord.ext import commands, tasks
 import typing
