@@ -1397,10 +1397,15 @@ async def on_error(event, *args, **kwargs):
     if channel:
 
         # Attempt to reconnect the bot
-        await channel.send(":orange_circle: Network interruption,attempting to reconnect...")
+        await channel.send(":orange_circle: Network interruption, attempting to reconnect...")
+
+        # Send the error details as a plain text message
+        error_details = f"An error occurred during the `{event}` event.\n" \
+                        f"Error details:\n```{traceback.format_exc()}```"
+        await channel.send(error_details)
         await bot.close()
         await asyncio.sleep(5)  # Wait for 5 seconds before reconnecting
-        await bot.start(TOKEN)
+        await bot.run(DISCORD_TOKEN)
 
     # You can also perform any other cleanup or logging tasks here
 
