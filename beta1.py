@@ -1594,7 +1594,7 @@ async def before_follow_user():
 
 
 
-atexit.register(exit_handler)
+
 
 # Run the main coroutine
 bot.run(DISCORD_TOKEN)
