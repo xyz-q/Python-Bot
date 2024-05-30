@@ -1016,7 +1016,14 @@ class CloseTicketButton(discord.ui.View):
         if trusted_role in interaction.user.roles:
             # Send closing message to the user
             await self.ticket_user.send(f"Your ticket has been closed by {interaction.user.name}.")
+
+            # Delete the ticket channel
             await interaction.channel.delete(reason="Ticket closed by support staff")
+
+            # Check if the category is now empty and delete it if so
+            category = interaction.channel.category
+            if category and len(category.channels) == 0:
+                await category.delete(reason="Category empty after ticket closed")
         else:
             await interaction.response.send_message("You do not have permission to close this ticket.", ephemeral=True)
 
