@@ -27,36 +27,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 
 
-# Set up logging to file
-logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Define a function to remove ANSI escape sequences
-ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-
-def remove_ansi(text):
-    return ansi_escape.sub('', text)
-
-# Define colors for the log messages
-COLOR_GREEN = "\033[92m"
-COLOR_RED = "\033[91m"
-COLOR_RESET = "\033[0m"
-
-# Create a file handler for logging
-file_handler = logging.FileHandler('bot_output.log', mode='a')
-file_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-# Create a formatter with date and time
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-# Add a separator and start time to the log files
-with open('bot_output.log', mode='a') as f:
-    start_time = datetime.now().strftime('%B %d, %Y - %I:%M:%S %p')
-    separator = '*' * 75
-    separator2 = '=' * 75
-    f.write(f"{separator}\nScript started at: {start_time}\n{separator}\n")
 
 # Load environment variables
 load_dotenv()
@@ -1600,25 +1571,7 @@ async def on_message(message):
     await bot.process_commands(message)
     await mock_message(message)
 
-#LOGS PART 2
-def remove_non_ascii(text):
-    # Remove non-ASCII characters except ANSI escape sequences
-    ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-    ascii_text = ''.join(char for char in text if ord(char) < 128 or ansi_escape.match(char))
-    return ascii_text
 
-def custom_print(*args, **kwargs):
-    output = ' '.join(map(str, args))
-    sanitized_output = remove_non_ascii(output)
-    print(sanitized_output)  # Print the sanitized output
-    logging.info(sanitized_output)  # Log the sanitized output
-
-# Set the custom print function to be used instead of the built-in print
-custom_print_function = custom_print
-
-# Get the root logger and add the file handler
-root_logger = logging.getLogger()
-root_logger.addHandler(file_handler)
 
 # Event
 # Run the event loop
