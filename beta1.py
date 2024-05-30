@@ -1174,11 +1174,10 @@ class AcceptDeclineView(discord.ui.View):
 async def send_ticket_message(member: discord.Member, guild: discord.Guild):
     ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
     if ticket_channel:
-        # Get server owner
-        server_owner = guild.owner
+        
 
         embed = discord.Embed(
-            title=f"{server_owner.mention} New Member Request",
+            title="New Member Request",
             description=f"{member.mention} has joined the server. Would you like to accept or decline their request?",
             color=discord.Color.gold()
         )
