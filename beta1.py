@@ -374,9 +374,9 @@ async def stalk(ctx, member: discord.Member):
         print(f"Started stalking {member.display_name} even though they are not in a voice channel.")
 
     followed_user = member
-    await ctx.send(f"Now stalking {member.display_name} in {voice_channel.name}.", delete_after=5)
+    await ctx.send(f"Now stalking {member.display_name} in {voice_channel.name}.", delete_after=1)
     print(f"\033[30mNow stalking\033[0m \033[91m{member.display_name}\033[0m \033[30min\033[0m \033[91m{voice_channel.name}\033[0m.")
-    await ctx.message.delete(delay=5)
+    await ctx.message.delete(delay=1)
 
 # Command : Stopstalk command
 @bot.command()
