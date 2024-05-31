@@ -1195,6 +1195,7 @@ async def send_ticket_message(member: discord.Member, guild: discord.Guild):
     else:
         print("Error: Could not find the specified channel for ticket messages.")
 
+
 async def send_welcome_message(member: discord.Member):
     # Find the channel to send the welcome message
     for guild in bot.guilds:
@@ -1209,12 +1210,13 @@ async def send_welcome_message(member: discord.Member):
             description=f"Username: {member.name}",
             color=discord.Color.red()
         )
-        embed.set_thumbnail(url=member.avatar.url)
+
+        avatar_url = member.avatar.url if member.avatar else member.default_avatar.url
+        embed.set_thumbnail(url=avatar_url)
         embed.set_footer(text=f"User ID: {member.id}")
 
         # Send the welcome message
         await channel.send(embed=embed)
-
     else:
         print("Error: Could not find the specified channel for welcome messages.")
 
@@ -1331,23 +1333,42 @@ async def avatar(ctx, user: discord.User = None, user_id: int = None):
 
     await ctx.send(embed=embed)
 
-# Command : Afk command
+
+AFK_FILE = 'afk_users.json'
+
+
+# Load AFK data from a JSON file
+def load_afk_data():
+    if os.path.exists(AFK_FILE):
+        with open(AFK_FILE, 'r') as file:
+            return json.load(file)
+    else:
+        return {}
+
+
+# Save AFK data to a JSON file
+def save_afk_data(data):
+    with open(AFK_FILE, 'w') as file:
+        json.dump(data, file, indent=4)
+
+
+afk_users = load_afk_data()
+
+
 @bot.command()
 async def afk(ctx, *, reason=""):
-    # Check if the user is already marked as AFK
-    if "[AFK]" in ctx.author.display_name:
-        # Remove the AFK indicator from the nickname
-        new_name = ctx.author.display_name.replace("[AFK] ", "")
-        await ctx.author.edit(nick=new_name)
+    user_id = str(ctx.author.id)
+
+    if user_id in afk_users:
+        # Remove AFK status
+        afk_users.pop(user_id)
+        save_afk_data(afk_users)
         await ctx.send(f"{ctx.author.mention} is no longer AFK.")
     else:
-        # Check if the user is already AFK
-        if "AFK" not in ctx.author.display_name:
-            # Set the user's nickname to indicate they are AFK
-            await ctx.author.edit(nick=f"[AFK] {ctx.author.display_name}")
-            await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {reason}")
-        else:
-            await ctx.send(f"{ctx.author.mention} is already AFK.")
+        # Set AFK status
+        afk_users[user_id] = reason
+        save_afk_data(afk_users)
+        await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {reason}")
 
 
 # Event : On ready startup sequence events
@@ -1579,6 +1600,8 @@ async def on_message(message):
             await warning_response.delete()
 
 
+
+
     # Check if user is typing in the status channel
     if message.channel.id == 1234310879072223292 and not message.author.bot:
         await message.delete()
@@ -1586,6 +1609,15 @@ async def on_message(message):
             f'{message.author.mention}, sending messages in this channel is not allowed.')
         await asyncio.sleep(4)
         await warning_msg.delete()
+
+    # Check if the mentioned user(s) are AFK
+    mentioned_afk_users = [user_id for user_id in afk_users if
+                            message.guild.get_member(int(user_id)) in message.mentions]
+    if mentioned_afk_users:
+        for user_id in mentioned_afk_users:
+            reason = afk_users[user_id]
+            user = message.guild.get_member(int(user_id))
+            await message.channel.send(f"{user.mention} is currently AFK. Reason: {reason}")
 
 
     # Process commands here, including the setup command
