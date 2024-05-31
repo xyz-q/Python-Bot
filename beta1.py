@@ -370,7 +370,7 @@ async def stalk(ctx, member: discord.Member):
             await ctx.send("Failed to connect to the voice channel.")
             return
     else:
-        await ctx.send("The specified user is not in a voice channel, or the bot isn't in a voice channel. Starting the loop anyway...")
+        await ctx.send(f" {member.display_name} is not in a voice channel, or the bot isn't in a voice channel. Starting the loop anyway...", delete_after=1)
         await ctx.message.delete(delay=1)
         print(f"Started stalking {member.display_name} even though they are not in a voice channel.")
 
