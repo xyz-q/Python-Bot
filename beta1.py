@@ -1212,7 +1212,7 @@ async def send_welcome_message(member: discord.Member):
             color=discord.Color.red()
         )
 
-        avatar_url = member.avatar.url if member.avatar else member.default_avatar.url
+        avatar_url = member.avatar.url if member.avatar else member.default_avatar.urler.default_avatar.url
         embed.set_thumbnail(url=avatar_url)
         embed.set_footer(text=f"User ID: {member.id}")
 
