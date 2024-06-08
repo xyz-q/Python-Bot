@@ -1224,37 +1224,41 @@ async def send_welcome_message(member: discord.Member):
 
 
 
-# Event to detect when a member joins the server
+# Replace with your actual guild (server) ID
+guildid = 1056994840925192252
+
 @bot.event
 async def on_member_join(member: discord.Member):
-    await send_welcome_message(member)
-    await send_ticket_message(member, member.guild)
+    # Check if the member's guild is the specified guild
+    if member.guild.id == guildid:
+        await send_welcome_message(member)
+        await send_ticket_message(member, member.guild)
 
 
 # Event: Farewell message
 @bot.event
-async def on_member_remove(member):
-    # Find the channel to send the farewell message
-    for guild in bot.guilds:
-        channel = discord.utils.get(guild.channels, name="exit", type=discord.ChannelType.text)
+async def on_member_remove(member: discord.Member):
+    # Check if the member's guild is the specified guild
+    if member.guild.id == guildid:
+        # Find the channel to send the farewell message
+        channel = discord.utils.get(member.guild.channels, name="exit", type=discord.ChannelType.text)
+
         if channel:
-            break
+            # Create an embed for the farewell message
+            embed = discord.Embed(
+                title=f"Goodbye, {member.display_name}!",
+                description="We'll miss you.",
+                color=discord.Color.dark_grey()
+            )
+            if member.avatar:
+                embed.set_thumbnail(url=member.avatar.url)
+            embed.set_footer(text=f"User ID: {member.id}")
 
-    if channel:
-        # Create an embed for the farewell message
-        embed = discord.Embed(
-            title=f"Goodbye, {member.display_name}!",
-            description="We'll miss you.",
-            color=discord.Color.dark_grey()
-        )
-        if member.avatar:
-            embed.set_thumbnail(url=member.avatar.url)
-        embed.set_footer(text=f"User ID: {member.id}")
+            # Send the farewell message
+            await channel.send(embed=embed)
+        else:
+            print("Error: Could not find the specified channel for farewell messages.")
 
-        # Send the farewell message
-        await channel.send(embed=embed)
-    else:
-        print("Error: Could not find the specified channel for farewell messages.")
 
 # Command : Shows past nicknames
 @bot.command()
