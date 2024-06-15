@@ -1623,6 +1623,11 @@ async def on_message(message):
     if message.author == bot.user:
         return  # Ignore messages sent by the bot itself
 
+    if isinstance(message.channel, discord.DMChannel):
+        # Respond to DMs with a simple message
+        await message.channel.send("hi there :D")
+        return  # Stop further processing for DMs
+
     # Check if the message is a command
     if message.content.startswith(bot.command_prefix):
         # Check if the message is not the setup command
@@ -1647,11 +1652,7 @@ async def on_message(message):
                 await response.delete()  # Delete the bot's response after 4 seconds
                 return  # Stop further processing
 
-    # Check if the message is sent in the admin-commands channel
-    if message.channel.name == "admin-commands":
-        # Check if the message is sent by a bot
-        if message.author.bot:
-            return
+
 
         # Check if the message starts with the command prefix
         command_prefix = ","  # Change this to your command prefix
