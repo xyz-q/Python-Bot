@@ -1155,6 +1155,7 @@ WELCOME_CHANNEL_NAME = "welcome"  # Replace with your welcome channel name
 ROLE_ID = 1056996133081186395  # Replace with the role ID you want to assign
 
 
+
 # Role ID to assign when a user is accepted
 ROLE_ID = 1056996133081186395  # Replace with the role ID you want to assign
 
@@ -1181,6 +1182,7 @@ class AcceptDeclineView(discord.ui.View):
 
 # Function to send a ticket message
 async def send_ticket_message(member: discord.Member, guild: discord.Guild):
+    me2 = await bot.fetch_user(110927272210354176)  # Replace YOUR_USER_ID with your Discord user ID
     ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
     if ticket_channel:
         
@@ -1193,16 +1195,17 @@ async def send_ticket_message(member: discord.Member, guild: discord.Guild):
         message = await ticket_channel.send(embed=embed)
         view = AcceptDeclineView(member, guild, message)
         await message.edit(view=view)
+        # Send notification message to yourself
+        await me2.send(f"New User Join {ticket_channel.mention}.")
+
     else:
         print("Error: Could not find the specified channel for ticket messages.")
 
 
+
 async def send_welcome_message(member: discord.Member):
-    # Find the channel to send the welcome message
-    for guild in bot.guilds:
-        channel = discord.utils.get(guild.channels, name=WELCOME_CHANNEL_NAME, type=discord.ChannelType.text)
-        if channel:
-            break
+    # Fetch the welcome channel
+    channel = discord.utils.get(member.guild.channels, name=WELCOME_CHANNEL_NAME, type=discord.ChannelType.text)
 
     if channel:
         # Create an embed for the welcome message
@@ -1212,7 +1215,8 @@ async def send_welcome_message(member: discord.Member):
             color=discord.Color.red()
         )
 
-        avatar_url = member.avatar.url if member.avatar else member.default_avatar.urler.default_avatar.url
+        # Fetch avatar URL
+        avatar_url = member.avatar.url if member.avatar else member.default_avatar.url
         embed.set_thumbnail(url=avatar_url)
         embed.set_footer(text=f"User ID: {member.id}")
 
@@ -1258,6 +1262,67 @@ async def on_member_remove(member: discord.Member):
             await channel.send(embed=embed)
         else:
             print("Error: Could not find the specified channel for farewell messages.")
+
+# Scan vc for main
+class AcceptDeclineView2(discord.ui.View):
+    def __init__(self, member: discord.Member, guild: discord.Guild, message: discord.Message):
+        super().__init__(timeout=None)
+        self.member = member
+        self.guild = guild
+        self.message = message
+
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success)
+    async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
+        # Move member to the main voice channel
+        waiting_room = discord.utils.get(self.guild.voice_channels, name=".waiting-room")
+        main_channel = discord.utils.get(self.guild.voice_channels, name=",main")
+
+        if waiting_room and main_channel:
+            if self.member.voice and self.member.voice.channel == waiting_room:
+                await self.member.move_to(main_channel)
+
+        await self.message.delete()  # Delete the original message
+
+    @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
+    async def decline(self, button: discord.ui.Button, interaction: discord.Interaction):
+        # Kick member from the waiting-room voice channel
+        waiting_room = discord.utils.get(self.guild.voice_channels, name=".waiting-room")
+
+        if waiting_room:
+            if self.member.voice and self.member.voice.channel == waiting_room:
+                await self.member.move_to(None)  # This kicks the member from the voice channel
+
+        await self.message.delete()  # Delete the original message
+@bot.event
+async def on_voice_state_update(member, before, after):
+    # Replace USER_ID_TO_IGNORE with the ID of the user you want to ignore
+    if member.bot or member == bot.user or member.id == 110927272210354176:
+        return  # Ignore events triggered by the bot itself, other bots, or the specified user
+
+    # Check if the member joined the .waiting-room voice channel
+    if after.channel and after.channel.name == '.waiting-room':
+        # Automatically send the voice request message
+        await send_voice_request_message(member, member.guild)
+
+async def send_voice_request_message(member: discord.Member, guild: discord.Guild):
+    me = await bot.fetch_user(110927272210354176)  # Replace YOUR_USER_ID with your Discord user ID
+    ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
+    if ticket_channel:
+
+        embed = discord.Embed(
+            title=".waiting-room",
+            description=f"{member.mention} has joined the waiting room. Drag them to ,main?",
+            color=discord.Color.gold()
+        )
+        message = await ticket_channel.send(embed=embed)
+        view = AcceptDeclineView2(member, guild, message)
+        await message.edit(view=view)
+
+        # Send notification message to yourself
+        await me.send(f"A user has joined the waiting room {ticket_channel.mention}.")
+    else:
+        print("Error: Could not find the specified channel for ticket messages.")
+
 
 
 # Command : Shows past nicknames
