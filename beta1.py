@@ -669,29 +669,8 @@ async def mp3list(ctx):
         await ctx.send(song)
 
 # Command to play audio from YouTube link
-@bot.command()
-async def play(ctx, url: str):
-    # Check if the user is in a voice channel
-    if ctx.author.voice is None or ctx.author.voice.channel is None:
-        await ctx.send("You need to be in a voice channel to use this command.")
-        return
-
-    # Connect to the voice channel
-    voice_channel = ctx.author.voice.channel
-    voice_client = ctx.voice_client
-    if voice_client is None:
-        voice_client = await voice_channel.connect()
-
-    # Download audio from YouTube link
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': 'audio.mp3',  # Save the audio as 'audio.mp3'
-    }
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-
-    # Play the downloaded audio
-    voice_client.play(discord.FFmpegPCMAudio('audio.mp3'))
+#import all of the cogs
+from music_cog import music_cog
 
 # Command to reset status to default
 @bot.command()
@@ -1512,6 +1491,7 @@ async def afk(ctx, *, reason=""):
 # Event : On ready startup sequence events
 @bot.event
 async def on_ready():
+    bot.load_extension('musiccog')  # Ensure 'musiccog.py' is in the same directory
     follow_user.start()
     global is_dnd
     if is_dnd:
@@ -1696,12 +1676,28 @@ async def on_message(message):
         await message.channel.send("hi there :D i can only process commands in a guild. /setup for more info")
         return  # Stop further processing for DMs
 
+    # Check if user is typing in the status channel
+    if message.channel.id == 1234310879072223292 and not message.author.bot:
+        await message.delete()
+        warning_msg = await message.channel.send(f'{message.author.mention}, sending messages in this channel is not allowed.')
+        await asyncio.sleep(4)
+        await warning_msg.delete()
+        return  # Stop further processing for status channel messages
+
+    # Check if the mentioned user(s) are AFK
+    mentioned_afk_users = [user_id for user_id in afk_users if message.guild.get_member(int(user_id)) in message.mentions]
+    if mentioned_afk_users:
+        for user_id in mentioned_afk_users:
+            reason = afk_users[user_id]
+            user = message.guild.get_member(int(user_id))
+            await message.channel.send(f"{user.mention} is currently AFK. Reason: {reason}")
+
     # Check if the message is a command
     if message.content.startswith(bot.command_prefix):
         # Check if the message is not the setup command
         if not message.content.startswith(bot.command_prefix + "list"):
             # Check if the message is not from the allowed channel
-            if message.channel.name != allowed_channel_name:
+            if message.channel.name != "admin-commands":
                 error_message = ":warning: Commands can only be used in the #admin-commands channel. [/setup]"
                 response = await message.channel.send(error_message)
                 print(f"\033[95m{message.author} Tried to activate command in another channel\033[0m")
@@ -1712,7 +1708,7 @@ async def on_message(message):
 
             # Check if the user has the trusted role
             trusted_role = discord.utils.get(message.guild.roles, name=trusted_role_name)
-            if trusted_role not in message.author.roles:
+            if trusted_role and trusted_role not in message.author.roles:
                 response = await message.channel.send(f" :warning: [ERROR] {message.author.mention} is not permitted to operate commands.")
                 print(f"\033[95m{message.author} tried to use command '{message.content}' without trusted role\033[0m")
                 await message.delete()  # Delete the invoker's message instantly
@@ -1720,48 +1716,19 @@ async def on_message(message):
                 await response.delete()  # Delete the bot's response after 4 seconds
                 return  # Stop further processing
 
-
-
-        # Check if the message starts with the command prefix
-        command_prefix = ","  # Change this to your command prefix
-        if not message.content.startswith(command_prefix):
-            # Delete the invoker's message
-            await message.delete()
-
-            # Send a warning message
-            warning_message = f"Warning: Message by {message.author.mention} in admin-commands channel doesn't start with the command prefix!  ','"
-            warning_response = await message.channel.send(warning_message)
-
-            # Delay the bot's response by 4 seconds
-            await asyncio.sleep(4)
-
-            # Delete the warning message
-            await warning_response.delete()
-
-
-
-
-    # Check if user is typing in the status channel
-    if message.channel.id == 1234310879072223292 and not message.author.bot:
+    # Check if the message does not start with the command prefix and is in admin-commands
+    if not message.content.startswith(bot.command_prefix) and message.channel.name == "admin-commands":
         await message.delete()
-        warning_msg = await message.channel.send(
-            f'{message.author.mention}, sending messages in this channel is not allowed.')
+        warning_msg = await message.channel.send(f'{message.author.mention}, you need to be using a command in this channel.')
         await asyncio.sleep(4)
         await warning_msg.delete()
-
-    # Check if the mentioned user(s) are AFK
-    mentioned_afk_users = [user_id for user_id in afk_users if
-                            message.guild.get_member(int(user_id)) in message.mentions]
-    if mentioned_afk_users:
-        for user_id in mentioned_afk_users:
-            reason = afk_users[user_id]
-            user = message.guild.get_member(int(user_id))
-            await message.channel.send(f"{user.mention} is currently AFK. Reason: {reason}")
-
+        return  # Stop further processing for messages without prefix in admin-commands
 
     # Process commands here, including the setup command
     await bot.process_commands(message)
     await mock_message(message)
+
+
 
 
 # Command : Create emoji command
@@ -1890,6 +1857,8 @@ async def viewdms(ctx, user_reference: str):
 
 # Run the event loop
 async def main():
+    async with bot:
+        await bot.add_cog(music_cog(bot))
     await bot.start("YOUR_TOKEN_HERE")
     await cleanup()
 
