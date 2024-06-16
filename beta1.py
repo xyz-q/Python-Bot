@@ -1648,7 +1648,7 @@ async def kill(ctx):
                     await channel.send(":red_circle: xyz is now offline [Killed]")
                 await bot.close()
         except asyncio.TimeoutError:
-            await warning_message.edit(content=":orange_circle: Bot TERMINATION cancelled due to inactivity.")
+            await warning_message.edit(content=":clock1:  Bot TERMINATION cancelled due to inactivity.")
             await warning_message.clear_reactions()  # Remove reactions
     else:
         await ctx.send(f":warning: [ERROR] {ctx.author.mention} is not permitted to operate this command.")
