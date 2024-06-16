@@ -1412,12 +1412,16 @@ class OkayView2(discord.ui.View):
 async def cancel_voice_request(member: discord.Member, guild: discord.Guild):
     if member.id in active_tickets:
         message = active_tickets.pop(member.id)
-        await message.delete()
         ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
         if ticket_channel:
+            try:
+                await message.delete()
+            except discord.errors.NotFound:
+                pass  # Message was already deleted or doesn't exist
+
             embed = discord.Embed(
                 title="Ticket Canceled",
-                description=f"The ticket for {member.mention} has been canceled as they left the waiting room.",
+                description=f"The ticket for {member.mention} has been dealt with/canceled.",
                 color=discord.Color.red()
             )
             cancel_message = await ticket_channel.send(embed=embed)
