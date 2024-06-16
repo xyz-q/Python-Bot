@@ -670,21 +670,41 @@ async def mp3list(ctx):
     for song in sound_files:
         await ctx.send(song)
 
-# Command to play audio from YouTube link
 
 
-#import all of the cogs
-from music_cog import music_cog
 # Suppress noise about console usage from youtube_dl
 youtube_dl.utils.bug_reports_message = lambda: ''
+
 # Global variables for queue and voice client
 
 is_playing = False  # Initialize is_playing as False initially
 voice_client = None
-# Correct usage of FFmpegPCMAudio without 'format' argument
-
 queue = []
+loop_song = False
+current_playing_url = None  # Store currently playing song URL
 
+# ytdl options
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
+}
+
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
+# Command to play audio from YouTube link
 @bot.command()
 async def YOUTUBE(ctx, *, query):
     author = ctx.message.author
@@ -735,7 +755,6 @@ async def play(ctx, *, query):
         voice_client = ctx.guild.voice_client
 
         if voice_client and voice_client.is_playing():
-            # If already playing, add to queue
             queue.append(query)
             await ctx.send('Added to queue.')
             return
@@ -745,40 +764,39 @@ async def play(ctx, *, query):
         else:
             voice_client = await voice_channel.connect()
 
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-        }
+        try:
+            retries = 3  # Number of retry attempts
+            for attempt in range(retries):
+                with ytdl as ydl:
+                    info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
 
-        # Search for videos based on query
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            try:
-                info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
-            except Exception as e:
-                await ctx.send(f'An error occurred while trying to search for "{query}". Please try again later.')
-                return
+                    if not info:
+                        raise ValueError(f'No video found for "{query}"')
 
-            if not info:
-                await ctx.send(f'No video found for "{query}". Please try a different search term.')
-                return
+                    global current_playing_url
+                    current_playing_url = info['url']  # Store the URL of currently playing song
 
-            url = info['url']
-            voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: bot.loop.create_task(play_next(ctx)))
-            await ctx.send(f'**Now playing:** {info["title"]}')
+                    voice_client.play(discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(info['url'])),
+                                      after=lambda e: bot.loop.create_task(play_next(ctx)))
+                    await ctx.send(f'**Now playing:** {info["title"]}')
+                    break  # Break out of retry loop if successful
+
+                await asyncio.sleep(3)  # Wait before retrying
+            else:
+                raise ValueError(f'Failed to fetch "{query}" after {retries} attempts.')
+
+        except Exception as e:
+            await ctx.send(f'An error occurred while trying to play "{query}": {str(e)}')
+
     else:
         await ctx.send('You need to be in a voice channel to use this command.')
 
 
 async def play_next(ctx):
-    global queue
+    global queue, loop_song, current_playing_url
     if queue:
-        next_query = queue.pop(0)  # Remove and get the first item from the queue
+        next_query = queue.pop(0)
         await YOUTUBE(ctx, query=next_query)
-
 
 
 @bot.command()
@@ -815,6 +833,7 @@ async def resume(ctx):
         await ctx.send('Playback resumed.')
     else:
         await ctx.send("I'm not paused right now.")
+
 
 
 @bot.command()
