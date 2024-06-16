@@ -21,7 +21,8 @@ AUDIO_FILE_PATH = 'Uwu Anime - Sound Effects (320).mp3'
 import atexit
 import random
 import aiohttp
-
+from PIL import Image, ImageSequence
+import io
 
 
 
@@ -57,6 +58,9 @@ commands_list = [
     (",dnd", "Toggles the bot between DnD and Idle Mode"),
     (",disconnect <@user>", "Disconnect user from a voice channel"),
     (",drag <@user>", " Move a user to a voice channel"),
+    (",emojiadd <link>", " Creates an emoji"),
+    (",emoji ", " Gives details of an emoji"),
+    (",emojiremove <name>", " Deletes an emoji"),
     (",deafen <@user>", "Deafens the target user, if none is specified it deafens the bot"),
     (",gather <#channel>", "Moves all users into the voice channel that you are in or the channel specified."),
     (",join <channel-name> (optional)", "Joins the channel you're in, or if specified it joins the channel name"),
@@ -1760,9 +1764,97 @@ async def on_message(message):
     await mock_message(message)
 
 
+# Command : Create emoji command
+@commands.has_permissions(manage_emojis=True)
+async def create_animated_emoji(ctx, emoji_name: str, emoji_url: str):
+    try:
+        async with ctx.typing():
+            async with aiohttp.ClientSession() as session:
+                async with session.get(emoji_url) as resp:
+                    if resp.status != 200:
+                        return await ctx.send('Failed to fetch image.')
+
+                    emoji_bytes = await resp.read()
+
+                    # Validate and process the image
+                    try:
+                        image = Image.open(io.BytesIO(emoji_bytes))
+                        frames = []
+
+                        # Iterate through frames if animated
+                        if image.is_animated:
+                            for frame in ImageSequence.Iterator(image):
+                                frames.append(frame.convert('RGBA').resize((128, 128)))
+
+                            # Create a new animated image from the frames
+                            output = io.BytesIO()
+                            frames[0].save(output, format='GIF', save_all=True, append_images=frames[1:], loop=0,
+                                           duration=1000 / 10)
+
+                            # Ensure the size is within Discord's limits
+                            if len(output.getvalue()) > 256000:
+                                return await ctx.send('The processed GIF exceeds Discord\'s size limit of 256 KB.')
+
+                            # Upload the emoji
+                            await ctx.guild.create_custom_emoji(name=emoji_name, image=output.getvalue())
+                            await ctx.send(f'Animated Emoji `{emoji_name}` created successfully!')
+                        else:
+                            await ctx.send('The provided image is not animated.')
+
+                    except Exception as e:
+                        await ctx.send(f'Failed to process image: {e}')
+
+    except discord.Forbidden:
+        await ctx.send('I do not have permission to manage emojis.')
+    except discord.HTTPException as e:
+        await ctx.send(f'Failed to create emoji: {e}')
+    except aiohttp.ClientError as e:
+        await ctx.send(f'Failed to fetch image: {e}')
 
 
+@bot.command()
+async def emojiadd(ctx, emoji_name: str, emoji_url: str):
+    async with ctx.typing():
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(emoji_url) as resp:
+                    if resp.status != 200:
+                        return await ctx.send('Failed to fetch image.')
 
+                    emoji_bytes = await resp.read()
+                    await ctx.guild.create_custom_emoji(name=emoji_name, image=emoji_bytes)
+                    await ctx.send(f'Emoji `{emoji_name}` created successfully!')
+            except aiohttp.ClientError as e:
+                await ctx.send(f'Failed to create emoji: {e}')
+            except discord.HTTPException as e:
+                await ctx.send(f'Failed to create emoji: {e}')
+
+
+# Command : remove emoji command
+@bot.command()
+@commands.has_permissions(manage_emojis=True)  # Check if the user has permission to manage emojis
+async def emojiremove(ctx, emoji_name: str):
+    try:
+        emoji = discord.utils.get(ctx.guild.emojis, name=emoji_name)
+        if emoji:
+            await emoji.delete()
+            await ctx.send(f'Emoji `{emoji_name}` has been removed.')
+        else:
+            await ctx.send(f'Emoji `{emoji_name}` not found in the server.')
+    except discord.Forbidden:
+        await ctx.send('I do not have permission to manage emojis.')
+    except discord.HTTPException as e:
+        await ctx.send(f'Failed to remove emoji: {e}')
+
+# Command : emoji info
+@bot.command()
+async def emoji(ctx, emoji_name: str):
+    emoji = discord.utils.get(bot.emojis, name=emoji_name)
+    if emoji:
+        emoji_details = f'Emoji Name: {emoji.name}\nEmoji ID: {emoji.id}\nURL: {emoji.url}'
+        await ctx.send(f'```{emoji_details}```')
+    else:
+        await ctx.send(f'Emoji `{emoji_name}` not found.')
 
 # Event
 # Run the event loop
