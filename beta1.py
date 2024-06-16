@@ -928,22 +928,31 @@ class TicketModal(discord.ui.Modal, title="Ticket Submission"):
         subject = self.subject.value
         description = self.description.value
 
-        # Assuming 'tickets' channel exists
-        ticket_channel = discord.utils.get(interaction.guild.text_channels, name="tickets")
+        # Ensure guild exists before accessing its attributes
+        if interaction.guild:
+            # Check if interaction occurs in a DM channel
+            if isinstance(interaction.channel, discord.DMChannel):
+                await interaction.response.send_message("Slash commands are not available in DMs.", ephemeral=True)
+                return
 
-        if ticket_channel is not None:
-            embed = discord.Embed(title="New Ticket", color=discord.Color.blue())
-            embed.add_field(name="Subject", value=subject, inline=False)
-            embed.add_field(name="Description", value=description, inline=False)
-            embed.add_field(name="Submitted by", value=interaction.user.name, inline=False)  # Changed to use username
+            # Assuming 'tickets' channel exists
+            ticket_channel = discord.utils.get(interaction.guild.text_channels, name="tickets")
 
-            view = TicketButtons(interaction.user, subject, description)
+            if ticket_channel is not None:
+                embed = discord.Embed(title="New Ticket", color=discord.Color.dark_grey())
+                embed.add_field(name="Subject", value=subject, inline=False)
+                embed.add_field(name="Description", value=description, inline=False)
+                embed.add_field(name="Submitted by", value=interaction.user.name, inline=False)  # Changed to use username
 
-            await ticket_channel.send(embed=embed, view=view)
-            await interaction.response.send_message("Your ticket has been submitted!", ephemeral=True)
+                view = TicketButtons(interaction.user, subject, description)
+
+                await ticket_channel.send(embed=embed, view=view)
+                await interaction.response.send_message("Your ticket has been submitted!", ephemeral=True)
+            else:
+                await interaction.response.send_message("Ticket channel not found. Please contact an administrator.",
+                                                        ephemeral=True)
         else:
-            await interaction.response.send_message("Ticket channel not found. Please contact an administrator.",
-                                                    ephemeral=True)
+            await interaction.response.send_message("Tickets have to be sent in a guild, silly! :3 /setup for more info", ephemeral=True)
 
 
 class TicketButtons(discord.ui.View):
@@ -981,7 +990,7 @@ class TicketButtons(discord.ui.View):
             reason="New ticket accepted"
         )
 
-        embed = discord.Embed(title="Ticket Details", color=discord.Color.blue())
+        embed = discord.Embed(title="Ticket Details", color=discord.Color.dark_grey())
         embed.add_field(name="Subject", value=self.subject, inline=False)
         embed.add_field(name="Description", value=self.description, inline=False)
         embed.add_field(name="Submitted by", value=self.ticket_user.name, inline=False)
@@ -1153,11 +1162,12 @@ TICKET_CHANNEL_ID = 1241495094205354104  # Replace with your tickets channel ID
 WELCOME_CHANNEL_NAME = "welcome"  # Replace with your welcome channel name
 # Role ID to assign when a user is accepted
 ROLE_ID = 1056996133081186395  # Replace with the role ID you want to assign
+# Replace with your actual guild (server) ID
+GUILD_ID = 1056994840925192252
 
+# Dictionary to keep track of active tickets
+active_tickets = {}
 
-
-# Role ID to assign when a user is accepted
-ROLE_ID = 1056996133081186395  # Replace with the role ID you want to assign
 
 class AcceptDeclineView(discord.ui.View):
     def __init__(self, user: discord.Member, guild: discord.Guild, message: discord.Message):
@@ -1172,21 +1182,43 @@ class AcceptDeclineView(discord.ui.View):
         if role and self.user:
             await self.user.add_roles(role)
             await self.user.send("Welcome to the server! Enjoy your stay.")
+        try:
             await self.message.delete()  # Delete the original message
+        except discord.errors.NotFound:
+            pass  # The message was already deleted
+
+        active_tickets.pop(self.user.id, None)
 
     @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
     async def decline(self, button: discord.ui.Button, interaction: discord.Interaction):
         await self.user.kick(reason="Declined membership.")
         await self.user.send("Access to the server has been declined by an Admin.")
-        await self.message.delete()  # Delete the original message
+        try:
+            await self.message.delete()  # Delete the original message
+        except discord.errors.NotFound:
+            pass  # The message was already deleted
 
-# Function to send a ticket message
+        active_tickets.pop(self.user.id, None)
+
+
+class OkayView(discord.ui.View):
+    def __init__(self, message: discord.Message):
+        super().__init__(timeout=None)
+        self.message = message
+
+    @discord.ui.button(label="Okay", style=discord.ButtonStyle.primary)
+    async def okay(self, button: discord.ui.Button, interaction: discord.Interaction):
+        try:
+            await self.message.delete()  # Delete the notification message
+        except discord.errors.NotFound:
+            pass  # The message was already deleted
+
+
+
 async def send_ticket_message(member: discord.Member, guild: discord.Guild):
-    me2 = await bot.fetch_user(110927272210354176)  # Replace YOUR_USER_ID with your Discord user ID
+    me2 = await bot.fetch_user(110927272210354176)  # Replace with your Discord user ID
     ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
     if ticket_channel:
-        
-
         embed = discord.Embed(
             title="New Member Request",
             description=f"{member.mention} has joined the server. Would you like to accept or decline their request?",
@@ -1195,12 +1227,14 @@ async def send_ticket_message(member: discord.Member, guild: discord.Guild):
         message = await ticket_channel.send(embed=embed)
         view = AcceptDeclineView(member, guild, message)
         await message.edit(view=view)
+
+        # Track the ticket
+        active_tickets[member.id] = message
+
         # Send notification message to yourself
         await me2.send(f"New User Join {ticket_channel.mention}.")
-
     else:
         print("Error: Could not find the specified channel for ticket messages.")
-
 
 
 async def send_welcome_message(member: discord.Member):
@@ -1226,24 +1260,44 @@ async def send_welcome_message(member: discord.Member):
         print("Error: Could not find the specified channel for welcome messages.")
 
 
-
-
-# Replace with your actual guild (server) ID
-guildid = 1056994840925192252
-
 @bot.event
 async def on_member_join(member: discord.Member):
     # Check if the member's guild is the specified guild
-    if member.guild.id == guildid:
+    if member.guild.id == GUILD_ID:
         await send_welcome_message(member)
         await send_ticket_message(member, member.guild)
 
 
-# Event: Farewell message
 @bot.event
 async def on_member_remove(member: discord.Member):
     # Check if the member's guild is the specified guild
-    if member.guild.id == guildid:
+    if member.guild.id == GUILD_ID:
+        # Remove the active ticket if exists
+        if member.id in active_tickets:
+            ticket_message = active_tickets.pop(member.id)
+            try:
+                await ticket_message.delete()
+            except discord.errors.NotFound:
+                pass
+
+            # Notify the admin
+            me2 = await bot.fetch_user(110927272210354176)  # Replace with your Discord user ID
+            await me2.send(f"The ticket for {member.mention} has been canceled as they have left/been kicked from the server.")
+
+            # Send a message with "Okay" button to the tickets channel
+            ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
+            if ticket_channel:
+                embed = discord.Embed(
+                    title="Ticket Canceled",
+                    description=f"The ticket for {member.mention} has been canceled as they have left/been kicked from the server.",
+                    color=discord.Color.red()
+                )
+                cancel_message = await ticket_channel.send(embed=embed)
+                okay_view = OkayView(cancel_message)
+                await cancel_message.edit(view=okay_view)
+        else:
+            print("Error: Could not find the specified channel for ticket messages.")
+
         # Find the channel to send the farewell message
         channel = discord.utils.get(member.guild.channels, name="exit", type=discord.ChannelType.text)
 
@@ -1263,7 +1317,7 @@ async def on_member_remove(member: discord.Member):
         else:
             print("Error: Could not find the specified channel for farewell messages.")
 
-# Scan vc for main
+# Ticket : vc ticket
 class AcceptDeclineView2(discord.ui.View):
     def __init__(self, member: discord.Member, guild: discord.Guild, message: discord.Message):
         super().__init__(timeout=None)
@@ -1281,7 +1335,12 @@ class AcceptDeclineView2(discord.ui.View):
             if self.member.voice and self.member.voice.channel == waiting_room:
                 await self.member.move_to(main_channel)
 
-        await self.message.delete()  # Delete the original message
+        try:
+            await self.message.delete()  # Delete the original message
+        except discord.errors.NotFound:
+            pass  # The message was already deleted
+
+        active_tickets.pop(self.member.id, None)
 
     @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
     async def decline(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -1292,7 +1351,13 @@ class AcceptDeclineView2(discord.ui.View):
             if self.member.voice and self.member.voice.channel == waiting_room:
                 await self.member.move_to(None)  # This kicks the member from the voice channel
 
-        await self.message.delete()  # Delete the original message
+        try:
+            await self.message.delete()  # Delete the original message
+        except discord.errors.NotFound:
+            pass  # The message was already deleted
+
+        active_tickets.pop(self.member.id, None)
+
 @bot.event
 async def on_voice_state_update(member, before, after):
     # Replace USER_ID_TO_IGNORE with the ID of the user you want to ignore
@@ -1303,12 +1368,20 @@ async def on_voice_state_update(member, before, after):
     if after.channel and after.channel.name == '.waiting-room':
         # Automatically send the voice request message
         await send_voice_request_message(member, member.guild)
+    # Check if the member left the .waiting-room voice channel
+    elif before.channel and before.channel.name == '.waiting-room' and (not after.channel or after.channel.name != '.waiting-room'):
+        # Cancel the ticket if the user left the channel
+        await cancel_voice_request(member, member.guild)
+
+
+# Dictionary to track active tickets
+active_tickets = {}
+
 
 async def send_voice_request_message(member: discord.Member, guild: discord.Guild):
     me = await bot.fetch_user(110927272210354176)  # Replace YOUR_USER_ID with your Discord user ID
     ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
     if ticket_channel:
-
         embed = discord.Embed(
             title=".waiting-room",
             description=f"{member.mention} has joined the waiting room. Drag them to ,main?",
@@ -1318,10 +1391,39 @@ async def send_voice_request_message(member: discord.Member, guild: discord.Guil
         view = AcceptDeclineView2(member, guild, message)
         await message.edit(view=view)
 
+        # Store the active ticket
+        active_tickets[member.id] = message
+
         # Send notification message to yourself
         await me.send(f"A user has joined the waiting room {ticket_channel.mention}.")
     else:
         print("Error: Could not find the specified channel for ticket messages.")
+
+
+class OkayView2(discord.ui.View):
+    def __init__(self, message: discord.Message):
+        super().__init__(timeout=None)
+        self.message = message
+
+    @discord.ui.button(label="Okay", style=discord.ButtonStyle.primary)
+    async def okay(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await self.message.delete()
+
+async def cancel_voice_request(member: discord.Member, guild: discord.Guild):
+    if member.id in active_tickets:
+        message = active_tickets.pop(member.id)
+        await message.delete()
+        ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
+        if ticket_channel:
+            embed = discord.Embed(
+                title="Ticket Canceled",
+                description=f"The ticket for {member.mention} has been canceled as they left the waiting room.",
+                color=discord.Color.red()
+            )
+            cancel_message = await ticket_channel.send(embed=embed)
+            view = OkayView2(cancel_message)
+            await cancel_message.edit(view=view)
+
 
 
 
@@ -1625,7 +1727,7 @@ async def on_message(message):
 
     if isinstance(message.channel, discord.DMChannel):
         # Respond to DMs with a simple message
-        await message.channel.send("hi there :D")
+        await message.channel.send("hi there :D i can only process commands in a guild. /setup for more info")
         return  # Stop further processing for DMs
 
     # Check if the message is a command
@@ -1694,6 +1796,8 @@ async def on_message(message):
     # Process commands here, including the setup command
     await bot.process_commands(message)
     await mock_message(message)
+
+
 
 
 
