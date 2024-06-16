@@ -440,23 +440,9 @@ async def follow_user():
                 break
 
 
- # UPDATE
 
-# Event : Auto play sound
-@bot.event
-async def on_voice_state_update(member, before, after):
-    # Check if the member is the bot itself
-    if member == bot.user:
-        # Check if the bot moved to a voice channel
-        if before.channel != after.channel:
-            if after.channel is not None:
-                # Bot joined a voice channel
-                print(f"The bot has joined voice channel: {after.channel.name}")
-                # Add your actions here, such as playing a welcome message or music
-            else:
-                # Bot left a voice channel
-                print("The bot has left voice channel.")
-                # Add your cleanup actions here, if necessary
+
+
 
 # Command : Volume Command
 @bot.command()
@@ -577,34 +563,7 @@ async def mute_error(ctx, error):
         await ctx.send("Please specify a user to mute.")
 
 
-# Event : Auto play sound
-@bot.event
-async def on_voice_state_update(member, before, after):
-    if member == bot.user:
-        if before.channel != after.channel:
-            if after.channel is not None:
-                print(f"The bot has joined voice channel: {after.channel.name}")
-                await asyncio.sleep(2)
 
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                mp3_file = os.path.join(current_dir, 'soundboard', 'uwu.mp3')
-
-                if not os.path.exists(mp3_file):
-                    print("uwu.mp3 file not found.")
-                    return
-
-                try:
-                    if not bot.voice_clients:
-                        voice_client = await after.channel.connect()
-                    else:
-                        voice_client = bot.voice_clients[0]
-
-                    if not voice_client.is_playing():
-                        voice_client.play(discord.FFmpegPCMAudio(mp3_file))
-                        while voice_client.is_playing():
-                            await asyncio.sleep(1)
-                except Exception as e:
-                    print(f"Error playing mp3: {e}")
 
 
 # Command: `playmp3`
@@ -661,34 +620,7 @@ async def playmp3(ctx, *keywords: str):
 
 
 
-# Event : Play mp3 on join [ autoplay ]
-@bot.event
-async def on_voice_state_update(member, before, after):
-    if member == bot.user:
-        if before.channel != after.channel:
-            if after.channel is not None:
-                print(f"The bot has joined voice channel: {after.channel.name}")
-                await asyncio.sleep(2)
 
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                mp3_file = os.path.join(current_dir, 'soundboard', 'uwu.mp3')
-
-                if not os.path.exists(mp3_file):
-                    print("uwu.mp3 file not found.")
-                    return
-
-                try:
-                    if not bot.voice_clients:
-                        voice_client = await after.channel.connect()
-                    else:
-                        voice_client = bot.voice_clients[0]
-
-                    if not voice_client.is_playing():
-                        voice_client.play(discord.FFmpegPCMAudio(mp3_file))
-                        while voice_client.is_playing():
-                            await asyncio.sleep(1)
-                except Exception as e:
-                    print(f"Error playing mp3: {e}")
 
 
 
@@ -1360,6 +1292,31 @@ class AcceptDeclineView2(discord.ui.View):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
+    if member == bot.user:
+        if before.channel != after.channel:
+            if after.channel is not None:
+                print(f"The bot has joined voice channel: {after.channel.name}")
+                await asyncio.sleep(2)
+
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                mp3_file = os.path.join(current_dir, 'soundboard', 'uwu.mp3')
+
+                if not os.path.exists(mp3_file):
+                    print("uwu.mp3 file not found.")
+                    return
+
+                try:
+                    if not bot.voice_clients:
+                        voice_client = await after.channel.connect()
+                    else:
+                        voice_client = bot.voice_clients[0]
+
+                    if not voice_client.is_playing():
+                        voice_client.play(discord.FFmpegPCMAudio(mp3_file))
+                        while voice_client.is_playing():
+                            await asyncio.sleep(1)
+                except Exception as e:
+                    print(f"Error playing mp3: {e}")
     # Replace USER_ID_TO_IGNORE with the ID of the user you want to ignore
     if member.bot or member == bot.user or member.id == 110927272210354176:
         return  # Ignore events triggered by the bot itself, other bots, or the specified user
@@ -1372,6 +1329,7 @@ async def on_voice_state_update(member, before, after):
     elif before.channel and before.channel.name == '.waiting-room' and (not after.channel or after.channel.name != '.waiting-room'):
         # Cancel the ticket if the user left the channel
         await cancel_voice_request(member, member.guild)
+
 
 
 # Dictionary to track active tickets
@@ -1800,6 +1758,7 @@ async def on_message(message):
     # Process commands here, including the setup command
     await bot.process_commands(message)
     await mock_message(message)
+
 
 
 
