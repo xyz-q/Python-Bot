@@ -3,7 +3,7 @@ from discord import FFmpegPCMAudio
 from discord import app_commands
 import discord.ext.commands as commands
 from dotenv import load_dotenv
-# import youtube-dl
+import youtube_dl
 import asyncio
 from discord.ext import commands, tasks
 import typing
@@ -55,6 +55,7 @@ commands_list = [
     (",autodelete", "Toggles the bot's autodelete function"),
     (",avatar <@user>", "Gets user's avatar"),
     (",afk", "Toggle your status of AFK"),
+    (",clearq ", " Removes all music from the queue"),
     (",dnd", "Toggles the bot between DnD and Idle Mode"),
     (",disconnect <@user>", "Disconnect user from a voice channel"),
     (",drag <@user>", " Move a user to a voice channel"),
@@ -70,24 +71,36 @@ commands_list = [
     (",leave", "Leaves the channel the bot is in"),
     (",mock <@user>", "Mocks target user(s)"),
     (",mute <@user>", "Mutes target user"),
+    (",mp3list ", "Shows a list of mp3s in the file"),
     (",names <@user>", "Gets the old nicknames of a user"),
     (",online ", "Sets bot status as 'Online'"),
     (",offline", "Sets bot status as 'Offline'"),
-    (",play <URL>", "Plays youtube URL"),
+    (",pause ", " Halts audio playback"),
+    (",play <URL/Search>", "Plays youtube music"),
     (",playmp3 <mp3>", "Plays Target MP3"),
-    (",mp3list ", "Shows a list of mp3s in the file"),
     (",ping", "Ping command - Test if the bot is responsive- displays the latency from the bot to the server"),
     (",purge <#channel/number> <number>", "Deletes messages in #channel if specified, default is 100"),
     (",release <@user>", "Releases the user from the '.jail' role"),
     (",resetstatus", "Resets the bot's status"),
+    (",resume", " Continues audio playback"),
     (",stalk <@user>", "Stalks the specified user"),
     (",stopstalk", "Stops stalking selected user"),
     (",setstatus <activity-type> <status>", "Sets the bot's status"),
+    (",senddm <target> <message > ", "Sends a message to target user"),
+    (",skip ", " Skips a song in queue"),
     (",say <#channel> 'TEXT'' ", "Makes the bot chat the desired text in specified channel"),
     ("/ticket", "Creates a ticket"),
     (",user <@user>", "Displays info on user"),
     (",volume <1-100>", "Sets the bot's volume"),
+    (",viewq ", " Shows the music queue"),
+    (",viewdms <target>", " Shows the bot's dms with a user"),
+
+# : (", ", " "),
+
 ]
+
+
+
 
 # Global variable for pagination
 per_page = 5
@@ -251,18 +264,7 @@ async def join(ctx, *, channel_keyword: str = None):
     await ctx.send(f"Joined {channel.name}")
 
 
-# Command to leave the voice channel
-@bot.command()
-async def leave(ctx):
-    # Check if the bot is connected to a voice channel
-    voice_client = ctx.voice_client
-    if voice_client is None:
-        await ctx.send("I'm not connected to a voice channel.")
-        return
 
-    # Disconnect from the voice channel
-    await voice_client.disconnect()
-    await ctx.send("Left the voice channel.")
 
 # Command : Gather
 @bot.command()
@@ -669,8 +671,172 @@ async def mp3list(ctx):
         await ctx.send(song)
 
 # Command to play audio from YouTube link
+
+
 #import all of the cogs
 from music_cog import music_cog
+# Suppress noise about console usage from youtube_dl
+youtube_dl.utils.bug_reports_message = lambda: ''
+# Global variables for queue and voice client
+
+is_playing = False  # Initialize is_playing as False initially
+voice_client = None
+# Correct usage of FFmpegPCMAudio without 'format' argument
+
+queue = []
+
+@bot.command()
+async def YOUTUBE(ctx, *, query):
+    author = ctx.message.author
+    voice_channel = author.voice.channel if author.voice else None
+
+    if voice_channel:
+        voice_client = ctx.guild.voice_client
+
+        if voice_client and voice_client.is_connected():
+            await voice_client.move_to(voice_channel)
+        else:
+            voice_client = await voice_channel.connect()
+
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+        }
+
+        # Search for videos based on query
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            try:
+                info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
+            except Exception as e:
+                await ctx.send(f'An error occurred while trying to search for "{query}". Please try again later.')
+                return
+
+            if not info:
+                await ctx.send(f'No video found for "{query}". Please try a different search term.')
+                return
+
+            url = info['url']
+            voice_client.play(discord.FFmpegPCMAudio(url))
+            await ctx.send(f'**Now playing:** {info["title"]}')
+    else:
+        await ctx.send('You need to be in a voice channel to use this command.')
+
+
+@bot.command()
+async def play(ctx, *, query):
+    author = ctx.message.author
+    voice_channel = author.voice.channel if author.voice else None
+
+    if voice_channel:
+        voice_client = ctx.guild.voice_client
+
+        if voice_client and voice_client.is_playing():
+            # If already playing, add to queue
+            queue.append(query)
+            await ctx.send('Added to queue.')
+            return
+
+        if voice_client and voice_client.is_connected():
+            await voice_client.move_to(voice_channel)
+        else:
+            voice_client = await voice_channel.connect()
+
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+        }
+
+        # Search for videos based on query
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            try:
+                info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
+            except Exception as e:
+                await ctx.send(f'An error occurred while trying to search for "{query}". Please try again later.')
+                return
+
+            if not info:
+                await ctx.send(f'No video found for "{query}". Please try a different search term.')
+                return
+
+            url = info['url']
+            voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: bot.loop.create_task(play_next(ctx)))
+            await ctx.send(f'**Now playing:** {info["title"]}')
+    else:
+        await ctx.send('You need to be in a voice channel to use this command.')
+
+
+async def play_next(ctx):
+    global queue
+    if queue:
+        next_query = queue.pop(0)  # Remove and get the first item from the queue
+        await YOUTUBE(ctx, query=next_query)
+
+
+
+@bot.command()
+async def viewq(ctx):
+    if not queue:
+        await ctx.send('The queue is currently empty.')
+    else:
+        queue_list = '\n'.join([f'{index + 1}. {item}' for index, item in enumerate(queue)])
+        await ctx.send(f'**Current Queue:**\n{queue_list}')
+
+@bot.command()
+async def clearq(ctx):
+    global queue
+    if not queue:
+        await ctx.send('The queue is already empty.')
+    else:
+        queue.clear()
+        await ctx.send('Queue cleared.')
+
+@bot.command()
+async def pause(ctx):
+    voice_client = ctx.guild.voice_client
+    if voice_client and voice_client.is_playing():
+        voice_client.pause()
+        await ctx.send('Playback paused.')
+    else:
+        await ctx.send("I'm not playing anything right now.")
+
+@bot.command()
+async def resume(ctx):
+    voice_client = ctx.guild.voice_client
+    if voice_client and voice_client.is_paused():
+        voice_client.resume()
+        await ctx.send('Playback resumed.')
+    else:
+        await ctx.send("I'm not paused right now.")
+
+
+@bot.command()
+async def skip(ctx):
+    voice_client = ctx.guild.voice_client
+    if voice_client and voice_client.is_playing():
+        voice_client.stop()
+        await ctx.send('Skipped the current song.')
+        await play_next(ctx)
+    else:
+        await ctx.send("I'm not playing anything right now.")
+
+
+@bot.command()
+async def leave(ctx):
+    voice_client = ctx.guild.voice_client
+    if voice_client:
+        await voice_client.disconnect()
+        queue.clear()
+    else:
+        await ctx.send("I'm not connected to any voice channel.")
+
 
 # Command to reset status to default
 @bot.command()
