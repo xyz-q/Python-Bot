@@ -692,7 +692,7 @@ queue = []
 current_playing_url = None
 loop_song = False
 executor = ThreadPoolExecutor()
-current_playing_url = None  # Store currently playing song URL
+
 
 # ytdl options
 ytdl_format_options = {
@@ -791,10 +791,16 @@ async def play(ctx, *, query):
         url = video['url']
         title = video['title']
 
+        download_msg = await ctx.send(f'Downloading: {title}')
+        await asyncio.sleep(4)  # Simulate downloading delay
+
+
         if voice_client.is_playing():
             queue.append(query)
             await ctx.send(f'Added to queue: {title}')
+            await download_msg.delete()  # Delete download message if added to queue
         else:
+            await download_msg.delete()  # Delete download message if starting to play now
             await ctx.send(f'Now playing: {title}')
             current_playing_url = url
             voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop))
@@ -862,6 +868,7 @@ async def clearq(ctx):
     else:
         queue.clear()
         await ctx.send('Queue cleared.')
+
 
 
 @bot.command()
