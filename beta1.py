@@ -23,11 +23,11 @@ import random
 import aiohttp
 import re
 import io
-import warnings
+import socket
 
 
-# Suppress all warnings
-warnings.filterwarnings("ignore")
+
+connector = aiohttp.TCPConnector(limit=0, family=socket.AF_INET)
 
 
 # Load environment variables
@@ -1664,6 +1664,7 @@ async def on_ready():
     if is_dnd:
         await bot.change_presence(status=discord.Status.dnd, activity=dnd_activity)
         print("\033[93mBot is now operating\033[0m")
+        print(aiohttp.__version__)
         print("\033[91mBot is now in Do Not Disturb mode.\033[0m")
         print("\033[0;33m" + f"Logged in as {bot.user}" + "\033[0m")
         print("\033[0;32mGuilds:\033[0m")
@@ -2069,19 +2070,29 @@ async def main():
 
 
 
+async def main2():
+    connector = aiohttp.TCPConnector(limit=0, family=socket.AF_INET)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        async with session.get('https://example.com') as response:
+            print(await response.text())
+
+if __name__ == '__main2__':
+    asyncio.run(main2())
+
+
+
 
 @follow_user.before_loop
 async def before_follow_user():
     await bot.wait_until_ready()  # Wait for the bot to be fully ready before starting the loop
 
-
-
-
-
-
-
-
-
-
 # Run the main coroutine
 bot.run(DISCORD_TOKEN)
+
+
+
+
+
+
+
+
