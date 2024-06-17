@@ -23,8 +23,11 @@ import random
 import aiohttp
 import re
 import io
+import warnings
 
 
+# Suppress all warnings
+warnings.filterwarnings("ignore")
 
 
 # Load environment variables
