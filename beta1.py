@@ -1059,19 +1059,36 @@ async def purge(ctx, channel: typing.Optional[discord.TextChannel] = None, limit
         await ctx.send("Please specify a positive number for the limit.")
         return
 
-    if limit > 250:
-        await ctx.send("The limit cannot exceed 150 messages.")
+    if limit > 300:
+        await ctx.send("Limit cannot exceed 300.")
         return
 
-    # Determine the channel to purge messages from
     if channel is None:
         channel = ctx.channel
 
-    # Delete messages
-    deleted = await channel.purge(limit=limit)
-    confirmation_msg = await ctx.send(f"Purged {len(deleted)} message(s) from {channel.mention}.")
-    await asyncio.sleep(4)
-    await confirmation_msg.delete()
+    try:
+        # Define a check function to delete all messages in the channel
+        def check(message):
+            return True
+
+        # Attempt to delete messages in batches of 5 until the limit is reached
+        total_deleted = 0
+        while total_deleted < limit:
+            to_delete = min(limit - total_deleted, 5)
+            deleted = await channel.purge(limit=to_delete, check=check)
+            total_deleted += len(deleted)
+
+            # Add a short delay between batches to prevent rate limits
+            await asyncio.sleep(1)
+
+        # Send the final result after completion
+        confirmation_msg = await ctx.send(f"Purged {total_deleted} message(s) from {channel.mention}.")
+        await asyncio.sleep(5)
+        await confirmation_msg.delete()
+
+    except discord.HTTPException as e:
+        await ctx.send(f"An error occurred while purging messages: {e}")
+
 
 
 # Modal: ticket modal
