@@ -21,42 +21,13 @@ AUDIO_FILE_PATH = 'Uwu Anime - Sound Effects (320).mp3'
 import atexit
 import random
 import aiohttp
+import re
+import io
+from concurrent.futures import ThreadPoolExecutor
+import typing
 
-# Set default encoding to 'utf-8'
-sys.stdout.reconfigure(encoding='utf-8')
 
 
-
-# Set up logging to file
-logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# Define a function to remove ANSI escape sequences
-ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-
-def remove_ansi(text):
-    return ansi_escape.sub('', text)
-
-# Define colors for the log messages
-COLOR_GREEN = "\033[92m"
-COLOR_RED = "\033[91m"
-COLOR_RESET = "\033[0m"
-
-# Create a file handler for logging
-file_handler = logging.FileHandler('bot_output.log', mode='a')
-file_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-# Create a formatter with date and time
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-# Add a separator and start time to the log files
-with open('bot_output.log', mode='a') as f:
-    start_time = datetime.now().strftime('%B %d, %Y - %I:%M:%S %p')
-    separator = '*' * 75
-    separator2 = '=' * 75
-    f.write(f"{separator}\nScript started at: {start_time}\n{separator}\n")
 
 # Load environment variables
 load_dotenv()
@@ -84,9 +55,13 @@ commands_list = [
     (",autodelete", "Toggles the bot's autodelete function"),
     (",avatar <@user>", "Gets user's avatar"),
     (",afk", "Toggle your status of AFK"),
+    (",clearq ", " Removes all music from the queue"),
     (",dnd", "Toggles the bot between DnD and Idle Mode"),
     (",disconnect <@user>", "Disconnect user from a voice channel"),
     (",drag <@user>", " Move a user to a voice channel"),
+    (",emojiadd <link>", " Creates an emoji"),
+    (",emoji ", " Gives details of an emoji"),
+    (",emojiremove <name>", " Deletes an emoji"),
     (",deafen <@user>", "Deafens the target user, if none is specified it deafens the bot"),
     (",gather <#channel>", "Moves all users into the voice channel that you are in or the channel specified."),
     (",join <channel-name> (optional)", "Joins the channel you're in, or if specified it joins the channel name"),
@@ -96,24 +71,36 @@ commands_list = [
     (",leave", "Leaves the channel the bot is in"),
     (",mock <@user>", "Mocks target user(s)"),
     (",mute <@user>", "Mutes target user"),
-    (",names <@user>", "Gets the old nickname of a user"),
+    (",mp3list ", "Shows a list of mp3s in the file"),
+    (",names <@user>", "Gets the old nicknames of a user"),
     (",online ", "Sets bot status as 'Online'"),
     (",offline", "Sets bot status as 'Offline'"),
-    (",play <URL>", "Plays youtube URL"),
+    (",pause ", " Halts audio playback"),
+    (",play <URL/Search>", "Plays youtube music"),
     (",playmp3 <mp3>", "Plays Target MP3"),
-    (",mp3list ", "Shows a list of mp3s in the file"),
     (",ping", "Ping command - Test if the bot is responsive- displays the latency from the bot to the server"),
     (",purge <#channel/number> <number>", "Deletes messages in #channel if specified, default is 100"),
+    (",q ", " Shows the music queue"),
     (",release <@user>", "Releases the user from the '.jail' role"),
     (",resetstatus", "Resets the bot's status"),
+    (",resume", " Continues audio playback"),
     (",stalk <@user>", "Stalks the specified user"),
     (",stopstalk", "Stops stalking selected user"),
     (",setstatus <activity-type> <status>", "Sets the bot's status"),
+    (",senddm <target> <message > ", "Sends a message to target user"),
+    (",skip ", " Skips a song in queue"),
     (",say <#channel> 'TEXT'' ", "Makes the bot chat the desired text in specified channel"),
     ("/ticket", "Creates a ticket"),
     (",user <@user>", "Displays info on user"),
     (",volume <1-100>", "Sets the bot's volume"),
+    (",viewdms <target>", " Shows the bot's dms with a user"),
+
+# : (", ", " "),
+
 ]
+
+
+
 
 # Global variable for pagination
 per_page = 5
@@ -173,13 +160,22 @@ async def list(ctx, page: int = 1):
 # Handle command errors to prevent the bot from exiting unexpectedly
 @bot.event
 async def on_command_error(ctx, error):
+    try:
+        await ctx.message.delete()
+    except discord.errors.NotFound:
+        pass  # If the message is not found, we pass since it might be already deleted.
+
     if isinstance(error, commands.CommandNotFound):
-        await ctx.send("Command not found.")
+        bot_message = await ctx.send(f":warning: Command '{ctx.invoked_with}' not found.")
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("Missing required argument.")
+        bot_message = await ctx.send("Missing required argument.")
     else:
-        await ctx.send("An error occurred.")
+        bot_message = await ctx.send("An error occurred.")
         print(f"An error occurred: {error}")
+
+    await asyncio.sleep(7)
+    await bot_message.delete()
+
 
 # List : End of the list
 
@@ -187,7 +183,7 @@ async def on_command_error(ctx, error):
 is_dnd = True
 
 # Activity to set when the bot is in Do Not Disturb mode
-dnd_activity = discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/jJ8QcTB3")
+dnd_activity = discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/VGucfdymCm")
 
 # Activity to set when the bot is in Online mode
 idle_activity = discord.Activity(type=discord.ActivityType.listening, name="@.zxpq")
@@ -277,18 +273,7 @@ async def join(ctx, *, channel_keyword: str = None):
     await ctx.send(f"Joined {channel.name}")
 
 
-# Command to leave the voice channel
-@bot.command()
-async def leave(ctx):
-    # Check if the bot is connected to a voice channel
-    voice_client = ctx.voice_client
-    if voice_client is None:
-        await ctx.send("I'm not connected to a voice channel.")
-        return
 
-    # Disconnect from the voice channel
-    await voice_client.disconnect()
-    await ctx.send("Left the voice channel.")
 
 # Command : Gather
 @bot.command()
@@ -400,12 +385,14 @@ async def stalk(ctx, member: discord.Member):
             await ctx.send("Failed to connect to the voice channel.")
             return
     else:
-        await ctx.send("The specified user is not in a voice channel, or the bot isn't in a voice channel. Starting the loop anyway...")
+        await ctx.send(f" {member.display_name} is not in a voice channel, or the bot isn't in a voice channel. Starting the loop anyway...", delete_after=1)
+
         print(f"Started stalking {member.display_name} even though they are not in a voice channel.")
 
     followed_user = member
-    await ctx.send(f"Now stalking {member.display_name} in {voice_channel.name}.")
+    await ctx.send(f"Now stalking {member.display_name} in {voice_channel.name}.", delete_after=1)
     print(f"\033[30mNow stalking\033[0m \033[91m{member.display_name}\033[0m \033[30min\033[0m \033[91m{voice_channel.name}\033[0m.")
+    await ctx.message.delete(delay=1)
 
 # Command : Stopstalk command
 @bot.command()
@@ -468,23 +455,9 @@ async def follow_user():
                 break
 
 
- # UPDATE
 
-# Event : Auto play sound
-@bot.event
-async def on_voice_state_update(member, before, after):
-    # Check if the member is the bot itself
-    if member == bot.user:
-        # Check if the bot moved to a voice channel
-        if before.channel != after.channel:
-            if after.channel is not None:
-                # Bot joined a voice channel
-                print(f"The bot has joined voice channel: {after.channel.name}")
-                # Add your actions here, such as playing a welcome message or music
-            else:
-                # Bot left a voice channel
-                print("The bot has left voice channel.")
-                # Add your cleanup actions here, if necessary
+
+
 
 # Command : Volume Command
 @bot.command()
@@ -605,34 +578,7 @@ async def mute_error(ctx, error):
         await ctx.send("Please specify a user to mute.")
 
 
-# Event : Auto play sound
-@bot.event
-async def on_voice_state_update(member, before, after):
-    if member == bot.user:
-        if before.channel != after.channel:
-            if after.channel is not None:
-                print(f"The bot has joined voice channel: {after.channel.name}")
-                await asyncio.sleep(2)
 
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                mp3_file = os.path.join(current_dir, 'soundboard', 'uwu.mp3')
-
-                if not os.path.exists(mp3_file):
-                    print("uwu.mp3 file not found.")
-                    return
-
-                try:
-                    if not bot.voice_clients:
-                        voice_client = await after.channel.connect()
-                    else:
-                        voice_client = bot.voice_clients[0]
-
-                    if not voice_client.is_playing():
-                        voice_client.play(discord.FFmpegPCMAudio(mp3_file))
-                        while voice_client.is_playing():
-                            await asyncio.sleep(1)
-                except Exception as e:
-                    print(f"Error playing mp3: {e}")
 
 
 # Command: `playmp3`
@@ -689,34 +635,7 @@ async def playmp3(ctx, *keywords: str):
 
 
 
-# Event : Play mp3 on join [ autoplay ]
-@bot.event
-async def on_voice_state_update(member, before, after):
-    if member == bot.user:
-        if before.channel != after.channel:
-            if after.channel is not None:
-                print(f"The bot has joined voice channel: {after.channel.name}")
-                await asyncio.sleep(2)
 
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                mp3_file = os.path.join(current_dir, 'soundboard', 'uwu.mp3')
-
-                if not os.path.exists(mp3_file):
-                    print("uwu.mp3 file not found.")
-                    return
-
-                try:
-                    if not bot.voice_clients:
-                        voice_client = await after.channel.connect()
-                    else:
-                        voice_client = bot.voice_clients[0]
-
-                    if not voice_client.is_playing():
-                        voice_client.play(discord.FFmpegPCMAudio(mp3_file))
-                        while voice_client.is_playing():
-                            await asyncio.sleep(1)
-                except Exception as e:
-                    print(f"Error playing mp3: {e}")
 
 
 
@@ -760,30 +679,238 @@ async def mp3list(ctx):
     for song in sound_files:
         await ctx.send(song)
 
+
+
+# Suppress noise about console usage from youtube_dl
+youtube_dl.utils.bug_reports_message = lambda: ''
+
+# Global variables for queue and voice client
+
+is_playing = False  # Initialize is_playing as False initially
+voice_client = None
+queue = []
+current_playing_url = None
+loop_song = False
+executor = ThreadPoolExecutor()
+
+
+# ytdl options
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
+}
+
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
 # Command to play audio from YouTube link
 @bot.command()
-async def play(ctx, url: str):
-    # Check if the user is in a voice channel
-    if ctx.author.voice is None or ctx.author.voice.channel is None:
-        await ctx.send("You need to be in a voice channel to use this command.")
+async def YOUTUBE(ctx, *, query):
+    author = ctx.message.author
+    voice_channel = author.voice.channel if author.voice else None
+
+    if not voice_channel:
+        await ctx.send('You need to be in a voice channel to use this command.')
         return
 
-    # Connect to the voice channel
-    voice_channel = ctx.author.voice.channel
-    voice_client = ctx.voice_client
-    if voice_client is None:
+    voice_client = ctx.guild.voice_client
+
+    if voice_client and voice_client.is_connected():
+        await voice_client.move_to(voice_channel)
+    else:
         voice_client = await voice_channel.connect()
 
-    # Download audio from YouTube link
     ydl_opts = {
         'format': 'bestaudio/best',
-        'outtmpl': 'audio.mp3',  # Save the audio as 'audio.mp3'
+        'noplaylist': True,  # Prevent downloading playlists
     }
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
 
-    # Play the downloaded audio
-    voice_client.play(discord.FFmpegPCMAudio('audio.mp3'))
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        try:
+            info = ydl.extract_info(f'ytsearch:{query}', download=False)
+        except youtube_dl.DownloadError as e:
+            await ctx.send(f'Error downloading video: {e}')
+            return
+        except youtube_dl.ExtractorError as e:
+            await ctx.send(f'Error extracting info: {e}')
+            return
+
+        if 'entries' in info:
+            # Use the first video in the search results
+            video = info['entries'][0]
+            url = video['url']
+            title = video['title']
+            await ctx.send(f'Now playing: {title}')
+            voice_client.play(discord.FFmpegPCMAudio(url))
+        else:
+            await ctx.send(f'No video found for query: {query}')
+
+
+@bot.command()
+async def play(ctx, *, query):
+    global queue, current_playing_url
+
+    author = ctx.message.author
+    voice_channel = author.voice.channel if author.voice else None
+
+    if not voice_channel:
+        await ctx.send('You need to be in a voice channel to use this command.')
+        return
+
+    voice_client = ctx.guild.voice_client
+
+    if voice_client and voice_client.is_connected():
+        await voice_client.move_to(voice_channel)
+    else:
+        voice_client = await voice_channel.connect()
+
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'noplaylist': True,  # Prevent downloading playlists
+    }
+
+    info = await download_info(query, ydl_opts)
+    if info is None:
+        await ctx.send(f'No video found for query: {query}')
+        return
+
+    if 'entries' in info:
+        video = info['entries'][0]
+        url = video['url']
+        title = video['title']
+
+        download_msg = await ctx.send(f'Downloading: {title}')
+        await asyncio.sleep(4)  # Simulate downloading delay
+
+
+        if voice_client.is_playing():
+            queue.append(query)
+            await ctx.send(f'Added to queue: {title}')
+            await download_msg.delete()  # Delete download message if added to queue
+        else:
+            await download_msg.delete()  # Delete download message if starting to play now
+            await ctx.send(f'Now playing: {title}')
+            current_playing_url = url
+            voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop))
+    else:
+        await ctx.send(f'No video found for query: {query}')
+
+async def download_info(query, ydl_opts):
+    loop = asyncio.get_event_loop()
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        try:
+            info = await loop.run_in_executor(executor, lambda: ydl.extract_info(f'ytsearch:{query}', download=False))
+            return info
+        except youtube_dl.DownloadError as e:
+            print(f'Error downloading video: {e}')
+            return None
+        except youtube_dl.ExtractorError as e:
+            print(f'Error extracting info: {e}')
+            return None
+
+async def play_next(ctx):
+    global queue, current_playing_url
+
+    if queue:
+        next_query = queue.pop(0)
+        author = ctx.message.author
+        voice_channel = author.voice.channel if author.voice else None
+
+        if not voice_channel:
+            await ctx.send('You need to be in a voice channel to use this command.')
+            return
+
+        voice_client = ctx.guild.voice_client
+
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'noplaylist': True,  # Prevent downloading playlists
+        }
+
+        info = await download_info(next_query, ydl_opts)
+        if info is None:
+            await ctx.send(f'No video found for query: {next_query}')
+            return
+
+        if 'entries' in info:
+            video = info['entries'][0]
+            url = video['url']
+            title = video['title']
+            await ctx.send(f'Now playing: {title}')
+            current_playing_url = url
+            voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop))
+
+@bot.command()
+async def q(ctx):
+    if not queue:
+        await ctx.send('The queue is currently empty.')
+    else:
+        queue_list = '\n'.join([f'{index + 1}. {item}' for index, item in enumerate(queue)])
+        await ctx.send(f'**Current Queue:**\n{queue_list}')
+
+@bot.command()
+async def clearq(ctx):
+    global queue
+    if not queue:
+        await ctx.send('The queue is already empty.')
+    else:
+        queue.clear()
+        await ctx.send('Queue cleared.')
+
+
+
+@bot.command()
+async def pause(ctx):
+    voice_client = ctx.guild.voice_client
+    if voice_client and voice_client.is_playing():
+        voice_client.pause()
+        await ctx.send('Playback paused.')
+    else:
+        await ctx.send("I'm not playing anything right now.")
+
+@bot.command()
+async def resume(ctx):
+    voice_client = ctx.guild.voice_client
+    if voice_client and voice_client.is_paused():
+        voice_client.resume()
+        await ctx.send('Playback resumed.')
+    else:
+        await ctx.send("I'm not paused right now.")
+
+
+
+@bot.command()
+async def skip(ctx):
+    voice_client = ctx.guild.voice_client
+    if voice_client and voice_client.is_playing():
+        voice_client.stop()
+        await ctx.send('Skipped the current song.')
+        await play_next(ctx)
+    else:
+        await ctx.send("I'm not playing anything right now.")
+
+
+@bot.command()
+async def leave(ctx):
+    voice_client = ctx.guild.voice_client
+    if voice_client:
+        await voice_client.disconnect()
+        queue.clear()
+    else:
+        await ctx.send("I'm not connected to any voice channel.")
+
 
 # Command to reset status to default
 @bot.command()
@@ -939,13 +1066,37 @@ async def purge(ctx, channel: typing.Optional[discord.TextChannel] = None, limit
         await ctx.send("Please specify a positive number for the limit.")
         return
 
-    # Determine the channel to purge messages from
+    if limit > 300:
+        await ctx.send("Limit cannot exceed 300.")
+        return
+
     if channel is None:
         channel = ctx.channel
 
-    # Delete messages
-    deleted = await channel.purge(limit=limit)
-    await ctx.send(f"Purged {len(deleted)} message(s) from {channel.mention}.")
+    try:
+        # Define a check function to delete all messages in the channel
+        def check(message):
+            return True
+
+        # Attempt to delete messages in batches of 5 until the limit is reached
+        total_deleted = 0
+        while total_deleted < limit:
+            to_delete = min(limit - total_deleted, 5)
+            deleted = await channel.purge(limit=to_delete, check=check)
+            total_deleted += len(deleted)
+
+            # Add a short delay between batches to prevent rate limits
+            await asyncio.sleep(1)
+
+        # Send the final result after completion
+        confirmation_msg = await ctx.send(f"Purged {total_deleted} message(s) from {channel.mention}.")
+        await asyncio.sleep(5)
+        await confirmation_msg.delete()
+
+    except discord.HTTPException as e:
+        await ctx.send(f"An error occurred while purging messages: {e}")
+
+
 
 # Modal: ticket modal
 class TicketModal(discord.ui.Modal, title="Ticket Submission"):
@@ -956,22 +1107,31 @@ class TicketModal(discord.ui.Modal, title="Ticket Submission"):
         subject = self.subject.value
         description = self.description.value
 
-        # Assuming 'tickets' channel exists
-        ticket_channel = discord.utils.get(interaction.guild.text_channels, name="tickets")
+        # Ensure guild exists before accessing its attributes
+        if interaction.guild:
+            # Check if interaction occurs in a DM channel
+            if isinstance(interaction.channel, discord.DMChannel):
+                await interaction.response.send_message("Slash commands are not available in DMs.", ephemeral=True)
+                return
 
-        if ticket_channel is not None:
-            embed = discord.Embed(title="New Ticket", color=discord.Color.blue())
-            embed.add_field(name="Subject", value=subject, inline=False)
-            embed.add_field(name="Description", value=description, inline=False)
-            embed.add_field(name="Submitted by", value=interaction.user.name, inline=False)  # Changed to use username
+            # Assuming 'tickets' channel exists
+            ticket_channel = discord.utils.get(interaction.guild.text_channels, name="tickets")
 
-            view = TicketButtons(interaction.user, subject, description)
+            if ticket_channel is not None:
+                embed = discord.Embed(title="New Ticket", color=discord.Color.dark_grey())
+                embed.add_field(name="Subject", value=subject, inline=False)
+                embed.add_field(name="Description", value=description, inline=False)
+                embed.add_field(name="Submitted by", value=interaction.user.name, inline=False)  # Changed to use username
 
-            await ticket_channel.send(embed=embed, view=view)
-            await interaction.response.send_message("Your ticket has been submitted!", ephemeral=True)
+                view = TicketButtons(interaction.user, subject, description)
+
+                await ticket_channel.send(embed=embed, view=view)
+                await interaction.response.send_message("Your ticket has been submitted!", ephemeral=True)
+            else:
+                await interaction.response.send_message("Ticket channel not found. Please contact an administrator.",
+                                                        ephemeral=True)
         else:
-            await interaction.response.send_message("Ticket channel not found. Please contact an administrator.",
-                                                    ephemeral=True)
+            await interaction.response.send_message("Tickets have to be sent in a guild, silly! :3 /setup for more info", ephemeral=True)
 
 
 class TicketButtons(discord.ui.View):
@@ -1009,7 +1169,7 @@ class TicketButtons(discord.ui.View):
             reason="New ticket accepted"
         )
 
-        embed = discord.Embed(title="Ticket Details", color=discord.Color.blue())
+        embed = discord.Embed(title="Ticket Details", color=discord.Color.dark_grey())
         embed.add_field(name="Subject", value=self.subject, inline=False)
         embed.add_field(name="Description", value=self.description, inline=False)
         embed.add_field(name="Submitted by", value=self.ticket_user.name, inline=False)
@@ -1029,6 +1189,7 @@ class TicketButtons(discord.ui.View):
         if trusted_role in interaction.user.roles:
             # Send rejection message to the user
             await self.ticket_user.send(f"Your ticket has been rejected by {interaction.user.name}.")
+            await interaction.message.delete()
         else:
             await interaction.response.send_message("You do not have permission to reject this ticket.", ephemeral=True)
 
@@ -1044,7 +1205,14 @@ class CloseTicketButton(discord.ui.View):
         if trusted_role in interaction.user.roles:
             # Send closing message to the user
             await self.ticket_user.send(f"Your ticket has been closed by {interaction.user.name}.")
+
+            # Delete the ticket channel
             await interaction.channel.delete(reason="Ticket closed by support staff")
+
+            # Check if the category is now empty and delete it if so
+            category = interaction.channel.category
+            if category and len(category.channels) == 0:
+                await category.delete(reason="Category empty after ticket closed")
         else:
             await interaction.response.send_message("You do not have permission to close this ticket.", ephemeral=True)
 
@@ -1128,7 +1296,13 @@ async def role(ctx, *, args: str):
 
     member_str, role_str = args
     member = discord.utils.get(ctx.guild.members, mention=member_str)
-    role = discord.utils.get(ctx.guild.roles, name=role_str)
+
+    # Extract role from mention
+    if role_str.startswith("<@&") and role_str.endswith(">"):
+        role_id = role_str[3:-1]
+        role = discord.utils.get(ctx.guild.roles, id=int(role_id))
+    else:
+        role = discord.utils.get(ctx.guild.roles, name=role_str)
 
     # Check if a member and role are provided
     if member is None or role is None:
@@ -1160,23 +1334,103 @@ async def role(ctx, *, args: str):
 async def hello(ctx):
     await ctx.send("Hello world!")
 
-# Event : Welcome message
-@bot.event
-async def on_member_join(member):
-    # Find the channel to send the welcome message
-    for guild in bot.guilds:
-        channel = discord.utils.get(guild.channels, name="welcome", type=discord.ChannelType.text)
-        if channel:
-            break
+# Event : Welcome message  and ticket
+# Channel ID where the ticket message will be sent
+TICKET_CHANNEL_ID = 1241495094205354104  # Replace with your tickets channel ID
+# Channel name for welcome messages
+WELCOME_CHANNEL_NAME = "welcome"  # Replace with your welcome channel name
+# Role ID to assign when a user is accepted
+ROLE_ID = 1056996133081186395  # Replace with the role ID you want to assign
+# Replace with your actual guild (server) ID
+GUILD_ID = 1056994840925192252
+
+# Dictionary to keep track of active tickets
+active_tickets = {}
+
+
+class AcceptDeclineView(discord.ui.View):
+    def __init__(self, user: discord.Member, guild: discord.Guild, message: discord.Message):
+        super().__init__(timeout=None)
+        self.user = user
+        self.guild = guild
+        self.message = message
+
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success)
+    async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
+        role = self.guild.get_role(ROLE_ID)
+        if role and self.user:
+            await self.user.add_roles(role)
+            await self.user.send("Welcome to the server! Enjoy your stay.")
+        try:
+            await self.message.delete()  # Delete the original message
+        except discord.errors.NotFound:
+            pass  # The message was already deleted
+
+        active_tickets.pop(self.user.id, None)
+
+    @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
+    async def decline(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await self.user.kick(reason="Declined membership.")
+        await self.user.send("Access to the server has been declined by an Admin.")
+        try:
+            await self.message.delete()  # Delete the original message
+        except discord.errors.NotFound:
+            pass  # The message was already deleted
+
+        active_tickets.pop(self.user.id, None)
+
+
+class OkayView(discord.ui.View):
+    def __init__(self, message: discord.Message):
+        super().__init__(timeout=None)
+        self.message = message
+
+    @discord.ui.button(label="Okay", style=discord.ButtonStyle.primary)
+    async def okay(self, button: discord.ui.Button, interaction: discord.Interaction):
+        try:
+            await self.message.delete()  # Delete the notification message
+        except discord.errors.NotFound:
+            pass  # The message was already deleted
+
+
+
+async def send_ticket_message(member: discord.Member, guild: discord.Guild):
+    me2 = await bot.fetch_user(110927272210354176)  # Replace with your Discord user ID
+    ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
+    if ticket_channel:
+        embed = discord.Embed(
+            title="New Member Request",
+            description=f"{member.mention} has joined the server. Would you like to accept or decline their request?",
+            color=discord.Color.gold()
+        )
+        message = await ticket_channel.send(embed=embed)
+        view = AcceptDeclineView(member, guild, message)
+        await message.edit(view=view)
+
+        # Track the ticket
+        active_tickets[member.id] = message
+
+        # Send notification message to yourself
+        await me2.send(f"New User Join {ticket_channel.mention}.")
+    else:
+        print("Error: Could not find the specified channel for ticket messages.")
+
+
+async def send_welcome_message(member: discord.Member):
+    # Fetch the welcome channel
+    channel = discord.utils.get(member.guild.channels, name=WELCOME_CHANNEL_NAME, type=discord.ChannelType.text)
 
     if channel:
         # Create an embed for the welcome message
         embed = discord.Embed(
-            title=f"{member.display_name} pulled up ",
-            description=" ",
+            title=f"{member.display_name} pulled up",
+            description=f"Username: {member.name}",
             color=discord.Color.red()
         )
-        embed.set_thumbnail(url=member.avatar.url)
+
+        # Fetch avatar URL
+        avatar_url = member.avatar.url if member.avatar else member.default_avatar.url
+        embed.set_thumbnail(url=avatar_url)
         embed.set_footer(text=f"User ID: {member.id}")
 
         # Send the welcome message
@@ -1184,30 +1438,203 @@ async def on_member_join(member):
     else:
         print("Error: Could not find the specified channel for welcome messages.")
 
-# Event: Farewell message
+
 @bot.event
-async def on_member_remove(member):
-    # Find the channel to send the farewell message
-    for guild in bot.guilds:
-        channel = discord.utils.get(guild.channels, name="exit", type=discord.ChannelType.text)
+async def on_member_join(member: discord.Member):
+    # Check if the member's guild is the specified guild
+    if member.guild.id == GUILD_ID:
+        await send_welcome_message(member)
+        await send_ticket_message(member, member.guild)
+
+
+@bot.event
+async def on_member_remove(member: discord.Member):
+    # Check if the member's guild is the specified guild
+    if member.guild.id == GUILD_ID:
+        # Remove the active ticket if exists
+        if member.id in active_tickets:
+            ticket_message = active_tickets.pop(member.id)
+            try:
+                await ticket_message.delete()
+            except discord.errors.NotFound:
+                pass
+
+            # Notify the admin
+            me2 = await bot.fetch_user(110927272210354176)  # Replace with your Discord user ID
+            await me2.send(f"The ticket for {member.mention} has been canceled as they have left/been kicked from the server.")
+
+            # Send a message with "Okay" button to the tickets channel
+            ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
+            if ticket_channel:
+                embed = discord.Embed(
+                    title="Ticket Canceled",
+                    description=f"The ticket for {member.mention} has been canceled as they have left/been kicked from the server.",
+                    color=discord.Color.red()
+                )
+                cancel_message = await ticket_channel.send(embed=embed)
+                okay_view = OkayView(cancel_message)
+                await cancel_message.edit(view=okay_view)
+        else:
+            print("Error: Could not find the specified channel for ticket messages.")
+
+        # Find the channel to send the farewell message
+        channel = discord.utils.get(member.guild.channels, name="exit", type=discord.ChannelType.text)
+
         if channel:
-            break
+            # Create an embed for the farewell message
+            embed = discord.Embed(
+                title=f"Goodbye, {member.display_name}!",
+                description="We'll miss you.",
+                color=discord.Color.dark_grey()
+            )
+            if member.avatar:
+                embed.set_thumbnail(url=member.avatar.url)
+            embed.set_footer(text=f"User ID: {member.id}")
 
-    if channel:
-        # Create an embed for the farewell message
+            # Send the farewell message
+            await channel.send(embed=embed)
+        else:
+            print("Error: Could not find the specified channel for farewell messages.")
+
+# Ticket : vc ticket
+class AcceptDeclineView2(discord.ui.View):
+    def __init__(self, member: discord.Member, guild: discord.Guild, message: discord.Message):
+        super().__init__(timeout=None)
+        self.member = member
+        self.guild = guild
+        self.message = message
+
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success)
+    async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
+        # Move member to the main voice channel
+        waiting_room = discord.utils.get(self.guild.voice_channels, name=".waiting-room")
+        main_channel = discord.utils.get(self.guild.voice_channels, name=",main")
+
+        if waiting_room and main_channel:
+            if self.member.voice and self.member.voice.channel == waiting_room:
+                await self.member.move_to(main_channel)
+
+        try:
+            await self.message.delete()  # Delete the original message
+        except discord.errors.NotFound:
+            pass  # The message was already deleted
+
+        active_tickets.pop(self.member.id, None)
+
+    @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
+    async def decline(self, button: discord.ui.Button, interaction: discord.Interaction):
+        # Kick member from the waiting-room voice channel
+        waiting_room = discord.utils.get(self.guild.voice_channels, name=".waiting-room")
+
+        if waiting_room:
+            if self.member.voice and self.member.voice.channel == waiting_room:
+                await self.member.move_to(None)  # This kicks the member from the voice channel
+
+        try:
+            await self.message.delete()  # Delete the original message
+        except discord.errors.NotFound:
+            pass  # The message was already deleted
+
+        active_tickets.pop(self.member.id, None)
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    if member == bot.user:
+        if before.channel != after.channel:
+            if after.channel is not None:
+                print(f"The bot has joined voice channel: {after.channel.name}")
+                await asyncio.sleep(2)
+
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                mp3_file = os.path.join(current_dir, 'soundboard', 'uwu.mp3')
+
+                if not os.path.exists(mp3_file):
+                    print("uwu.mp3 file not found.")
+                    return
+
+                try:
+                    if not bot.voice_clients:
+                        voice_client = await after.channel.connect()
+                    else:
+                        voice_client = bot.voice_clients[0]
+
+                    if not voice_client.is_playing():
+                        voice_client.play(discord.FFmpegPCMAudio(mp3_file))
+                        while voice_client.is_playing():
+                            await asyncio.sleep(1)
+                except Exception as e:
+                    print(f"Error playing mp3: {e}")
+    # Replace USER_ID_TO_IGNORE with the ID of the user you want to ignore
+    if member.bot or member == bot.user or member.id == 110927272210354176:
+        return  # Ignore events triggered by the bot itself, other bots, or the specified user
+
+    # Check if the member joined the .waiting-room voice channel
+    if after.channel and after.channel.name == '.waiting-room':
+        # Automatically send the voice request message
+        await send_voice_request_message(member, member.guild)
+    # Check if the member left the .waiting-room voice channel
+    elif before.channel and before.channel.name == '.waiting-room' and (not after.channel or after.channel.name != '.waiting-room'):
+        # Cancel the ticket if the user left the channel
+        await cancel_voice_request(member, member.guild)
+
+
+
+# Dictionary to track active tickets
+active_tickets = {}
+
+
+async def send_voice_request_message(member: discord.Member, guild: discord.Guild):
+    me = await bot.fetch_user(110927272210354176)  # Replace YOUR_USER_ID with your Discord user ID
+    ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
+    if ticket_channel:
         embed = discord.Embed(
-            title=f"Goodbye, {member.display_name}!",
-            description="We'll miss you.",
-            color=discord.Color.dark_grey()
+            title=".waiting-room",
+            description=f"{member.mention} has joined the waiting room. Drag them to ,main?",
+            color=discord.Color.gold()
         )
-        if member.avatar:
-            embed.set_thumbnail(url=member.avatar.url)
-        embed.set_footer(text=f"User ID: {member.id}")
+        message = await ticket_channel.send(embed=embed)
+        view = AcceptDeclineView2(member, guild, message)
+        await message.edit(view=view)
 
-        # Send the farewell message
-        await channel.send(embed=embed)
+        # Store the active ticket
+        active_tickets[member.id] = message
+
+        # Send notification message to yourself
+        await me.send(f"A user has joined the waiting room {ticket_channel.mention}.")
     else:
-        print("Error: Could not find the specified channel for farewell messages.")
+        print("Error: Could not find the specified channel for ticket messages.")
+
+
+class OkayView2(discord.ui.View):
+    def __init__(self, message: discord.Message):
+        super().__init__(timeout=None)
+        self.message = message
+
+    @discord.ui.button(label="Okay", style=discord.ButtonStyle.primary)
+    async def okay(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await self.message.delete()
+
+async def cancel_voice_request(member: discord.Member, guild: discord.Guild):
+    if member.id in active_tickets:
+        message = active_tickets.pop(member.id)
+        ticket_channel = bot.get_channel(TICKET_CHANNEL_ID)
+        if ticket_channel:
+            try:
+                await message.delete()
+            except discord.errors.NotFound:
+                pass  # Message was already deleted or doesn't exist
+
+            embed = discord.Embed(
+                title="Ticket Canceled",
+                description=f"The ticket for {member.mention} has been dealt with/canceled.",
+                color=discord.Color.red()
+            )
+            cancel_message = await ticket_channel.send(embed=embed)
+            view = OkayView2(cancel_message)
+            await cancel_message.edit(view=view)
+
+
+
 
 # Command : Shows past nicknames
 @bot.command()
@@ -1227,8 +1654,15 @@ async def names(ctx, member: discord.Member):
 
 # Command : Shows user info
 @bot.command()
-async def user(ctx, member: discord.Member = None):
-    member = member or ctx.author
+async def user(ctx, member: discord.Member = None, user_id: int = None):
+    if user_id:
+        try:
+            member = await ctx.guild.fetch_member(user_id)
+        except discord.NotFound:
+            await ctx.send("User not found.")
+            return
+    else:
+        member = member or ctx.author
 
     embed = discord.Embed(title=f"User Info - {member.display_name}", color=member.color)
 
@@ -1260,41 +1694,68 @@ async def user(ctx, member: discord.Member = None):
 
 # Command : Gets users avatar
 @bot.command()
-async def avatar(ctx, *, user: discord.User = None):
-    user = user or ctx.author
+async def avatar(ctx, user: discord.User = None, user_id: int = None):
+    if user_id:
+        try:
+            user = await bot.fetch_user(user_id)
+        except discord.NotFound:
+            await ctx.send("User not found.")
+            return
+    else:
+        user = user or ctx.author
 
     if user.avatar:
         avatar_url = user.avatar.url
     else:
         avatar_url = user.default_avatar.url
 
-    embed = discord.Embed(title=f"{user.display_name}'s Avatar", color=ctx.author.color)
+    embed = discord.Embed(title=f"{user.name}'s Avatar", color=ctx.author.color)
     embed.set_image(url=avatar_url)
 
     await ctx.send(embed=embed)
 
-# Command : Afk command
+
+AFK_FILE = 'afk_users.json'
+
+
+# Load AFK data from a JSON file
+def load_afk_data():
+    if os.path.exists(AFK_FILE):
+        with open(AFK_FILE, 'r') as file:
+            return json.load(file)
+    else:
+        return {}
+
+
+# Save AFK data to a JSON file
+def save_afk_data(data):
+    with open(AFK_FILE, 'w') as file:
+        json.dump(data, file, indent=4)
+
+
+afk_users = load_afk_data()
+
+
 @bot.command()
 async def afk(ctx, *, reason=""):
-    # Check if the user is already marked as AFK
-    if "[AFK]" in ctx.author.display_name:
-        # Remove the AFK indicator from the nickname
-        new_name = ctx.author.display_name.replace("[AFK] ", "")
-        await ctx.author.edit(nick=new_name)
+    user_id = str(ctx.author.id)
+
+    if user_id in afk_users:
+        # Remove AFK status
+        afk_users.pop(user_id)
+        save_afk_data(afk_users)
         await ctx.send(f"{ctx.author.mention} is no longer AFK.")
     else:
-        # Check if the user is already AFK
-        if "AFK" not in ctx.author.display_name:
-            # Set the user's nickname to indicate they are AFK
-            await ctx.author.edit(nick=f"[AFK] {ctx.author.display_name}")
-            await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {reason}")
-        else:
-            await ctx.send(f"{ctx.author.mention} is already AFK.")
+        # Set AFK status
+        afk_users[user_id] = reason
+        save_afk_data(afk_users)
+        await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {reason}")
 
 
 # Event : On ready startup sequence events
 @bot.event
 async def on_ready():
+    bot.load_extension('musiccog')  # Ensure 'musiccog.py' is in the same directory
     follow_user.start()
     global is_dnd
     if is_dnd:
@@ -1356,10 +1817,15 @@ async def on_error(event, *args, **kwargs):
     if channel:
 
         # Attempt to reconnect the bot
-        await channel.send(":orange_circle: Network interruption, reconnecting...")
+        await channel.send(":orange_circle: Network interruption, attempting to reconnect...")
+
+        # Send the error details as a plain text message
+        error_details = f"An error occurred during the `{event}` event.\n" \
+                        f"Error details:\n```{traceback.format_exc()}```"
+        await channel.send(error_details)
         await bot.close()
         await asyncio.sleep(5)  # Wait for 5 seconds before reconnecting
-        await bot.start(TOKEN)
+        await bot.run(DISCORD_TOKEN)
 
     # You can also perform any other cleanup or logging tasks here
 
@@ -1392,7 +1858,7 @@ async def kill(ctx):
                     await channel.send(":red_circle: xyz is now offline [Killed]")
                 await bot.close()
         except asyncio.TimeoutError:
-            await warning_message.edit(content=":orange_circle: Bot TERMINATION cancelled due to inactivity.")
+            await warning_message.edit(content=":clock1:  Bot TERMINATION cancelled due to inactivity.")
             await warning_message.clear_reactions()  # Remove reactions
     else:
         await ctx.send(f":warning: [ERROR] {ctx.author.mention} is not permitted to operate this command.")
@@ -1463,18 +1929,40 @@ async def update_bot_username(ctx):
         print(f"Failed to update bot's nickname: {e}")
 
 
-# Event : Check for user Role/Channel status
+# Event on_message event 
+
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
         return  # Ignore messages sent by the bot itself
+
+    if isinstance(message.channel, discord.DMChannel):
+        # Respond to DMs with a simple message
+        await message.channel.send("hi there :D i can only process commands in a guild. /setup for more info")
+        return  # Stop further processing for DMs
+
+    # Check if user is typing in the status channel
+    if message.channel.id == 1234310879072223292 and not message.author.bot:
+        await message.delete()
+        warning_msg = await message.channel.send(f'{message.author.mention}, sending messages in this channel is not allowed.')
+        await asyncio.sleep(4)
+        await warning_msg.delete()
+        return  # Stop further processing for status channel messages
+
+    # Check if the mentioned user(s) are AFK
+    mentioned_afk_users = [user_id for user_id in afk_users if message.guild.get_member(int(user_id)) in message.mentions]
+    if mentioned_afk_users:
+        for user_id in mentioned_afk_users:
+            reason = afk_users[user_id]
+            user = message.guild.get_member(int(user_id))
+            await message.channel.send(f"{user.mention} is currently AFK. Reason: {reason}")
 
     # Check if the message is a command
     if message.content.startswith(bot.command_prefix):
         # Check if the message is not the setup command
         if not message.content.startswith(bot.command_prefix + "list"):
             # Check if the message is not from the allowed channel
-            if message.channel.name != allowed_channel_name:
+            if message.channel.name != "admin-commands":
                 error_message = ":warning: Commands can only be used in the #admin-commands channel. [/setup]"
                 response = await message.channel.send(error_message)
                 print(f"\033[95m{message.author} Tried to activate command in another channel\033[0m")
@@ -1485,7 +1973,7 @@ async def on_message(message):
 
             # Check if the user has the trusted role
             trusted_role = discord.utils.get(message.guild.roles, name=trusted_role_name)
-            if trusted_role not in message.author.roles:
+            if trusted_role and trusted_role not in message.author.roles:
                 response = await message.channel.send(f" :warning: [ERROR] {message.author.mention} is not permitted to operate commands.")
                 print(f"\033[95m{message.author} tried to use command '{message.content}' without trusted role\033[0m")
                 await message.delete()  # Delete the invoker's message instantly
@@ -1493,93 +1981,199 @@ async def on_message(message):
                 await response.delete()  # Delete the bot's response after 4 seconds
                 return  # Stop further processing
 
-    # Check if the message is sent in the admin-commands channel
-    if message.channel.name == "admin-commands":
-        # Check if the message is sent by a bot
-        if message.author.bot:
-            return
-
-        # Check if the message starts with the command prefix
-        command_prefix = ","  # Change this to your command prefix
-        if not message.content.startswith(command_prefix):
-            # Delete the invoker's message
-            await message.delete()
-
-            # Send a warning message
-            warning_message = f"Warning: Message by {message.author.mention} in admin-commands channel doesn't start with the command prefix!  ','"
-            warning_response = await message.channel.send(warning_message)
-
-            # Delay the bot's response by 4 seconds
-            await asyncio.sleep(4)
-
-            # Delete the warning message
-            await warning_response.delete()
-
-
-    # Check if user is typing in the status channel
-    if message.channel.id == 1234310879072223292 and not message.author.bot:
+    # Check if the message does not start with the command prefix and is in admin-commands
+    if not message.content.startswith(bot.command_prefix) and message.channel.name == "admin-commands":
         await message.delete()
-        warning_msg = await message.channel.send(
-            f'{message.author.mention}, sending messages in this channel is not allowed.')
+        warning_msg = await message.channel.send(f'{message.author.mention}, you need to be using a command in this channel.')
         await asyncio.sleep(4)
         await warning_msg.delete()
-
+        return  # Stop further processing for messages without prefix in admin-commands
 
     # Process commands here, including the setup command
     await bot.process_commands(message)
     await mock_message(message)
 
-#LOGS PART 2
-def remove_non_ascii(text):
-    # Remove non-ASCII characters except ANSI escape sequences
-    ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-    ascii_text = ''.join(char for char in text if ord(char) < 128 or ansi_escape.match(char))
-    return ascii_text
 
-def custom_print(*args, **kwargs):
-    output = ' '.join(map(str, args))
-    sanitized_output = remove_non_ascii(output)
-    print(sanitized_output)  # Print the sanitized output
-    logging.info(sanitized_output)  # Log the sanitized output
 
-# Set the custom print function to be used instead of the built-in print
-custom_print_function = custom_print
 
-# Get the root logger and add the file handler
-root_logger = logging.getLogger()
-root_logger.addHandler(file_handler)
+# Command : Create emoji command
 
-# Event
+
+@bot.command()
+async def emojiadd(ctx, emoji_name: str, emoji_url: str):
+    async with ctx.typing():
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(emoji_url) as resp:
+                    if resp.status != 200:
+                        return await ctx.send('Failed to fetch image.')
+
+                    emoji_bytes = await resp.read()
+                    await ctx.guild.create_custom_emoji(name=emoji_name, image=emoji_bytes)
+                    await ctx.send(f'Emoji `{emoji_name}` created successfully!')
+            except aiohttp.ClientError as e:
+                await ctx.send(f'Failed to create emoji: {e}')
+            except discord.HTTPException as e:
+                await ctx.send(f'Failed to create emoji: {e}')
+
+
+# Command : remove emoji command
+@bot.command()
+@commands.has_permissions(manage_emojis=True)  # Check if the user has permission to manage emojis
+async def emojiremove(ctx, emoji_name: str):
+    try:
+        emoji = discord.utils.get(ctx.guild.emojis, name=emoji_name)
+        if emoji:
+            await emoji.delete()
+            await ctx.send(f'Emoji `{emoji_name}` has been removed.')
+        else:
+            await ctx.send(f'Emoji `{emoji_name}` not found in the server.')
+    except discord.Forbidden:
+        await ctx.send('I do not have permission to manage emojis.')
+    except discord.HTTPException as e:
+        await ctx.send(f'Failed to remove emoji: {e}')
+
+# Command : emoji info
+@bot.command()
+async def emoji(ctx, emoji_name: str):
+    emoji = discord.utils.get(bot.emojis, name=emoji_name)
+    if emoji:
+        emoji_details = f'Emoji Name: {emoji.name}\nEmoji ID: {emoji.id}\nURL: {emoji.url}'
+        await ctx.send(f'```{emoji_details}```')
+    else:
+        await ctx.send(f'Emoji `{emoji_name}` not found.')
+
+# Command : Send dms command
+@bot.command()
+@commands.has_permissions(administrator=True)  # Restrict this command to users with admin permissions
+async def senddm(ctx, user_reference: str, *, message: str):
+    user = None
+
+    # Check if the user_reference is a mention
+    mention_match = re.match(r'<@!?(\d+)>', user_reference)
+    if mention_match:
+        user_id = int(mention_match.group(1))
+        user = await bot.fetch_user(user_id)
+    else:
+        # Try to find user by ID
+        try:
+            user_id = int(user_reference)
+            user = await bot.fetch_user(user_id)
+        except ValueError:
+            # Try to find user by username
+            user = discord.utils.get(ctx.guild.members, name=user_reference)
+
+    if user:
+        try:
+            await user.send(message)
+            await ctx.send(f"Successfully sent a DM to {user.name}.")
+        except discord.Forbidden:
+            await ctx.send("I do not have permission to send a DM to this user.")
+        except discord.HTTPException as e:
+            await ctx.send(f"Failed to send DM: {e}")
+    else:
+        await ctx.send("User not found.")
+
+
+# Command : View dms command
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def viewdms(ctx, user_reference: str):
+    user = None
+
+    # Check if the user_reference is a mention
+    mention_match = re.match(r'<@!?(\d+)>', user_reference)
+    if mention_match:
+        user_id = int(mention_match.group(1))
+        user = await bot.fetch_user(user_id)
+    else:
+        # Try to find user by ID
+        try:
+            user_id = int(user_reference)
+            user = await bot.fetch_user(user_id)
+        except ValueError:
+            # Try to find user by username or display name
+            user = discord.utils.get(ctx.guild.members, name=user_reference)
+            if not user:
+                user = discord.utils.get(ctx.guild.members, display_name=user_reference)
+
+    if user:
+        try:
+            # Open DM channel with the user
+            dm_channel = await user.create_dm()
+            # Fetch the last 10 messages from the DM channel
+            messages = []
+            async for message in dm_channel.history(limit=10):
+                messages.append(message)
+
+            if messages:
+                history = "\n".join(
+                    [f"{message.created_at} - {message.author}: {message.content}" for message in messages])
+                await ctx.send(f"DM history with {user.name}:\n{history}")
+            else:
+                await ctx.send(f"No recorded DMs with {user.name}.")
+        except discord.Forbidden:
+            await ctx.send("I do not have permission to view DMs with this user.")
+        except discord.HTTPException as e:
+            await ctx.send(f"Failed to fetch DMs: {e}")
+    else:
+        await ctx.send("User not found.")
+
+
+# Aiohttp
+
+# Global variable for aiohttp session
+session = None
+
+# Function to fetch data asynchronously
+async def fetch_data(url):
+    global session
+    if session is None:
+        session = aiohttp.ClientSession()
+    async with session.get(url) as response:
+        return await response.text()
+
+# Command to force shutdown aiohttp session
+@bot.command()
+async def shutdown(ctx):
+    global session
+    if session:
+        await session.close()
+        session = None
+        await ctx.send("aiohttp session closed.")
+    else:
+        await ctx.send("No active aiohttp session.")
+
+# Example usage of fetch_data function
+@bot.command()
+async def fetch(ctx, url):
+    try:
+        html = await fetch_data(url)
+        await ctx.send(f"HTML from {url}:\n{html}")
+    except Exception as e:
+        await ctx.send(f"Error fetching data from {url}: {e}")
+
+
 # Run the event loop
-
-
-
-
-# Async run
 async def main():
     await bot.start("YOUR_TOKEN_HERE")
     await cleanup()
+
+
+
 
 @follow_user.before_loop
 async def before_follow_user():
     await bot.wait_until_ready()  # Wait for the bot to be fully ready before starting the loop
 
 
-# Register a function to be called when the script is about to exit
-def exit_handler():
-    exit_code = sys.exc_info()[0]
-    with open('bot_output.log', mode='a') as f:
-        end_time = datetime.now().strftime('%B %d, %Y - %I:%M:%S %p')
-        f.write(f"\n{separator2}\nScript exited with exit code: {exit_code} at: {end_time}\n{separator2}\n\n\n")
-
-# Cleanup function to log end time if the bot exits cleanly
-async def cleanup():
-    await client.close()
-    exit_handler()
 
 
 
-atexit.register(exit_handler)
+
+
+
+
 
 # Run the main coroutine
 bot.run(DISCORD_TOKEN)

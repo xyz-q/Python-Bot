@@ -49,6 +49,13 @@ channel = bot.get_channel(1233730369937870858)
 command_log_channel_id = 1233730369937870858  # Replace with the ID of your command log channel
 GUILD_ID = '1056994840925192252'
 
+# .JSON FILE FOLDER
+json_folder = '.json'
+json_file_path = os.path.join(json_folder, 'mocked_users.json')
+AFK_FILE = os.path.join(json_folder, 'afk_users.json')
+AUTO_DELETE_FILE = os.path.join(json_folder, 'auto_delete.json')
+
+
 # Command list
 commands_list = [
     ("/setup", "Bot setup info (This is the only /slash command)"),
@@ -1010,11 +1017,19 @@ async def ping(ctx):
     await ctx.send(embed=embed)
 
 # Load mocked users data
+
+
+# Load mocked users data
 try:
-    with open('mocked_users.json', 'r') as file:
+    with open(json_file_path, 'r') as file:
         mocked_users = json.load(file)
 except FileNotFoundError:
     mocked_users = {}
+
+# Function to save mocked users data
+def save_mocked_users():
+    with open(json_file_path, 'w') as file:
+        json.dump(mocked_users, file)
 
 # Function to mock a message
 async def mock_message(message):
@@ -1042,8 +1057,8 @@ async def mock(ctx, target: discord.Member = None):
     # Toggle mocking for the specified user
     user_id = str(target.id)
     mocked_users[user_id] = not mocked_users.get(user_id, False)
-    with open('mocked_users.json', 'w') as file:
-        json.dump(mocked_users, file)
+    save_mocked_users()  # Save mocked users after toggling
+
     if mocked_users[user_id]:
         await ctx.send(f"Mocking enabled for {target.display_name}.")
     else:
@@ -1715,7 +1730,8 @@ async def avatar(ctx, user: discord.User = None, user_id: int = None):
     await ctx.send(embed=embed)
 
 
-AFK_FILE = 'afk_users.json'
+
+# Command : AFK Command
 
 
 # Load AFK data from a JSON file
@@ -1876,7 +1892,13 @@ try:
 except FileNotFoundError:
     auto_delete_enabled = False
 
-# Command : Auto delete command
+# Save auto-delete status to file
+def save_auto_delete_status():
+    with open(AUTO_DELETE_FILE, "w") as f:
+        json.dump(auto_delete_enabled, f)
+
+
+# Command: Auto delete command
 @bot.command()
 async def autodelete(ctx):
     global auto_delete_enabled
@@ -1884,8 +1906,7 @@ async def autodelete(ctx):
     await ctx.send(f"Auto-delete commands {'enabled' if auto_delete_enabled else 'disabled'}.")
 
     # Save auto-delete status to file
-    with open(AUTO_DELETE_FILE, "w") as f:
-        json.dump(auto_delete_enabled, f)
+    save_auto_delete_status()
 
 # Define on_command event
 @bot.event
