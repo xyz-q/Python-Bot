@@ -708,40 +708,41 @@ async def YOUTUBE(ctx, *, query):
     author = ctx.message.author
     voice_channel = author.voice.channel if author.voice else None
 
-    if voice_channel:
-        voice_client = ctx.guild.voice_client
-
-        if voice_client and voice_client.is_connected():
-            await voice_client.move_to(voice_channel)
-        else:
-            voice_client = await voice_channel.connect()
-
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-        }
-
-        # Search for videos based on query
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            try:
-                info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
-            except Exception as e:
-                await ctx.send(f'An error occurred while trying to search for "{query}". Please try again later.')
-                return
-
-            if not info:
-                await ctx.send(f'No video found for "{query}". Please try a different search term.')
-                return
-
-            url = info['url']
-            voice_client.play(discord.FFmpegPCMAudio(url))
-            await ctx.send(f'**Now playing:** {info["title"]}')
-    else:
+    if not voice_channel:
         await ctx.send('You need to be in a voice channel to use this command.')
+        return
+
+    voice_client = ctx.guild.voice_client
+
+    if voice_client and voice_client.is_connected():
+        await voice_client.move_to(voice_channel)
+    else:
+        voice_client = await voice_channel.connect()
+
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'noplaylist': True,  # Prevent downloading playlists
+    }
+
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        try:
+            info = ydl.extract_info(query, download=False)
+        except youtube_dl.DownloadError as e:
+            await ctx.send(f'Error downloading video: {e}')
+            return
+        except youtube_dl.ExtractorError as e:
+            await ctx.send(f'Error extracting info: {e}')
+            return
+
+        if 'entries' in info:
+            # Use the first video in the search results
+            video = info['entries'][0]
+            url = video['url']
+            title = video['title']
+            await ctx.send(f'Now playing: {title}')
+            voice_client.play(discord.FFmpegPCMAudio(url))
+        else:
+            await ctx.send(f'No video found for query: {query}')
 
 
 @bot.command()
