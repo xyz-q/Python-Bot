@@ -1674,6 +1674,7 @@ async def afk(ctx, *, reason=""):
 # Event : On ready startup sequence events
 @bot.event
 async def on_ready():
+    bot.load_extension('musiccog')  # Ensure 'musiccog.py' is in the same directory
     follow_user.start()
     global is_dnd
     if is_dnd:
@@ -2073,6 +2074,8 @@ async def fetch(ctx, url):
 
 # Run the event loop
 async def main():
+    async with bot:
+        await bot.add_cog(music_cog(bot))
     await bot.start("YOUR_TOKEN_HERE")
     await cleanup()
 
