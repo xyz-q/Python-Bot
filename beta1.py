@@ -630,8 +630,8 @@ async def playmp3(ctx, *keywords: str):
 
 
 
-# Command : Stop mp3
-async def stop_audio(ctx):
+# Function : Stop Music
+async def stop(ctx):
     if ctx.voice_client is not None and ctx.voice_client.is_playing():
         ctx.voice_client.stop()
         await ctx.send("Audio playback stopped.")
@@ -670,37 +670,9 @@ async def mp3list(ctx):
 
 
 
-# Suppress noise about console usage from youtube_dl
-youtube_dl.utils.bug_reports_message = lambda: ''
 
-# Global variables for queue and voice client
 
-is_playing = False  # Initialize is_playing as False initially
-voice_client = None
-queue = []
-loop_song = False
-current_playing_url = None  # Store currently playing song URL
 
-# ytdl options
-ytdl_format_options = {
-    'format': 'bestaudio/best',
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '192',
-    }],
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'noplaylist': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'auto',
-    'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
-}
-
-ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 # Command to play audio from YouTube link
 @bot.command()
@@ -744,6 +716,7 @@ async def YOUTUBE(ctx, *, query):
         await ctx.send('You need to be in a voice channel to use this command.')
 
 
+
 @bot.command()
 async def play(ctx, *, query):
     author = ctx.message.author
@@ -753,8 +726,9 @@ async def play(ctx, *, query):
         voice_client = ctx.guild.voice_client
 
         if voice_client and voice_client.is_playing():
+            # If already playing, add to queue
+            await ctx.send('Adding to queue...')
             queue.append(query)
-            await ctx.send('Added to queue.')
             return
 
         if voice_client and voice_client.is_connected():
@@ -762,39 +736,39 @@ async def play(ctx, *, query):
         else:
             voice_client = await voice_channel.connect()
 
-        try:
-            retries = 3  # Number of retry attempts
-            for attempt in range(retries):
-                with ytdl as ydl:
-                    info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+        }
 
-                    if not info:
-                        raise ValueError(f'No video found for "{query}"')
+        # Search for videos based on query
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            try:
+                info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
+            except Exception as e:
+                await ctx.send(f'An error occurred while trying to search for "{query}". Please try again later.')
+                return
 
-                    global current_playing_url
-                    current_playing_url = info['url']  # Store the URL of currently playing song
+            if not info:
+                await ctx.send(f'No video found for "{query}". Please try a different search term.')
+                return
 
-                    voice_client.play(discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(info['url'])),
-                                      after=lambda e: bot.loop.create_task(play_next(ctx)))
-                    await ctx.send(f'**Now playing:** {info["title"]}')
-                    break  # Break out of retry loop if successful
-
-                await asyncio.sleep(3)  # Wait before retrying
-            else:
-                raise ValueError(f'Failed to fetch "{query}" after {retries} attempts.')
-
-        except Exception as e:
-            await ctx.send(f'An error occurred while trying to play "{query}": {str(e)}')
-
+            url = info['url']
+            voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: bot.loop.create_task(play_next(ctx)))
+            await ctx.send(f'**Now playing:** {info["title"]}')
     else:
         await ctx.send('You need to be in a voice channel to use this command.')
 
-
 async def play_next(ctx):
-    global queue, loop_song, current_playing_url
+    global queue
     if queue:
         next_query = queue.pop(0)
         await YOUTUBE(ctx, query=next_query)
+
 
 
 @bot.command()
@@ -1714,6 +1688,8 @@ allowed_channel_id = 1176833761787265034  # Replace this with your allowed chann
 
 # Event: When the bot gets disconnected by Discord's servers
 async def on_disconnect():
+    await bot.http.close()  # Close the aiohttp session when bot disconnects
+    print("Bot disconnected, closing HTTP session.")
     # Get the "bot-status" text channel from the guild
     guild = bot.get_guild(1056994840925192252)  # Replace YOUR_GUILD_ID with your guild's ID
     channel = discord.utils.get(guild.text_channels, name="bot-status")
@@ -2063,12 +2039,16 @@ async def shutdown(ctx):
 
 # Example usage of fetch_data function
 @bot.command()
-async def fetch(ctx, url):
+async def fetch(ctx):
+    url = 'https://api.example.com/data'
     try:
-        html = await fetch_data(url)
-        await ctx.send(f"HTML from {url}:\n{html}")
-    except Exception as e:
-        await ctx.send(f"Error fetching data from {url}: {e}")
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                response.raise_for_status()  # Raise an error for non-200 status codes
+                data = await response.json()
+                await ctx.send(f'Received data: {data}')
+    except aiohttp.ClientError as e:
+        await ctx.send(f'Error fetching data: {e}')
 
 
 # Run the event loop
