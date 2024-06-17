@@ -631,7 +631,7 @@ async def playmp3(ctx, *keywords: str):
 
 
 # Function : Stop Music
-async def stop(ctx):
+async def stop_audio(ctx):
     if ctx.voice_client is not None and ctx.voice_client.is_playing():
         ctx.voice_client.stop()
         await ctx.send("Audio playback stopped.")
@@ -670,7 +670,16 @@ async def mp3list(ctx):
 
 
 
+# Suppress noise about console usage from youtube_dl
+youtube_dl.utils.bug_reports_message = lambda: ''
 
+# Global variables for queue and voice client
+
+is_playing = False  # Initialize is_playing as False initially
+voice_client = None
+queue = []
+loop_song = False
+current_playing_url = None  # Store currently playing song URL
 
 
 
@@ -714,7 +723,6 @@ async def YOUTUBE(ctx, *, query):
             await ctx.send(f'**Now playing:** {info["title"]}')
     else:
         await ctx.send('You need to be in a voice channel to use this command.')
-
 
 
 @bot.command()
@@ -763,6 +771,7 @@ async def play(ctx, *, query):
     else:
         await ctx.send('You need to be in a voice channel to use this command.')
 
+
 async def play_next(ctx):
     global queue
     if queue:
@@ -770,9 +779,8 @@ async def play_next(ctx):
         await YOUTUBE(ctx, query=next_query)
 
 
-
 @bot.command()
-async def viewq(ctx):
+async def q(ctx):
     if not queue:
         await ctx.send('The queue is currently empty.')
     else:
