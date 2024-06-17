@@ -750,45 +750,39 @@ async def play(ctx, *, query):
     author = ctx.message.author
     voice_channel = author.voice.channel if author.voice else None
 
-    if voice_channel:
-        voice_client = ctx.guild.voice_client
+    if not voice_channel:
+        await ctx.send('You need to be in a voice channel to use this command.')
+        return
 
-        if voice_client and voice_client.is_playing():
-            queue.append(query)
-            await ctx.send('Added to queue.')
+    voice_client = ctx.guild.voice_client
+
+    if voice_client and voice_client.is_connected():
+        await voice_client.move_to(voice_channel)
+    else:
+        voice_client = await voice_channel.connect()
+
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'noplaylist': True,  # Prevent downloading playlists
+    }
+
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        try:
+            info = ydl.extract_info(f'ytsearch:{query}', download=False)
+        except Exception as e:
+            print(f'An error occurred while searching: {e}')
             return
 
-        if voice_client and voice_client.is_connected():
-            await voice_client.move_to(voice_channel)
+        if 'entries' in info:
+            video = info['entries'][0]
+            # Extract necessary info like title, url, uploader, etc.
+            url = video['url']
+            title = video['title']
+            uploader = video.get('uploader', 'Unknown Uploader')
+            await ctx.send(f'Now playing: {title} by {uploader}')
+            voice_client.play(discord.FFmpegPCMAudio(url))
         else:
-            voice_client = await voice_channel.connect()
-
-        try:
-            retries = 3  # Number of retry attempts
-            for attempt in range(retries):
-                with ytdl as ydl:
-                    info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
-
-                    if not info:
-                        raise ValueError(f'No video found for "{query}"')
-
-                    global current_playing_url
-                    current_playing_url = info['url']  # Store the URL of currently playing song
-
-                    voice_client.play(discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(info['url'])),
-                                      after=lambda e: bot.loop.create_task(play_next(ctx)))
-                    await ctx.send(f'**Now playing:** {info["title"]}')
-                    break  # Break out of retry loop if successful
-
-                await asyncio.sleep(3)  # Wait before retrying
-            else:
-                raise ValueError(f'Failed to fetch "{query}" after {retries} attempts.')
-
-        except Exception as e:
-            await ctx.send(f'An error occurred while trying to play "{query}": {str(e)}')
-
-    else:
-        await ctx.send('You need to be in a voice channel to use this command.')
+            await ctx.send(f'No video found for query: {query}')
 
 
 async def play_next(ctx):
