@@ -23,11 +23,8 @@ import random
 import aiohttp
 import re
 import io
-import socket
 
 
-
-connector = aiohttp.TCPConnector(limit=0, family=socket.AF_INET)
 
 
 # Load environment variables
@@ -633,7 +630,7 @@ async def playmp3(ctx, *keywords: str):
 
 
 
-# Function : Stop Music
+# Command : Stop mp3
 async def stop_audio(ctx):
     if ctx.voice_client is not None and ctx.voice_client.is_playing():
         ctx.voice_client.stop()
@@ -684,7 +681,26 @@ queue = []
 loop_song = False
 current_playing_url = None  # Store currently playing song URL
 
+# ytdl options
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
+}
 
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 # Command to play audio from YouTube link
 @bot.command()
@@ -737,9 +753,8 @@ async def play(ctx, *, query):
         voice_client = ctx.guild.voice_client
 
         if voice_client and voice_client.is_playing():
-            # If already playing, add to queue
-            await ctx.send('Adding to queue...')
             queue.append(query)
+            await ctx.send('Added to queue.')
             return
 
         if voice_client and voice_client.is_connected():
@@ -747,43 +762,43 @@ async def play(ctx, *, query):
         else:
             voice_client = await voice_channel.connect()
 
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-        }
+        try:
+            retries = 3  # Number of retry attempts
+            for attempt in range(retries):
+                with ytdl as ydl:
+                    info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
 
-        # Search for videos based on query
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            try:
-                info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
-            except Exception as e:
-                await ctx.send(f'An error occurred while trying to search for "{query}". Please try again later.')
-                return
+                    if not info:
+                        raise ValueError(f'No video found for "{query}"')
 
-            if not info:
-                await ctx.send(f'No video found for "{query}". Please try a different search term.')
-                return
+                    global current_playing_url
+                    current_playing_url = info['url']  # Store the URL of currently playing song
 
-            url = info['url']
-            voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: bot.loop.create_task(play_next(ctx)))
-            await ctx.send(f'**Now playing:** {info["title"]}')
+                    voice_client.play(discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(info['url'])),
+                                      after=lambda e: bot.loop.create_task(play_next(ctx)))
+                    await ctx.send(f'**Now playing:** {info["title"]}')
+                    break  # Break out of retry loop if successful
+
+                await asyncio.sleep(3)  # Wait before retrying
+            else:
+                raise ValueError(f'Failed to fetch "{query}" after {retries} attempts.')
+
+        except Exception as e:
+            await ctx.send(f'An error occurred while trying to play "{query}": {str(e)}')
+
     else:
         await ctx.send('You need to be in a voice channel to use this command.')
 
 
 async def play_next(ctx):
-    global queue
+    global queue, loop_song, current_playing_url
     if queue:
         next_query = queue.pop(0)
         await YOUTUBE(ctx, query=next_query)
 
 
 @bot.command()
-async def q(ctx):
+async def viewq(ctx):
     if not queue:
         await ctx.send('The queue is currently empty.')
     else:
@@ -1664,7 +1679,6 @@ async def on_ready():
     if is_dnd:
         await bot.change_presence(status=discord.Status.dnd, activity=dnd_activity)
         print("\033[93mBot is now operating\033[0m")
-        print(aiohttp.__version__)
         print("\033[91mBot is now in Do Not Disturb mode.\033[0m")
         print("\033[0;33m" + f"Logged in as {bot.user}" + "\033[0m")
         print("\033[0;32mGuilds:\033[0m")
@@ -1700,8 +1714,6 @@ allowed_channel_id = 1176833761787265034  # Replace this with your allowed chann
 
 # Event: When the bot gets disconnected by Discord's servers
 async def on_disconnect():
-    await bot.http.close()  # Close the aiohttp session when bot disconnects
-    print("Bot disconnected, closing HTTP session.")
     # Get the "bot-status" text channel from the guild
     guild = bot.get_guild(1056994840925192252)  # Replace YOUR_GUILD_ID with your guild's ID
     channel = discord.utils.get(guild.text_channels, name="bot-status")
@@ -2051,16 +2063,12 @@ async def shutdown(ctx):
 
 # Example usage of fetch_data function
 @bot.command()
-async def fetch(ctx):
-    url = 'https://api.example.com/data'
+async def fetch(ctx, url):
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                response.raise_for_status()  # Raise an error for non-200 status codes
-                data = await response.json()
-                await ctx.send(f'Received data: {data}')
-    except aiohttp.ClientError as e:
-        await ctx.send(f'Error fetching data: {e}')
+        html = await fetch_data(url)
+        await ctx.send(f"HTML from {url}:\n{html}")
+    except Exception as e:
+        await ctx.send(f"Error fetching data from {url}: {e}")
 
 
 # Run the event loop
@@ -2070,29 +2078,19 @@ async def main():
 
 
 
-async def main2():
-    connector = aiohttp.TCPConnector(limit=0, family=socket.AF_INET)
-    async with aiohttp.ClientSession(connector=connector) as session:
-        async with session.get('https://example.com') as response:
-            print(await response.text())
-
-if __name__ == '__main2__':
-    asyncio.run(main2())
-
-
-
 
 @follow_user.before_loop
 async def before_follow_user():
     await bot.wait_until_ready()  # Wait for the bot to be fully ready before starting the loop
 
+
+
+
+
+
+
+
+
+
 # Run the main coroutine
 bot.run(DISCORD_TOKEN)
-
-
-
-
-
-
-
-
