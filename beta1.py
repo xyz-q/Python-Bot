@@ -2049,21 +2049,7 @@ async def viewdms(ctx, user_reference: str):
 
 # Aiohttp
 
-async def fetch_data(url):
-    session = aiohttp.ClientSession()
-    try:
-        async with session.get(url) as response:
-            return await response.text()
-    finally:
-        await session.close()
 
-async def main():
-    url = 'https://example.com'
-    html = await fetch_data(url)
-    print(html)
-
-if __name__ == "__main__":
-    asyncio.run(main())
 
 
 # Run the event loop
