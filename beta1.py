@@ -25,7 +25,15 @@ import re
 import io
 
 
+# Suppress asyncio debug messages
+asyncio.get_event_loop().set_debug(False)
+logging.getLogger('asyncio').setLevel(logging.WARNING)
 
+# Adjust logging configuration
+logging.basicConfig(level=logging.INFO)  # Adjust log level as needed
+
+# Filter out asyncio warnings
+logging.getLogger('asyncio').setLevel(logging.ERROR)  # Adjust log level to ERROR or higher
 
 
 
@@ -2040,6 +2048,7 @@ async def viewdms(ctx, user_reference: str):
 
 
 # Aiohttp
+
 async def fetch_data(url):
     session = aiohttp.ClientSession()
     try:
