@@ -2039,6 +2039,22 @@ async def viewdms(ctx, user_reference: str):
         await ctx.send("User not found.")
 
 
+# Aiohttp
+async def fetch_data(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return await response.text()
+
+async def main():
+    url = 'https://example.com'
+    html = await fetch_data(url)
+    print(html)
+
+# Run the main function within an event loop
+if __name__ == "__main__":
+    asyncio.run(main())
+
+
 # Run the event loop
 async def main():
     await bot.start("YOUR_TOKEN_HERE")
