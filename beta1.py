@@ -78,6 +78,7 @@ commands_list = [
     (",playmp3 <mp3>", "Plays Target MP3"),
     (",ping", "Ping command - Test if the bot is responsive- displays the latency from the bot to the server"),
     (",purge <#channel/number> <number>", "Deletes messages in #channel if specified, default is 100"),
+    (",q ", " Shows the music queue"),
     (",release <@user>", "Releases the user from the '.jail' role"),
     (",resetstatus", "Resets the bot's status"),
     (",resume", " Continues audio playback"),
@@ -90,7 +91,6 @@ commands_list = [
     ("/ticket", "Creates a ticket"),
     (",user <@user>", "Displays info on user"),
     (",volume <1-100>", "Sets the bot's volume"),
-    (",viewq ", " Shows the music queue"),
     (",viewdms <target>", " Shows the bot's dms with a user"),
 
 # : (", ", " "),
@@ -158,13 +158,22 @@ async def list(ctx, page: int = 1):
 # Handle command errors to prevent the bot from exiting unexpectedly
 @bot.event
 async def on_command_error(ctx, error):
+    try:
+        await ctx.message.delete()
+    except discord.errors.NotFound:
+        pass  # If the message is not found, we pass since it might be already deleted.
+
     if isinstance(error, commands.CommandNotFound):
-        await ctx.send("Command not found.")
+        bot_message = await ctx.send(f":warning: Command '{ctx.invoked_with}' not found.")
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("Missing required argument.")
+        bot_message = await ctx.send("Missing required argument.")
     else:
-        await ctx.send("An error occurred.")
+        bot_message = await ctx.send("An error occurred.")
         print(f"An error occurred: {error}")
+
+    await asyncio.sleep(7)
+    await bot_message.delete()
+
 
 # List : End of the list
 
@@ -768,7 +777,7 @@ async def play(ctx, *, query):
 
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         try:
-            info = ydl.extract_info(f'ytsearch:{query}', download=False)
+            info = ydl.extract_info(query, download=False)
         except Exception as e:
             print(f'An error occurred while searching: {e}')
             return
@@ -784,7 +793,6 @@ async def play(ctx, *, query):
         else:
             await ctx.send(f'No video found for query: {query}')
 
-
 async def play_next(ctx):
     global queue, loop_song, current_playing_url
     if queue:
@@ -793,7 +801,7 @@ async def play_next(ctx):
 
 
 @bot.command()
-async def viewq(ctx):
+async def q(ctx):
     if not queue:
         await ctx.send('The queue is currently empty.')
     else:
@@ -1843,7 +1851,8 @@ async def update_bot_username(ctx):
         print(f"Failed to update bot's nickname: {e}")
 
 
-# Event : Check for user Role/Channel status
+# Event on_message event 
+
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
