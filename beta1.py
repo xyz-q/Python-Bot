@@ -2074,8 +2074,6 @@ async def fetch(ctx, url):
 
 # Run the event loop
 async def main():
-    async with bot:
-        await bot.add_cog(music_cog(bot))
     await bot.start("YOUR_TOKEN_HERE")
     await cleanup()
 
