@@ -23,6 +23,7 @@ import random
 import aiohttp
 import re
 import io
+from concurrent.futures import ThreadPoolExecutor
 
 
 
@@ -687,7 +688,9 @@ youtube_dl.utils.bug_reports_message = lambda: ''
 is_playing = False  # Initialize is_playing as False initially
 voice_client = None
 queue = []
+current_playing_url = None
 loop_song = False
+executor = ThreadPoolExecutor()
 current_playing_url = None  # Store currently playing song URL
 
 # ytdl options
@@ -777,30 +780,38 @@ async def play(ctx, *, query):
         'noplaylist': True,  # Prevent downloading playlists
     }
 
+    info = await download_info(query, ydl_opts)
+    if info is None:
+        await ctx.send(f'No video found for query: {query}')
+        return
+
+    if 'entries' in info:
+        video = info['entries'][0]
+        url = video['url']
+        title = video['title']
+
+        if voice_client.is_playing():
+            queue.append(query)
+            await ctx.send(f'Added to queue: {title}')
+        else:
+            await ctx.send(f'Now playing: {title}')
+            current_playing_url = url
+            voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop))
+    else:
+        await ctx.send(f'No video found for query: {query}')
+
+async def download_info(query, ydl_opts):
+    loop = asyncio.get_event_loop()
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         try:
-            info = ydl.extract_info(f'ytsearch:{query}', download=False)
+            info = await loop.run_in_executor(executor, lambda: ydl.extract_info(f'ytsearch:{query}', download=False))
+            return info
         except youtube_dl.DownloadError as e:
-            await ctx.send(f'Error downloading video: {e}')
-            return
+            print(f'Error downloading video: {e}')
+            return None
         except youtube_dl.ExtractorError as e:
-            await ctx.send(f'Error extracting info: {e}')
-            return
-
-        if 'entries' in info:
-            video = info['entries'][0]
-            url = video['url']
-            title = video['title']
-
-            if voice_client.is_playing():
-                queue.append(query)
-                await ctx.send(f'Added to queue: {title}')
-            else:
-                await ctx.send(f'Now playing: {title}')
-                current_playing_url = url
-                voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop))
-        else:
-            await ctx.send(f'No video found for query: {query}')
+            print(f'Error extracting info: {e}')
+            return None
 
 async def play_next(ctx):
     global queue, current_playing_url
@@ -821,23 +832,18 @@ async def play_next(ctx):
             'noplaylist': True,  # Prevent downloading playlists
         }
 
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            try:
-                info = ydl.extract_info(f'ytsearch:{next_query}', download=False)
-            except youtube_dl.DownloadError as e:
-                await ctx.send(f'Error downloading video: {e}')
-                return
-            except youtube_dl.ExtractorError as e:
-                await ctx.send(f'Error extracting info: {e}')
-                return
+        info = await download_info(next_query, ydl_opts)
+        if info is None:
+            await ctx.send(f'No video found for query: {next_query}')
+            return
 
-            if 'entries' in info:
-                video = info['entries'][0]
-                url = video['url']
-                title = video['title']
-                await ctx.send(f'Now playing: {title}')
-                current_playing_url = url
-                voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop))
+        if 'entries' in info:
+            video = info['entries'][0]
+            url = video['url']
+            title = video['title']
+            await ctx.send(f'Now playing: {title}')
+            current_playing_url = url
+            voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop))
 
 @bot.command()
 async def q(ctx):
@@ -855,6 +861,7 @@ async def clearq(ctx):
     else:
         queue.clear()
         await ctx.send('Queue cleared.')
+
 
 @bot.command()
 async def pause(ctx):
