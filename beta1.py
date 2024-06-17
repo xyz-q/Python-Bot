@@ -24,6 +24,7 @@ import aiohttp
 import re
 import io
 from concurrent.futures import ThreadPoolExecutor
+import typing
 
 
 
@@ -1058,13 +1059,20 @@ async def purge(ctx, channel: typing.Optional[discord.TextChannel] = None, limit
         await ctx.send("Please specify a positive number for the limit.")
         return
 
+    if limit > 250:
+        await ctx.send("The limit cannot exceed 150 messages.")
+        return
+
     # Determine the channel to purge messages from
     if channel is None:
         channel = ctx.channel
 
     # Delete messages
     deleted = await channel.purge(limit=limit)
-    await ctx.send(f"Purged {len(deleted)} message(s) from {channel.mention}.")
+    confirmation_msg = await ctx.send(f"Purged {len(deleted)} message(s) from {channel.mention}.")
+    await asyncio.sleep(4)
+    await confirmation_msg.delete()
+
 
 # Modal: ticket modal
 class TicketModal(discord.ui.Modal, title="Ticket Submission"):
