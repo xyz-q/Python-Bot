@@ -3,7 +3,7 @@ from discord import FFmpegPCMAudio
 from discord import app_commands
 import discord.ext.commands as commands
 from dotenv import load_dotenv
-import youtube_dl
+#import youtube_dl
 import asyncio
 from discord.ext import commands, tasks
 import typing
@@ -25,6 +25,7 @@ import re
 import io
 from concurrent.futures import ThreadPoolExecutor
 import typing
+import yt_dlp as youtube_dl
 
 
 
