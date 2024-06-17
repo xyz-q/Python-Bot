@@ -25,16 +25,6 @@ import re
 import io
 
 
-# Suppress asyncio debug messages
-asyncio.get_event_loop().set_debug(False)
-
-
-# Adjust logging configuration
-logging.basicConfig(level=logging.ERROR)  # Adjust log level as needed
-
-# Filter out asyncio warnings
-logging.getLogger('asyncio').setLevel(logging.ERROR)  # Adjust log level to ERROR or higher
-
 
 
 # Load environment variables
@@ -2049,13 +2039,45 @@ async def viewdms(ctx, user_reference: str):
 
 # Aiohttp
 
+# Global variable for aiohttp session
+session = None
 
+# Function to fetch data asynchronously
+async def fetch_data(url):
+    global session
+    if session is None:
+        session = aiohttp.ClientSession()
+    async with session.get(url) as response:
+        return await response.text()
+
+# Command to force shutdown aiohttp session
+@bot.command()
+async def shutdown(ctx):
+    global session
+    if session:
+        await session.close()
+        session = None
+        await ctx.send("aiohttp session closed.")
+    else:
+        await ctx.send("No active aiohttp session.")
+
+# Example usage of fetch_data function
+@bot.command()
+async def fetch(ctx, url):
+    try:
+        html = await fetch_data(url)
+        await ctx.send(f"HTML from {url}:\n{html}")
+    except Exception as e:
+        await ctx.send(f"Error fetching data from {url}: {e}")
 
 
 # Run the event loop
 async def main():
     await bot.start("YOUR_TOKEN_HERE")
     await cleanup()
+
+
+
 
 @follow_user.before_loop
 async def before_follow_user():
