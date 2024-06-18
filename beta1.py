@@ -29,35 +29,26 @@ import yt_dlp as youtube_dl
 
 
 
-
-# Load environment variables
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
-# Define bot intents
 intents = discord.Intents.all()
 intents.voice_states = True
-intents.message_content = True  # Ensure the bot can read message content
+intents.message_content = True
 
-
-# Create the client and bot instances
 client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix=',', intents=intents)
 
-# Bot setup
-channel_id = 1233730369937870858  # Replace with the actual channel ID
+channel_id = 1233730369937870858
 channel = bot.get_channel(1233730369937870858)
-command_log_channel_id = 1233730369937870858  # Replace with the ID of your command log channel
+command_log_channel_id = 1233730369937870858
 GUILD_ID = '1056994840925192252'
 
-# .JSON FILE FOLDER
 json_folder = '.json'
 json_file_path = os.path.join(json_folder, 'mocked_users.json')
 AFK_FILE = os.path.join(json_folder, 'afk_users.json')
 AUTO_DELETE_FILE = os.path.join(json_folder, 'auto_delete.json')
 
-
-# Command list
 commands_list = [
     ("/setup", "Bot setup info (This is the only /slash command)"),
     (",autodelete", "Toggles the bot's autodelete function"),
@@ -85,7 +76,7 @@ commands_list = [
     (",offline", "Sets bot status as 'Offline'"),
     (",pause ", " Halts audio playback"),
     (",play <URL/Search>", "Plays youtube music"),
-    (",playmp3 <mp3>", "Plays Target MP3"),
+    (",mp3 <mp3>", "Plays Target MP3"),
     (",ping", "Ping command - Test if the bot is responsive- displays the latency from the bot to the server"),
     (",purge <#channel/number> <number>", "Deletes messages in #channel if specified, default is 100"),
     (",q ", " Shows the music queue"),
@@ -100,18 +91,18 @@ commands_list = [
     (",say <#channel> 'TEXT'' ", "Makes the bot chat the desired text in specified channel"),
     ("/ticket", "Creates a ticket"),
     (",user <@user>", "Displays info on user"),
-    (",volume <1-100>", "Sets the bot's volume"),
+    ("[WIP],volume <1-100>", "Sets the bot's volume"),
     (",viewdms <target>", " Shows the bot's dms with a user"),
 
 # : (", ", " "),
 
 ]
 
-
-
-
-# Global variable for pagination
 per_page = 5
+
+
+
+
 
 # Function to send list with pagination
 async def send_list(ctx, page, message=None):
@@ -164,39 +155,16 @@ async def list(ctx, page: int = 1):
 
     except asyncio.TimeoutError:
         await message.delete()  # Delete the message after timeout
-
-# Handle command errors to prevent the bot from exiting unexpectedly
-@bot.event
-async def on_command_error(ctx, error):
-    try:
-        await ctx.message.delete()
-    except discord.errors.NotFound:
-        pass  # If the message is not found, we pass since it might be already deleted.
-
-    if isinstance(error, commands.CommandNotFound):
-        bot_message = await ctx.send(f":warning: Command '{ctx.invoked_with}' not found.")
-    elif isinstance(error, commands.MissingRequiredArgument):
-        bot_message = await ctx.send("Missing required argument.")
-    else:
-        bot_message = await ctx.send("An error occurred.")
-        print(f"An error occurred: {error}")
-
-    await asyncio.sleep(7)
-    await bot_message.delete()
-
-
 # List : End of the list
 
-# Variable to track the bot's current status
+
+
 is_dnd = True
-
-# Activity to set when the bot is in Do Not Disturb mode
 dnd_activity = discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/VGucfdymCm")
-
-# Activity to set when the bot is in Online mode
 idle_activity = discord.Activity(type=discord.ActivityType.listening, name="@.zxpq")
 
-# Slash : First Test slash command
+
+# Slash : setup slash command
 @bot.tree.command(name="setup", description="Shows the user how to setup the bot properly.")
 async def hello(interaction: discord.Interaction):
     help_message = (
@@ -214,7 +182,6 @@ async def hello(interaction: discord.Interaction):
 @bot.tree.command(name="ticket", description="Open a ticket")
 async def ticket(interaction: discord.Interaction):
     await interaction.response.send_modal(TicketModal())
-
 
 # Command : Command to sync bot tree
 @bot.command()
@@ -247,7 +214,6 @@ async def disconnect(ctx, *members: discord.Member):
     if disconnected_members:
         await ctx.send(f"Disconnected {', '.join(disconnected_members)} from their voice channels.")
 
-
 @bot.command()
 async def join(ctx, *, channel_keyword: str = None):
     # Disconnect from the current voice channel, if any
@@ -279,9 +245,6 @@ async def join(ctx, *, channel_keyword: str = None):
     # Connect to the voice channel
     await channel.connect()
     await ctx.send(f"Joined {channel.name}")
-
-
-
 
 # Command : Gather
 @bot.command()
@@ -325,7 +288,6 @@ async def gather(ctx, target_channel_keyword: str = None):
 
     await ctx.send(f"All members have been gathered to {target_channel.mention}.")
 
-
 # Command: Drag (example command)
 @bot.command()
 async def drag(ctx, channel_keyword: str, *members: discord.Member):
@@ -365,7 +327,6 @@ async def drag(ctx, channel_keyword: str, *members: discord.Member):
     if moved_members:
         await ctx.send(f"Dragged {', '.join(moved_members)} to {target_channel.name}")
         print(f"Dragged {', '.join(moved_members)} to {target_channel.name}")
-
 
 # Command : Stalks user in VC
 followed_user = None
@@ -461,15 +422,15 @@ async def follow_user():
 
                 # User found, break out of the loop
                 break
+# Stalk loop
+@follow_user.before_loop
+async def before_follow_user():
+    await bot.wait_until_ready()  # Wait for the bot to be fully ready before starting the loop
 
-
-
-
-
-
+    # VC CMDS
 # Command : Volume Command
 @bot.command()
-async def volume(ctx, volume_percent: int):
+async def volumectx(volumectx, volume_percent: int):
     # Check if the user is in a voice channel
     if not ctx.author.voice or not ctx.author.voice.channel:
         await ctx.send("You need to be in a voice channel to adjust the volume.")
@@ -496,8 +457,6 @@ async def volume(ctx, volume_percent: int):
     voice_client.source = discord.PCMVolumeTransformer(voice_client.source, volume=volume_option)
 
     await ctx.send(f"Volume set to {volume_percent}%.")
-
-
 
 # Command : Deafen The bot
 @bot.command()
@@ -540,8 +499,6 @@ async def deafen(ctx, target: str = None):
     else:
         await ctx.send(f"{target.display_name} has been undeafened.")
 
-
-
 # Error handling for missing permissions
 @deafen.error
 async def deafen_error(ctx, error):
@@ -576,7 +533,6 @@ async def mute(ctx, target: discord.Member = None):
     else:
         await ctx.send(f"{target.display_name} has been unmuted.")
 
-
 # Error handling for missing permissions and missing target
 @mute.error
 async def mute_error(ctx, error):
@@ -585,13 +541,10 @@ async def mute_error(ctx, error):
     elif isinstance(error, commands.MissingRequiredArgument):
         await ctx.send("Please specify a user to mute.")
 
-
-
-
-
-# Command: `playmp3`
+# MUSIC CMDS
+# Command: `mp3`
 @bot.command()
-async def playmp3(ctx, *keywords: str):
+async def mp3(ctx, *keywords: str):
     if not ctx.author.voice or not ctx.author.voice.channel:
         await ctx.send("You need to be in a voice channel to play a sound.")
         return
@@ -605,9 +558,9 @@ async def playmp3(ctx, *keywords: str):
             voice_client = ctx.voice_client
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        soundboard_dir = os.path.join(current_dir, 'soundboard')
+        soundboard_dir = os.path.join(current_dir, '.mp3')
 
-        # Get all mp3 files in the soundboard directory
+        # Get all mp3 files in the .mp3 directory
         mp3_files = [file for file in os.listdir(soundboard_dir) if file.endswith('.mp3')]
 
         # Find mp3 files that match any of the keywords
@@ -629,7 +582,7 @@ async def playmp3(ctx, *keywords: str):
         mp3_file = os.path.join(soundboard_dir, matched_files[0])
 
         if not os.path.exists(mp3_file):
-            await ctx.send(f"{matched_files[0]} file not found in the soundboard.")
+            await ctx.send(f"{matched_files[0]} file not found in the .mp3 file.")
             return
 
         if not voice_client.is_playing():
@@ -640,14 +593,6 @@ async def playmp3(ctx, *keywords: str):
     except Exception as e:
         print(f"Error playing mp3: {e}")
         await ctx.send("An error occurred while trying to play the mp3.")
-
-
-
-
-
-
-
-
 
 # Command : Stop mp3
 async def stop_audio(ctx):
@@ -662,24 +607,23 @@ async def stop_audio(ctx):
 async def stop(ctx):
     await stop_audio(ctx)
 
-
 # Command to list songs in file
 @bot.command()
 async def mp3list(ctx):
-    # Path to the 'soundboard' folder
-    soundboard_folder = 'soundboard'
+    # Path to the '.mp3' folder
+    soundboard_folder = '.mp3'
 
-    # Check if the 'soundboard' folder exists
+    # Check if the '.mp3' folder exists
     if not os.path.exists(soundboard_folder):
-        await ctx.send("The 'soundboard' folder does not exist.")
+        await ctx.send("The '.mp3' folder does not exist.")
         return
 
-    # Get a list of all files in the 'soundboard' folder
+    # Get a list of all files in the '.mp3' folder
     sound_files = [file for file in os.listdir(soundboard_folder) if file.endswith('.mp3')]
 
-    # Check if there are no .mp3 files in the 'soundboard' folder
+    # Check if there are no .mp3 files in the '.mp3' folder
     if not sound_files:
-        await ctx.send("No .mp3 files found in the 'soundboard' folder.")
+        await ctx.send("No .mp3 files found in the '.mp3' folder.")
         return
 
     # Send the list of .mp3 files
@@ -687,20 +631,16 @@ async def mp3list(ctx):
     for song in sound_files:
         await ctx.send(song)
 
-
-
+# Command : youtube play command
 # Suppress noise about console usage from youtube_dl
 youtube_dl.utils.bug_reports_message = lambda: ''
-
 # Global variables for queue and voice client
-
 is_playing = False  # Initialize is_playing as False initially
 voice_client = None
 queue = []
 current_playing_url = None
 loop_song = False
 executor = ThreadPoolExecutor()
-
 
 # ytdl options
 ytdl_format_options = {
@@ -764,7 +704,6 @@ async def YOUTUBE(ctx, *, query):
             voice_client.play(discord.FFmpegPCMAudio(url))
         else:
             await ctx.send(f'No video found for query: {query}')
-
 
 @bot.command()
 async def play(ctx, *, query):
@@ -877,8 +816,6 @@ async def clearq(ctx):
         queue.clear()
         await ctx.send('Queue cleared.')
 
-
-
 @bot.command()
 async def pause(ctx):
     voice_client = ctx.guild.voice_client
@@ -897,8 +834,6 @@ async def resume(ctx):
     else:
         await ctx.send("I'm not paused right now.")
 
-
-
 @bot.command()
 async def skip(ctx):
     voice_client = ctx.guild.voice_client
@@ -908,7 +843,6 @@ async def skip(ctx):
         await play_next(ctx)
     else:
         await ctx.send("I'm not playing anything right now.")
-
 
 @bot.command()
 async def leave(ctx):
@@ -920,6 +854,23 @@ async def leave(ctx):
         await ctx.send("I'm not connected to any voice channel.")
 
 
+# Aiohttp
+# Global variable for aiohttp session
+session = None
+# Command to force shutdown aiohttp session
+@bot.command()
+async def shutdown(ctx):
+    global session
+    if session:
+        await session.close()
+        session = None
+        await ctx.send("aiohttp session closed.")
+    else:
+        await ctx.send("No active aiohttp session.")
+
+
+
+ # STATUS CMDS
 # Command to reset status to default
 @bot.command()
 async def resetstatus(ctx):
@@ -984,6 +935,8 @@ async def setstatus(ctx, activity_type: str, *, status: str):
 # Default status
 default_status = discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/jJ8QcTB3")
 
+# ADMIN CMDS
+
 # Command to kick members
 @bot.command()
 async def kick(ctx, members: commands.Greedy[discord.Member], *, reason: str = None):
@@ -1017,8 +970,194 @@ async def ping(ctx):
     # Send the embed
     await ctx.send(embed=embed)
 
-# Load mocked users data
+# Command: Hello (example command)
+@bot.command()
+async def hello(ctx):
+    await ctx.send("Hello world!")
 
+# KILL COMMAND
+@bot.command()
+async def kill(ctx):
+    # Check if the user invoking the command is the specified user
+    if ctx.author.id == 110927272210354176:  # Replace with the user ID of .zxpq
+        warning_message = await ctx.send(":warning: Are you sure you want to TERMINATE the bot? This action cannot be undone.")
+        await warning_message.add_reaction("🔴")  # Red button
+        await warning_message.add_reaction("🟢")  # Green button
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["🔴", "🟢"]
+
+        try:
+            reaction, _ = await bot.wait_for("reaction_add", timeout=10, check=check)
+            if str(reaction.emoji) == "🔴":
+                await warning_message.clear_reactions()  # Remove reactions
+                await warning_message.edit(content=" :orange_circle: Bot TERMINATION cancelled.")
+            elif str(reaction.emoji) == "🟢":
+                await warning_message.clear_reactions()  # Remove reactions
+                await warning_message.edit(content=":warning: Bot instance(s) TERMINATED.")
+                print("\033[96m" + f"BOT HAS BEEN TERMINATED BY: {ctx.author.name} ({ctx.author.id})" + "\033[0m")
+                guild = bot.get_guild(1056994840925192252)  # Replace YOUR_GUILD_ID with your guild's ID
+                channel = discord.utils.get(guild.text_channels, name="bot-status")
+
+                if channel:
+                    # Send a message to the "bot-status" text channel indicating that the bot is going offline
+                    await channel.send(":red_circle: xyz is now offline [Killed]")
+                await bot.close()
+        except asyncio.TimeoutError:
+            await warning_message.edit(content=":clock1:  Bot TERMINATION cancelled due to inactivity.")
+            await warning_message.clear_reactions()  # Remove reactions
+    else:
+        await ctx.send(f":warning: [ERROR] {ctx.author.mention} is not permitted to operate this command.")
+        print("\033[96m" + f"USER TRYING TO KILL BOT: {ctx.author.name} ({ctx.author.id})" + "\033[0m")
+
+# Event : Auto deletion
+# File to store the toggle status
+AUTO_DELETE_FILE = "auto_delete.json"
+ORIGINAL_NAME = "xyz"
+
+# Load auto-delete status from file
+try:
+    with open(AUTO_DELETE_FILE, "r") as f:
+        auto_delete_enabled = json.load(f)
+except FileNotFoundError:
+    auto_delete_enabled = False
+
+# Save auto-delete status to file
+def save_auto_delete_status():
+    with open(AUTO_DELETE_FILE, "w") as f:
+        json.dump(auto_delete_enabled, f)
+
+
+# Command: Auto delete command
+@bot.command()
+async def autodelete(ctx):
+    global auto_delete_enabled
+    auto_delete_enabled = not auto_delete_enabled
+    await ctx.send(f"Auto-delete commands {'enabled' if auto_delete_enabled else 'disabled'}.")
+
+    # Save auto-delete status to file
+    save_auto_delete_status()
+
+# Define on_command event
+@bot.event
+async def on_command(ctx):
+    global auto_delete_enabled
+
+    # Check if auto-delete is enabled
+    if auto_delete_enabled:
+        try:
+            # Delete the command message
+            await ctx.message.delete()
+
+            # Execute the command and get the bot's response
+            bot_response = await ctx.send(ctx.message.content)
+
+            # Delay for 1/2 second
+            await asyncio.sleep(0.5)
+
+            # Get bot's messages sent after the command
+            async for message in ctx.channel.history(after=ctx.message.created_at):
+                if message.author == bot.user:
+                    await message.delete()
+                else:
+                    break  # Exit loop if a non-bot message is encountered
+        except discord.Forbidden:
+            print("Bot doesn't have permission to delete messages.")
+
+    # Update bot's username
+    await update_bot_username(ctx)
+
+async def update_bot_username(ctx):
+    global auto_delete_enabled
+
+    # Change bot's nickname based on auto-delete setting
+    new_nickname = f" 🗑️ {ORIGINAL_NAME} ️" if auto_delete_enabled else ORIGINAL_NAME
+
+    try:
+        for guild in bot.guilds:
+            await guild.me.edit(nick=new_nickname)
+    except discord.HTTPException as e:
+        print(f"Failed to update bot's nickname: {e}")
+
+
+# Command : Send dms command
+@bot.command()
+@commands.has_permissions(administrator=True)  # Restrict this command to users with admin permissions
+async def senddm(ctx, user_reference: str, *, message: str):
+    user = None
+
+    # Check if the user_reference is a mention
+    mention_match = re.match(r'<@!?(\d+)>', user_reference)
+    if mention_match:
+        user_id = int(mention_match.group(1))
+        user = await bot.fetch_user(user_id)
+    else:
+        # Try to find user by ID
+        try:
+            user_id = int(user_reference)
+            user = await bot.fetch_user(user_id)
+        except ValueError:
+            # Try to find user by username
+            user = discord.utils.get(ctx.guild.members, name=user_reference)
+
+    if user:
+        try:
+            await user.send(message)
+            await ctx.send(f"Successfully sent a DM to {user.name}.")
+        except discord.Forbidden:
+            await ctx.send("I do not have permission to send a DM to this user.")
+        except discord.HTTPException as e:
+            await ctx.send(f"Failed to send DM: {e}")
+    else:
+        await ctx.send("User not found.")
+
+
+# Command : View dms command
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def viewdms(ctx, user_reference: str):
+    user = None
+
+    # Check if the user_reference is a mention
+    mention_match = re.match(r'<@!?(\d+)>', user_reference)
+    if mention_match:
+        user_id = int(mention_match.group(1))
+        user = await bot.fetch_user(user_id)
+    else:
+        # Try to find user by ID
+        try:
+            user_id = int(user_reference)
+            user = await bot.fetch_user(user_id)
+        except ValueError:
+            # Try to find user by username or display name
+            user = discord.utils.get(ctx.guild.members, name=user_reference)
+            if not user:
+                user = discord.utils.get(ctx.guild.members, display_name=user_reference)
+
+    if user:
+        try:
+            # Open DM channel with the user
+            dm_channel = await user.create_dm()
+            # Fetch the last 10 messages from the DM channel
+            messages = []
+            async for message in dm_channel.history(limit=10):
+                messages.append(message)
+
+            if messages:
+                history = "\n".join(
+                    [f"{message.created_at} - {message.author}: {message.content}" for message in messages])
+                await ctx.send(f"DM history with {user.name}:\n{history}")
+            else:
+                await ctx.send(f"No recorded DMs with {user.name}.")
+        except discord.Forbidden:
+            await ctx.send("I do not have permission to view DMs with this user.")
+        except discord.HTTPException as e:
+            await ctx.send(f"Failed to fetch DMs: {e}")
+    else:
+        await ctx.send("User not found.")
+
+
+ # CHAT CMDS
 
 # Load mocked users data
 try:
@@ -1112,7 +1251,7 @@ async def purge(ctx, channel: typing.Optional[discord.TextChannel] = None, limit
     except discord.HTTPException as e:
         await ctx.send(f"An error occurred while purging messages: {e}")
 
-
+ # TICKET CMDS
 
 # Modal: ticket modal
 class TicketModal(discord.ui.Modal, title="Ticket Submission"):
@@ -1232,123 +1371,6 @@ class CloseTicketButton(discord.ui.View):
         else:
             await interaction.response.send_message("You do not have permission to close this ticket.", ephemeral=True)
 
-
-
-
-
-
-
-
-
-
-# Define a global dictionary to store previous roles of users
-previous_roles = {}
-
-# Command : Jail
-@bot.command()
-async def jail(ctx, member: discord.Member):
-    global previous_roles
-
-    # Check if the role exists
-    jail_role = discord.utils.get(ctx.guild.roles, name=".jail")
-
-    if not jail_role:
-        await ctx.send("The .jail role does not exist.")
-        return
-
-    # Store the user's current roles
-    previous_roles[member.id] = [role.id for role in member.roles]
-
-    # Remove all other roles
-    await member.edit(roles=[jail_role])
-
-    # Toggle the .jail role
-    if jail_role in member.roles:
-        await ctx.send(f"{member.display_name} has been banished.")
-    else:
-        await ctx.send(f"Failed to banish {member.display_name}.")
-
-# Command : Release the user
-@bot.command()
-async def release(ctx, member: discord.Member):
-    global previous_roles
-
-    # Check if the role exists
-    jail_role = discord.utils.get(ctx.guild.roles, name=".jail")
-
-    if not jail_role:
-        await ctx.send("The .jail role does not exist.")
-        return
-
-    # Remove the .jail role
-    await member.remove_roles(jail_role)
-
-    # Restore the user's previous roles
-    roles_to_add = [ctx.guild.get_role(role_id) for role_id in previous_roles.get(member.id, [])]
-    if roles_to_add:
-        await member.edit(roles=roles_to_add)
-        await ctx.send(f"{member.display_name} has been released from jail. Their previous roles have been restored.")
-    else:
-        await ctx.send("Failed to restore previous roles.")
-
-# Command to add or remove roles
-@bot.command()
-async def role(ctx, *, args: str):
-    # Check if the bot has permission to manage roles
-    if not ctx.guild.me.guild_permissions.manage_roles:
-        await ctx.send("I don't have permission to manage roles.")
-        return
-
-    # Check if the caller has permission to manage roles
-    if not ctx.author.guild_permissions.manage_roles:
-        await ctx.send("You don't have permission to manage roles.")
-        return
-
-    # Parse the arguments
-    args = args.split()
-    if len(args) != 2:
-        await ctx.send("Please provide both a member and a role.")
-        return
-
-    member_str, role_str = args
-    member = discord.utils.get(ctx.guild.members, mention=member_str)
-
-    # Extract role from mention
-    if role_str.startswith("<@&") and role_str.endswith(">"):
-        role_id = role_str[3:-1]
-        role = discord.utils.get(ctx.guild.roles, id=int(role_id))
-    else:
-        role = discord.utils.get(ctx.guild.roles, name=role_str)
-
-    # Check if a member and role are provided
-    if member is None or role is None:
-        await ctx.send("Invalid member or role provided.")
-        return
-
-    # Check if the bot can manage the role
-    if ctx.guild.me.top_role <= role:
-        await ctx.send("I can't manage roles higher than my top role.")
-        return
-
-    # Check if the user can manage the role
-    if ctx.author.top_role <= role:
-        await ctx.send("You can't manage roles higher than your top role.")
-        return
-
-    # Check if the member already has the role
-    if role in member.roles:
-        await member.remove_roles(role)
-        await ctx.send(f"Removed the {role.name} role from {member.mention}.")
-    else:
-        await member.add_roles(role)
-        await ctx.send(f"Added the {role.name} role to {member.mention}.")
-
-
-
-# Command: Hello (example command)
-@bot.command()
-async def hello(ctx):
-    await ctx.send("Hello world!")
 
 # Event : Welcome message  and ticket
 # Channel ID where the ticket message will be sent
@@ -1562,7 +1584,7 @@ async def on_voice_state_update(member, before, after):
                 await asyncio.sleep(2)
 
                 current_dir = os.path.dirname(os.path.abspath(__file__))
-                mp3_file = os.path.join(current_dir, 'soundboard', 'uwu.mp3')
+                mp3_file = os.path.join(current_dir, '.mp3', 'uwu.mp3')
 
                 if not os.path.exists(mp3_file):
                     print("uwu.mp3 file not found.")
@@ -1593,11 +1615,8 @@ async def on_voice_state_update(member, before, after):
         # Cancel the ticket if the user left the channel
         await cancel_voice_request(member, member.guild)
 
-
-
 # Dictionary to track active tickets
 active_tickets = {}
-
 
 async def send_voice_request_message(member: discord.Member, guild: discord.Guild):
     me = await bot.fetch_user(110927272210354176)  # Replace YOUR_USER_ID with your Discord user ID
@@ -1649,8 +1668,110 @@ async def cancel_voice_request(member: discord.Member, guild: discord.Guild):
             view = OkayView2(cancel_message)
             await cancel_message.edit(view=view)
 
+# ROLE CMDS
 
+# Define a global dictionary to store previous roles of users
+previous_roles = {}
+# Command : Jail
+@bot.command()
+async def jail(ctx, member: discord.Member):
+    global previous_roles
 
+    # Check if the role exists
+    jail_role = discord.utils.get(ctx.guild.roles, name=".jail")
+
+    if not jail_role:
+        await ctx.send("The .jail role does not exist.")
+        return
+
+    # Store the user's current roles
+    previous_roles[member.id] = [role.id for role in member.roles]
+
+    # Remove all other roles
+    await member.edit(roles=[jail_role])
+
+    # Toggle the .jail role
+    if jail_role in member.roles:
+        await ctx.send(f"{member.display_name} has been banished.")
+    else:
+        await ctx.send(f"Failed to banish {member.display_name}.")
+
+# Command : Release the user
+@bot.command()
+async def release(ctx, member: discord.Member):
+    global previous_roles
+
+    # Check if the role exists
+    jail_role = discord.utils.get(ctx.guild.roles, name=".jail")
+
+    if not jail_role:
+        await ctx.send("The .jail role does not exist.")
+        return
+
+    # Remove the .jail role
+    await member.remove_roles(jail_role)
+
+    # Restore the user's previous roles
+    roles_to_add = [ctx.guild.get_role(role_id) for role_id in previous_roles.get(member.id, [])]
+    if roles_to_add:
+        await member.edit(roles=roles_to_add)
+        await ctx.send(f"{member.display_name} has been released from jail. Their previous roles have been restored.")
+    else:
+        await ctx.send("Failed to restore previous roles.")
+
+# Command to add or remove roles
+@bot.command()
+async def role(ctx, *, args: str):
+    # Check if the bot has permission to manage roles
+    if not ctx.guild.me.guild_permissions.manage_roles:
+        await ctx.send("I don't have permission to manage roles.")
+        return
+
+    # Check if the caller has permission to manage roles
+    if not ctx.author.guild_permissions.manage_roles:
+        await ctx.send("You don't have permission to manage roles.")
+        return
+
+    # Parse the arguments
+    args = args.split()
+    if len(args) != 2:
+        await ctx.send("Please provide both a member and a role.")
+        return
+
+    member_str, role_str = args
+    member = discord.utils.get(ctx.guild.members, mention=member_str)
+
+    # Extract role from mention
+    if role_str.startswith("<@&") and role_str.endswith(">"):
+        role_id = role_str[3:-1]
+        role = discord.utils.get(ctx.guild.roles, id=int(role_id))
+    else:
+        role = discord.utils.get(ctx.guild.roles, name=role_str)
+
+    # Check if a member and role are provided
+    if member is None or role is None:
+        await ctx.send("Invalid member or role provided.")
+        return
+
+    # Check if the bot can manage the role
+    if ctx.guild.me.top_role <= role:
+        await ctx.send("I can't manage roles higher than my top role.")
+        return
+
+    # Check if the user can manage the role
+    if ctx.author.top_role <= role:
+        await ctx.send("You can't manage roles higher than your top role.")
+        return
+
+    # Check if the member already has the role
+    if role in member.roles:
+        await member.remove_roles(role)
+        await ctx.send(f"Removed the {role.name} role from {member.mention}.")
+    else:
+        await member.add_roles(role)
+        await ctx.send(f"Added the {role.name} role to {member.mention}.")
+
+# USER CMDS
 
 # Command : Shows past nicknames
 @bot.command()
@@ -1730,10 +1851,7 @@ async def avatar(ctx, user: discord.User = None, user_id: int = None):
 
     await ctx.send(embed=embed)
 
-
-
 # Command : AFK Command
-
 
 # Load AFK data from a JSON file
 def load_afk_data():
@@ -1743,15 +1861,12 @@ def load_afk_data():
     else:
         return {}
 
-
 # Save AFK data to a JSON file
 def save_afk_data(data):
     with open(AFK_FILE, 'w') as file:
         json.dump(data, file, indent=4)
 
-
 afk_users = load_afk_data()
-
 
 @bot.command()
 async def afk(ctx, *, reason=""):
@@ -1768,23 +1883,24 @@ async def afk(ctx, *, reason=""):
         save_afk_data(afk_users)
         await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {reason}")
 
+ # SYSTEM CMDS
 
 # Event : On ready startup sequence events
 @bot.event
 async def on_ready():
-    bot.load_extension('musiccog')  # Ensure 'musiccog.py' is in the same directory
+
     follow_user.start()
     global is_dnd
     if is_dnd:
         await bot.change_presence(status=discord.Status.dnd, activity=dnd_activity)
-        print("\033[93mBot is now operating\033[0m")
         print("\033[91mBot is now in Do Not Disturb mode.\033[0m")
+        print("\033[93mBot is now operating\033[0m")
         print("\033[0;33m" + f"Logged in as {bot.user}" + "\033[0m")
         print("\033[0;32mGuilds:\033[0m")
         for guild in bot.guilds:
             print("\033[36m- {}\033[0m: {}".format("\033[92m" + str(guild.id) + "\033[0m", "\033[92m" + guild.name + "\033[0m"))
-        channel_name = "bot-status"  # Replace with the actual channel name
-        channel_type = discord.ChannelType.text  # Adjust the channel type if needed (text, voice, etc.)
+        channel_name = "bot-status"
+        channel_type = discord.ChannelType.text
         channel = discord.utils.get(bot.get_all_channels(), name=channel_name, type=channel_type)
         if channel:
             try:
@@ -1794,8 +1910,6 @@ async def on_ready():
                 print(f"An error occurred while sending the message: {e}")
         else:
             print("\033[91mChannel not found.\033[0m")
-
-    # Join channel automatically?
 
     owner = bot.get_user(110927272210354176)
     if owner:
@@ -1844,114 +1958,25 @@ async def on_error(event, *args, **kwargs):
         await asyncio.sleep(5)  # Wait for 5 seconds before reconnecting
         await bot.run(DISCORD_TOKEN)
 
-    # You can also perform any other cleanup or logging tasks here
-
-# KILL COMMAND
-@bot.command()
-async def kill(ctx):
-    # Check if the user invoking the command is the specified user
-    if ctx.author.id == 110927272210354176:  # Replace with the user ID of .zxpq
-        warning_message = await ctx.send(":warning: Are you sure you want to TERMINATE the bot? This action cannot be undone.")
-        await warning_message.add_reaction("🔴")  # Red button
-        await warning_message.add_reaction("🟢")  # Green button
-
-        def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in ["🔴", "🟢"]
-
-        try:
-            reaction, _ = await bot.wait_for("reaction_add", timeout=10, check=check)
-            if str(reaction.emoji) == "🔴":
-                await warning_message.clear_reactions()  # Remove reactions
-                await warning_message.edit(content=" :orange_circle: Bot TERMINATION cancelled.")
-            elif str(reaction.emoji) == "🟢":
-                await warning_message.clear_reactions()  # Remove reactions
-                await warning_message.edit(content=":warning: Bot instance(s) TERMINATED.")
-                print("\033[96m" + f"BOT HAS BEEN TERMINATED BY: {ctx.author.name} ({ctx.author.id})" + "\033[0m")
-                guild = bot.get_guild(1056994840925192252)  # Replace YOUR_GUILD_ID with your guild's ID
-                channel = discord.utils.get(guild.text_channels, name="bot-status")
-
-                if channel:
-                    # Send a message to the "bot-status" text channel indicating that the bot is going offline
-                    await channel.send(":red_circle: xyz is now offline [Killed]")
-                await bot.close()
-        except asyncio.TimeoutError:
-            await warning_message.edit(content=":clock1:  Bot TERMINATION cancelled due to inactivity.")
-            await warning_message.clear_reactions()  # Remove reactions
-    else:
-        await ctx.send(f":warning: [ERROR] {ctx.author.mention} is not permitted to operate this command.")
-        print("\033[96m" + f"USER TRYING TO KILL BOT: {ctx.author.name} ({ctx.author.id})" + "\033[0m")
-
-# Event : Auto deletion
-# File to store the toggle status
-AUTO_DELETE_FILE = "auto_delete.json"
-ORIGINAL_NAME = "xyz"
-
-# Load auto-delete status from file
-try:
-    with open(AUTO_DELETE_FILE, "r") as f:
-        auto_delete_enabled = json.load(f)
-except FileNotFoundError:
-    auto_delete_enabled = False
-
-# Save auto-delete status to file
-def save_auto_delete_status():
-    with open(AUTO_DELETE_FILE, "w") as f:
-        json.dump(auto_delete_enabled, f)
-
-
-# Command: Auto delete command
-@bot.command()
-async def autodelete(ctx):
-    global auto_delete_enabled
-    auto_delete_enabled = not auto_delete_enabled
-    await ctx.send(f"Auto-delete commands {'enabled' if auto_delete_enabled else 'disabled'}.")
-
-    # Save auto-delete status to file
-    save_auto_delete_status()
-
-# Define on_command event
 @bot.event
-async def on_command(ctx):
-    global auto_delete_enabled
-
-    # Check if auto-delete is enabled
-    if auto_delete_enabled:
-        try:
-            # Delete the command message
-            await ctx.message.delete()
-
-            # Execute the command and get the bot's response
-            bot_response = await ctx.send(ctx.message.content)
-
-            # Delay for 1/2 second
-            await asyncio.sleep(0.5)
-
-            # Get bot's messages sent after the command
-            async for message in ctx.channel.history(after=ctx.message.created_at):
-                if message.author == bot.user:
-                    await message.delete()
-                else:
-                    break  # Exit loop if a non-bot message is encountered
-        except discord.Forbidden:
-            print("Bot doesn't have permission to delete messages.")
-
-    # Update bot's username
-    await update_bot_username(ctx)
-
-async def update_bot_username(ctx):
-    global auto_delete_enabled
-
-    # Change bot's nickname based on auto-delete setting
-    new_nickname = f" 🗑️ {ORIGINAL_NAME} ️" if auto_delete_enabled else ORIGINAL_NAME
-
+async def on_command_error(ctx, error):
     try:
-        for guild in bot.guilds:
-            await guild.me.edit(nick=new_nickname)
-    except discord.HTTPException as e:
-        print(f"Failed to update bot's nickname: {e}")
+        await ctx.message.delete()
+    except discord.errors.NotFound:
+        pass
 
+    if isinstance(error, commands.CommandNotFound):
+        bot_message = await ctx.send(f":warning: Command '{ctx.invoked_with}' not found.")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        bot_message = await ctx.send("Missing required argument.")
+    else:
+        bot_message = await ctx.send("An error occurred.")
+        print(f"An error occurred: {error}")
 
-# Event on_message event 
+    await asyncio.sleep(7)
+    await bot_message.delete()
+
+# Event on_message event
 
 @bot.event
 async def on_message(message):
@@ -2016,11 +2041,8 @@ async def on_message(message):
     await mock_message(message)
 
 
-
-
+# SERVER CMDS
 # Command : Create emoji command
-
-
 @bot.command()
 async def emojiadd(ctx, emoji_name: str, emoji_url: str):
     async with ctx.typing():
@@ -2037,7 +2059,6 @@ async def emojiadd(ctx, emoji_name: str, emoji_url: str):
                 await ctx.send(f'Failed to create emoji: {e}')
             except discord.HTTPException as e:
                 await ctx.send(f'Failed to create emoji: {e}')
-
 
 # Command : remove emoji command
 @bot.command()
@@ -2065,130 +2086,11 @@ async def emoji(ctx, emoji_name: str):
     else:
         await ctx.send(f'Emoji `{emoji_name}` not found.')
 
-# Command : Send dms command
-@bot.command()
-@commands.has_permissions(administrator=True)  # Restrict this command to users with admin permissions
-async def senddm(ctx, user_reference: str, *, message: str):
-    user = None
-
-    # Check if the user_reference is a mention
-    mention_match = re.match(r'<@!?(\d+)>', user_reference)
-    if mention_match:
-        user_id = int(mention_match.group(1))
-        user = await bot.fetch_user(user_id)
-    else:
-        # Try to find user by ID
-        try:
-            user_id = int(user_reference)
-            user = await bot.fetch_user(user_id)
-        except ValueError:
-            # Try to find user by username
-            user = discord.utils.get(ctx.guild.members, name=user_reference)
-
-    if user:
-        try:
-            await user.send(message)
-            await ctx.send(f"Successfully sent a DM to {user.name}.")
-        except discord.Forbidden:
-            await ctx.send("I do not have permission to send a DM to this user.")
-        except discord.HTTPException as e:
-            await ctx.send(f"Failed to send DM: {e}")
-    else:
-        await ctx.send("User not found.")
-
-
-# Command : View dms command
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def viewdms(ctx, user_reference: str):
-    user = None
-
-    # Check if the user_reference is a mention
-    mention_match = re.match(r'<@!?(\d+)>', user_reference)
-    if mention_match:
-        user_id = int(mention_match.group(1))
-        user = await bot.fetch_user(user_id)
-    else:
-        # Try to find user by ID
-        try:
-            user_id = int(user_reference)
-            user = await bot.fetch_user(user_id)
-        except ValueError:
-            # Try to find user by username or display name
-            user = discord.utils.get(ctx.guild.members, name=user_reference)
-            if not user:
-                user = discord.utils.get(ctx.guild.members, display_name=user_reference)
-
-    if user:
-        try:
-            # Open DM channel with the user
-            dm_channel = await user.create_dm()
-            # Fetch the last 10 messages from the DM channel
-            messages = []
-            async for message in dm_channel.history(limit=10):
-                messages.append(message)
-
-            if messages:
-                history = "\n".join(
-                    [f"{message.created_at} - {message.author}: {message.content}" for message in messages])
-                await ctx.send(f"DM history with {user.name}:\n{history}")
-            else:
-                await ctx.send(f"No recorded DMs with {user.name}.")
-        except discord.Forbidden:
-            await ctx.send("I do not have permission to view DMs with this user.")
-        except discord.HTTPException as e:
-            await ctx.send(f"Failed to fetch DMs: {e}")
-    else:
-        await ctx.send("User not found.")
-
-
-# Aiohttp
-
-# Global variable for aiohttp session
-session = None
-
-# Function to fetch data asynchronously
-async def fetch_data(url):
-    global session
-    if session is None:
-        session = aiohttp.ClientSession()
-    async with session.get(url) as response:
-        return await response.text()
-
-# Command to force shutdown aiohttp session
-@bot.command()
-async def shutdown(ctx):
-    global session
-    if session:
-        await session.close()
-        session = None
-        await ctx.send("aiohttp session closed.")
-    else:
-        await ctx.send("No active aiohttp session.")
-
-# Example usage of fetch_data function
-@bot.command()
-async def fetch(ctx, url):
-    try:
-        html = await fetch_data(url)
-        await ctx.send(f"HTML from {url}:\n{html}")
-    except Exception as e:
-        await ctx.send(f"Error fetching data from {url}: {e}")
-
 
 # Run the event loop
 async def main():
     await bot.start("YOUR_TOKEN_HERE")
     await cleanup()
-
-
-
-
-@follow_user.before_loop
-async def before_follow_user():
-    await bot.wait_until_ready()  # Wait for the bot to be fully ready before starting the loop
-
-
 
 
 
