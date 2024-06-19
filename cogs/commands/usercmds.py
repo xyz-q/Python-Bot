@@ -1,0 +1,132 @@
+import discord
+from discord.ext import commands
+import json
+import os
+
+# Define your AFK file path
+AFK_FILE = "afk_data.json"
+
+class UserCommands(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.afk_users = self.load_afk_data()
+
+    # Function to load AFK data from file
+    def load_afk_data(self):
+        if os.path.exists(AFK_FILE):
+            with open(AFK_FILE, 'r') as file:
+                return json.load(file)
+        else:
+            return {}
+
+    # Function to save AFK data to file
+    def save_afk_data(self):
+        with open(AFK_FILE, 'w') as file:
+            json.dump(self.afk_users, file, indent=4)
+
+    # Command: Shows past nicknames
+    @commands.command()
+    async def names(self, ctx, member: discord.Member):
+        # Get the audit logs for the guild
+        async for entry in ctx.guild.audit_logs(limit=None, action=discord.AuditLogAction.member_update):
+            # Check if the entry is for the specified member
+            if entry.target == member:
+                # Get the old nickname from the audit log
+                old_nick = entry.before.nick
+                if old_nick:
+                    await ctx.send(f"Old nickname for {member.display_name}: {old_nick}")
+                else:
+                    await ctx.send(f"{member.display_name} has not changed their nickname.")
+                return
+        await ctx.send(f"No nickname change found for {member.display_name}.")
+
+    # Command: Shows user info
+    @commands.command()
+    async def user(self, ctx, member: discord.Member = None, user_id: int = None):
+        if user_id:
+            try:
+                member = await ctx.guild.fetch_member(user_id)
+            except discord.NotFound:
+                await ctx.send("User not found.")
+                return
+        else:
+            member = member or ctx.author
+
+        embed = discord.Embed(title=f"User Info - {member.display_name}", color=member.color)
+
+        if member.avatar:
+            embed.set_thumbnail(url=member.avatar.url)
+        else:
+            default_avatar_url = member.default_avatar.url
+            embed.set_thumbnail(url=default_avatar_url)
+
+        embed.add_field(name="User ID", value=member.id, inline=False)
+        embed.add_field(name="Nickname", value=member.display_name, inline=False)
+        embed.add_field(name="Account Created", value=member.created_at.strftime("%a, %d %B %Y, %I:%M %p UTC"), inline=False)
+        embed.add_field(name="Join Date", value=member.joined_at.strftime("%a, %d %B %Y, %I:%M %p UTC"), inline=False)
+
+        if member.activity is not None:
+            embed.add_field(name="Activity", value=member.activity.name, inline=False)
+
+        boosting_role = discord.utils.get(member.roles, name="Server Booster")
+        boosting_status = "Yes" if boosting_role else "No"
+        embed.add_field(name="Boosting this Server", value=boosting_status, inline=True)
+
+        top_role = member.top_role.name
+        embed.add_field(name="Top Role", value=top_role, inline=False)
+
+        await ctx.send(embed=embed)
+
+    # Command: Gets users avatar
+    @commands.command()
+    async def avatar(self, ctx, user: discord.User = None, user_id: int = None):
+        if user_id:
+            try:
+                user = await self.bot.fetch_user(user_id)
+            except discord.NotFound:
+                await ctx.send("User not found.")
+                return
+        else:
+            user = user or ctx.author
+
+        if user.avatar:
+            avatar_url = user.avatar.url
+        else:
+            avatar_url = user.default_avatar.url
+
+        embed = discord.Embed(title=f"{user.name}'s Avatar", color=ctx.author.color)
+        embed.set_image(url=avatar_url)
+
+        await ctx.send(embed=embed)
+
+    # Command: AFK Command
+    @commands.command()
+    async def afk(self, ctx, *, reason=""):
+        user_id = str(ctx.author.id)
+
+        if user_id in self.afk_users:
+            # Remove AFK status
+            self.afk_users.pop(user_id)
+            self.save_afk_data()
+            await ctx.send(f"{ctx.author.mention} is no longer AFK.")
+        else:
+            # Set AFK status
+            self.afk_users[user_id] = reason
+            self.save_afk_data()
+            await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {reason}")
+
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author == self.bot.user:
+            return
+        
+        mentioned_afk_users = [user_id for user_id in self.afk_users if message.guild.get_member(int(user_id)) in message.mentions]
+        if mentioned_afk_users:
+            for user_id in mentioned_afk_users:
+                reason = self.afk_users[user_id]
+                user = message.guild.get_member(int(user_id))
+                await message.channel.send(f"{user.mention} is currently AFK. Reason: {reason}")
+
+async def setup(bot):
+    await bot.add_cog(UserCommands(bot))
