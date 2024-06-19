@@ -3,7 +3,6 @@ from discord.ext import commands
 import json
 import os
 
-# Define your AFK file path
 AFK_FILE = "afk_data.json"
 
 class UserCommands(commands.Cog):
@@ -11,7 +10,6 @@ class UserCommands(commands.Cog):
         self.bot = bot
         self.afk_users = self.load_afk_data()
 
-    # Function to load AFK data from file
     def load_afk_data(self):
         if os.path.exists(AFK_FILE):
             with open(AFK_FILE, 'r') as file:
@@ -19,19 +17,15 @@ class UserCommands(commands.Cog):
         else:
             return {}
 
-    # Function to save AFK data to file
     def save_afk_data(self):
         with open(AFK_FILE, 'w') as file:
             json.dump(self.afk_users, file, indent=4)
 
-    # Command: Shows past nicknames
     @commands.command()
     async def names(self, ctx, member: discord.Member):
-        # Get the audit logs for the guild
         async for entry in ctx.guild.audit_logs(limit=None, action=discord.AuditLogAction.member_update):
-            # Check if the entry is for the specified member
+
             if entry.target == member:
-                # Get the old nickname from the audit log
                 old_nick = entry.before.nick
                 if old_nick:
                     await ctx.send(f"Old nickname for {member.display_name}: {old_nick}")
@@ -40,7 +34,6 @@ class UserCommands(commands.Cog):
                 return
         await ctx.send(f"No nickname change found for {member.display_name}.")
 
-    # Command: Shows user info
     @commands.command()
     async def user(self, ctx, member: discord.Member = None, user_id: int = None):
         if user_id:
@@ -77,7 +70,6 @@ class UserCommands(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    # Command: Gets users avatar
     @commands.command()
     async def avatar(self, ctx, user: discord.User = None, user_id: int = None):
         if user_id:
@@ -99,22 +91,18 @@ class UserCommands(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    # Command: AFK Command
     @commands.command()
     async def afk(self, ctx, *, reason=""):
         user_id = str(ctx.author.id)
 
         if user_id in self.afk_users:
-            # Remove AFK status
             self.afk_users.pop(user_id)
             self.save_afk_data()
             await ctx.send(f"{ctx.author.mention} is no longer AFK.")
         else:
-            # Set AFK status
             self.afk_users[user_id] = reason
             self.save_afk_data()
             await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {reason}")
-
 
     @commands.Cog.listener()
     async def on_message(self, message):
