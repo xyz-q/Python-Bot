@@ -71,26 +71,19 @@ class Mp3(commands.Cog):
         else:
             await ctx.send("No audio is currently playing.")
 
-    # Command: List mp3 files
     @commands.command()
     async def mp3list(self, ctx):
-        # Path to the '.mp3' folder
         soundboard_folder = '.mp3'
-
-        # Check if the '.mp3' folder exists
         if not os.path.exists(soundboard_folder):
             await ctx.send("The '.mp3' folder does not exist.")
             return
 
-        # Get a list of all files in the '.mp3' folder
         sound_files = [file for file in os.listdir(soundboard_folder) if file.endswith('.mp3')]
 
-        # Check if there are no .mp3 files in the '.mp3' folder
         if not sound_files:
             await ctx.send("No .mp3 files found in the '.mp3' folder.")
             return
 
-        # Send the list of .mp3 files
         await ctx.send("List of available songs:")
         for song in sound_files:
             await ctx.send(song)

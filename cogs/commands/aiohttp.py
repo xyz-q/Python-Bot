@@ -2,14 +2,12 @@ import aiohttp
 from discord.ext import commands
 import asyncio
 
-# Global variable for aiohttp session
 session = None
 
 class AiohttpCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # Command to force shutdown aiohttp session
     @commands.command(name='shutdown')
     async def shutdown(self, ctx):
         global session

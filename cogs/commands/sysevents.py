@@ -132,6 +132,5 @@ class SystemCommands(commands.Cog):
             await warning_msg.delete()
             return
  
-
 async def setup(bot):
     await bot.add_cog(SystemCommands(bot))

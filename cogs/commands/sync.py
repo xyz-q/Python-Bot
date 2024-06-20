@@ -6,12 +6,11 @@ import time
 class Sync(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.tree = bot.tree  # Assign the bot's tree attribute to the Sync class
+        self.tree = bot.tree 
 
     @commands.command(name='sync', description='Sync slash commands.')
     async def sync_slash_commands(self, ctx):
         await ctx.send("Syncing slash commands...")
-
         try:
             prfx = (Back.BLACK + Fore.GREEN + time.strftime("%H:%M:%S UTC", time.gmtime()) + Back.RESET + Fore.WHITE + Style.BRIGHT)
             synced = await self.tree.sync()

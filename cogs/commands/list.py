@@ -59,34 +59,26 @@ class list(commands.Cog):
         start_index = (page - 1) * per_page
         end_index = start_index + per_page
         commands_page = commands_list[start_index:end_index]
-
         embed = discord.Embed(title=f"Available Commands (Page {page})", color=discord.Color.dark_red())
         for command, description in commands_page:
             embed.add_field(name=command, value=description, inline=False)
-
         embed.set_footer(text=f"Page {page}/{(len(commands_list) - 1) // per_page + 1}")
-
         if message:
             await message.edit(embed=embed)
         else:
             message = await ctx.send(embed=embed)
             await message.add_reaction('⬅️')
             await message.add_reaction('➡️')
-            await message.add_reaction('❌')  # Add delete reaction
-
+            await message.add_reaction('❌') 
         return message
 
     @commands.command(aliases=['help'])
     async def list(self, ctx, page: int = 1):
-        # Delete the command invocation message
         await ctx.message.delete()
-
-        # Send the list of commands only to the user who invoked the command as an ephemeral message
         message = await self.send_list(ctx, page)
 
         def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in ['⬅️', '➡️', '❌']  # Check for delete reaction
-
+            return user == ctx.author and str(reaction.emoji) in ['⬅️', '➡️', '❌'] 
         try:
             while True:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=20.0, check=check)
@@ -95,15 +87,15 @@ class list(commands.Cog):
                     page = max(1, page - 1)
                 elif str(reaction.emoji) == '➡️':
                     page = min((len(commands_list) - 1) // per_page + 1, page + 1)
-                elif str(reaction.emoji) == '❌':  # Delete reaction clicked
-                    await message.delete()  # Delete the message
+                elif str(reaction.emoji) == '❌': 
+                    await message.delete() 
                     return
 
                 await self.send_list(ctx, page, message=message)
                 await message.remove_reaction(reaction.emoji, user)
 
         except asyncio.TimeoutError:
-            await message.delete()  # Delete the message after timeout
+            await message.delete()  
 
 async def setup(bot):
     await bot.add_cog(list(bot))

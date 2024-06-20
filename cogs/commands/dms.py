@@ -6,24 +6,21 @@ class DMCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # Command: Send DMs
     @commands.command(name='dm')
-    @commands.has_permissions(administrator=True)  # Restrict this command to users with admin permissions
+    @commands.has_permissions(administrator=True) 
     async def dm(self, ctx, user_reference: str, *, message: str):
         user = None
 
-        # Check if the user_reference is a mention
         mention_match = re.match(r'<@!?(\d+)>', user_reference)
         if mention_match:
             user_id = int(mention_match.group(1))
             user = await self.bot.fetch_user(user_id)
         else:
-            # Try to find user by ID
+         
             try:
                 user_id = int(user_reference)
                 user = await self.bot.fetch_user(user_id)
             except ValueError:
-                # Try to find user by username
                 user = discord.utils.get(ctx.guild.members, name=user_reference)
 
         if user:
@@ -42,34 +39,27 @@ class DMCommands(commands.Cog):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("You need administrator permissions to use this command.")
 
-    # Command: View DMs
     @commands.command(name='dms')
     @commands.has_permissions(administrator=True)
     async def dms(self, ctx, user_reference: str):
         user = None
 
-        # Check if the user_reference is a mention
         mention_match = re.match(r'<@!?(\d+)>', user_reference)
         if mention_match:
             user_id = int(mention_match.group(1))
             user = await self.bot.fetch_user(user_id)
         else:
-            # Try to find user by ID
             try:
                 user_id = int(user_reference)
                 user = await self.bot.fetch_user(user_id)
             except ValueError:
-                # Try to find user by username or display name
                 user = discord.utils.get(ctx.guild.members, name=user_reference)
                 if not user:
                     user = discord.utils.get(ctx.guild.members, display_name=user_reference)
 
         if user:
             try:
-                # Open DM channel with the user
                 dm_channel = await user.create_dm()
-
-                # Fetch the last 10 messages from the DM channel
                 messages = []
                 async for message in dm_channel.history(limit=10):
                     messages.append(message)

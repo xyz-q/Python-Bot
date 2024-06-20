@@ -56,7 +56,6 @@ class AdminCommands(commands.Cog):
 
             def check(reaction, user):
                 return user == ctx.author and str(reaction.emoji) in ["🔴", "🟢"]
-
             try:
                 reaction, _ = await self.bot.wait_for("reaction_add", timeout=10, check=check)
                 if str(reaction.emoji) == "🔴":
@@ -69,7 +68,6 @@ class AdminCommands(commands.Cog):
                     print("\033[96m" + f"BOT HAS BEEN TERMINATED BY: {ctx.author.name} ({ctx.author.id})" + "\033[0m")
                     guild = self.bot.get_guild(1056994840925192252)  
                     channel = discord.utils.get(guild.text_channels, name="bot-status")
-
                     if channel:
                         await channel.send(":red_circle: xyz is now offline [Killed]")
                     await self.bot.close()
@@ -104,20 +102,15 @@ class AdminCommands(commands.Cog):
             except discord.Forbidden:
                 print("Bot doesn't have permission to delete messages.")
 
-        
         await self.update_bot_username(ctx)
 
     async def update_bot_username(self, ctx):
-        
         new_nickname = f" 🗑️ {self.ORIGINAL_NAME} ️" if self.auto_delete_enabled else self.ORIGINAL_NAME
-
         try:
             for guild in self.bot.guilds:
                 await guild.me.edit(nick=new_nickname)
         except discord.HTTPException as e:
             print(f"Failed to update bot's nickname: {e}")
-
-
 
     @commands.command()
     @commands.has_permissions(view_audit_log=True)
@@ -140,7 +133,6 @@ class AdminCommands(commands.Cog):
         except discord.Forbidden:
             await ctx.send("I don't have permission to view the audit log.")
 
-
     @commands.command()
     @commands.has_permissions(manage_channels=True)
     async def lock(self, ctx, channel: discord.TextChannel = None):
@@ -153,8 +145,6 @@ class AdminCommands(commands.Cog):
     
         except discord.Forbidden:
             await ctx.send("I don't have permission to manage this channel.")
-
-
 
 async  def setup(bot):
     await bot.add_cog(AdminCommands(bot))

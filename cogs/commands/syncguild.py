@@ -9,10 +9,8 @@ class SyncGuild(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def sync_guild(self, ctx, guild_id_or_name: str, test: bool = False):
         try:
-            # Try to get the guild by ID
             guild = self.bot.get_guild(int(guild_id_or_name))
             if not guild:
-                # If not found by ID, try to get the guild by name
                 guild = discord.utils.get(self.bot.guilds, name=guild_id_or_name)
             if not guild:
                 await ctx.send(f"Could not find a guild with the ID or name '{guild_id_or_name}'.")
@@ -35,10 +33,8 @@ class SyncGuild(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def clear_cache(self, ctx):
         try:
-        # Get all the registered slash commands
             registered_commands = await self.bot.tree.fetch_commands()
 
-        # Delete all the registered slash commands
             for command in registered_commands:
                 await command.delete()
 
