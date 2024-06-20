@@ -47,7 +47,7 @@ class YouTubeCommands(commands.Cog):
     @commands.command()
     async def play(self, ctx, *, query: str):
         author = ctx.message.author
-        voice        await ctx.message.delete()
+        voice =         await ctx.message.delete()
 
         if not voice_channel:
             await ctx.send('You need to be in a voice channel to use this command.')
