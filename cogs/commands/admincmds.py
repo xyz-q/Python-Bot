@@ -117,5 +117,44 @@ class AdminCommands(commands.Cog):
         except discord.HTTPException as e:
             print(f"Failed to update bot's nickname: {e}")
 
+
+
+    @commands.command()
+    @commands.has_permissions(view_audit_log=True)
+    async def audit(self, ctx, limit: int = 10):
+        try:
+            audit_log = await ctx.guild.audit_logs(limit=limit).flatten()
+        
+            embed = discord.Embed(title="Moderation Audit Log", color=discord.Color.blurple())
+        
+            for entry in audit_log:
+                action_type = entry.action
+                target = entry.target
+                responsible_user = entry.user
+                reason = entry.reason or "No reason provided"
+            
+                embed.add_field(name=f"{action_type.name}", value=f"Target: {target.mention}\nResponsible: {responsible_user.mention}\nReason: {reason}", inline=False)
+        
+            await ctx.send(embed=embed)
+    
+        except discord.Forbidden:
+            await ctx.send("I don't have permission to view the audit log.")
+
+
+    @commands.command()
+    @commands.has_permissions(manage_channels=True)
+    async def lock(self, ctx, channel: discord.TextChannel = None):
+        if not channel:
+            channel = ctx.channel
+    
+        try:
+            await channel.set_permissions(ctx.guild.default_role, send_messages=False)
+            await ctx.send(f"{channel.mention} has been locked.")
+    
+        except discord.Forbidden:
+            await ctx.send("I don't have permission to manage this channel.")
+
+
+
 async  def setup(bot):
     await bot.add_cog(AdminCommands(bot))

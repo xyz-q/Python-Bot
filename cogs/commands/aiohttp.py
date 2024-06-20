@@ -1,5 +1,6 @@
 import aiohttp
 from discord.ext import commands
+import asyncio
 
 # Global variable for aiohttp session
 session = None

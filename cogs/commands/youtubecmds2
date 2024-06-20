@@ -1,0 +1,125 @@
+import asyncio
+import discord
+from discord.ext import commands
+import youtube_dl
+import logging
+from datetime import datetime
+from typing import Tuple, Optional
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+
+# Suppress noise about console usage from youtube_dl
+youtube_dl.utils.bug_reports_message = lambda: ''
+
+# Global variables
+is_playing = False
+voice_client = None
+queue = []
+current_playing_url = None
+loop_song = False
+
+# YouTube-DL options
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0',
+}
+
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
+class YouTubeCommands(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command()
+    async def play(self, ctx, *, query: str):
+        author = ctx.message.author
+        voice        await ctx.message.delete()
+
+        if not voice_channel:
+            await ctx.send('You need to be in a voice channel to use this command.')
+            return
+
+        voice_client = ctx.guild.voice_client
+
+        if voice_client and voice_client.is_connected():
+            await voice_client.move_to(voice_channel)
+        else:
+            voice_client = await voice_channel.connect()
+
+        info = await self.download_info(query, ytdl_format_options)
+        if info is None:
+            await ctx.send(f'No video found for query: {query}')
+            return
+
+        if 'entries' in info:
+            video = info['entries'][0]
+            url = video['url']
+            title = video['title']
+
+            download_msg = await ctx.send(f'Downloading: {title}')
+            await asyncio.sleep(4)  # Simulate downloading delay
+
+            if voice_client.is_playing() or is_playing:
+                queue.append(query)
+                await ctx.send(f'Added to queue: {title}')
+                await download_msg.delete()
+            else:
+                await download_msg.delete()
+                await ctx.send(f'Now playing: {title}')
+                current_playing_url = url
+                voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop))
+        else:
+            await ctx.send(f'No video found for query: {query}')
+
+    async def download_info(self, query: str, ydl_opts: dict) -> Optional[dict]:
+        loop = asyncio.get_event_loop()
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            try:
+                info = await loop.run_in_executor(None, lambda: ydl.extract_info(f'ytsearch:{query}', download=False))
+                return info
+            except (youtube_dl.DownloadError, youtube_dl.ExtractorError) as e:
+                logging.error(f'Error downloading/extracting video info: {e}')
+                return None
+
+    async def play_next(self, ctx):
+        global queue, current_playing_url
+
+        if queue:
+            next_query = queue.pop(0)
+            author = ctx.message.author
+
+            if not voice_channel:
+                await ctx.send('You need to be in a voice channel to use this command.')
+                return
+
+            voice_client = ctx.guild.voice_client
+
+            info = await self.download_info(next_query, ytdl_format_options)
+            if info is None:
+                await ctx.send(f'No video found for query: {next_query}')
+                return
+
+            if 'entries' in info:
+                video = info['entries'][0]
+                url = video['url']
+                title = video['title']
+                await ctx.send(f'Now playing: {title}')
+                current_playing_url = url
+                voice_client.play(discord.FFmpegPCMAudio(url))
+
+async def setup(bot):
+    await bot.add_cog(YouTubeCommands(bot))

@@ -76,7 +76,7 @@ class list(commands.Cog):
 
         return message
 
-    @commands.command()
+    @commands.command(aliases=['help'])
     async def list(self, ctx, page: int = 1):
         # Delete the command invocation message
         await ctx.message.delete()

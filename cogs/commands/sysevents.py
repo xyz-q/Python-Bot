@@ -7,7 +7,7 @@ class SystemCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.allowed_channel_name = "admin-commands" 
-        self.trusted_role_id = 1234567890  # Replace with your trusted role ID
+        self.trusted_role_id = 1234567890  
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -65,30 +65,19 @@ class SystemCommands(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        try:
-            await ctx.message.delete()
-        except discord.errors.NotFound:
-            pass
-
         if isinstance(error, commands.CommandNotFound):
             if ctx.message.channel.name == self.allowed_channel_name:
+                try:
+                    await ctx.message.delete()
+                except discord.errors.NotFound:
+                    pass
+
                 bot_message = await ctx.send(f":warning: Command '{ctx.invoked_with}' not found.")
                 print(f"\033[91m  command {ctx.invoked_with} not found.\033[0m")
                 await asyncio.sleep(7)
                 await bot_message.delete()
-            return  # Stop further processing for CommandNotFound errors
-
-        if isinstance(error, commands.MissingRequiredArgument):
-            bot_message = await ctx.send("Missing required argument.")
-        elif isinstance(error, commands.CheckFailure):  # Check if error is due to channel check failure
-            return  # Stop further processing for channel check failures
-        else:
-            bot_message = await ctx.send("An error occurred.")
-            print(f"An error occurred: {error}")
-
-        await asyncio.sleep(7)
-        await bot_message.delete()
-
+                return
+  
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author == self.bot.user:

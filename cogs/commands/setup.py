@@ -19,6 +19,6 @@ class Setuphelp(commands.Cog):
         await interaction.response.send_message(content=help_message, ephemeral=True)
         print("\033[95mUser has used a /slash command.")
         
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Setuphelp(bot))
     
