@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 from discord.ext import commands
 import os
 import glob
+import asyncio
+
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -38,6 +40,27 @@ class Client(commands.Bot):
         print(prfx + " Python Version " + Fore.YELLOW + str(platform.python_version()))
         synced = await self.tree.sync()
         print(prfx + " Slash CMDs Synced " + Fore.YELLOW + str(len(synced)) + " Commands")
+
+    async def on_message(self, message):
+        
+        if message.author.bot:
+            return  
+        
+        if message.content.startswith(','):
+            print(f"{message.author} used command: {message.content}")
+        if message.channel.name != 'admin-commands':
+            return  
+
+        trusted_role = discord.utils.get(message.guild.roles, name='.trusted')
+        if trusted_role not in message.author.roles:
+            print(f"Unauthorized user {message.author} tried to use command: {message.content}")
+            await message.delete()
+            bot_response = await message.channel.send(f"{message.author.mention}, you are not authorized to use commands in this channel.")
+            await asyncio.sleep(4)
+            await bot_response.delete()
+            return
+    
+        await self.process_commands(message)
 
 if __name__ == "__main__":
     client = Client()

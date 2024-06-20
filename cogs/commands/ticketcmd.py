@@ -1,15 +1,6 @@
 import discord
 from discord.ext import commands
-
-class ticketcmd(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.command(name="ticket", description="Open a ticket")
-    async def ticket(self, ctx: commands.Context):
-        # Creating the ticket modal view
-        view = TicketModal()
-        await ctx.send("Opening ticket modal...", view=view)
+from discord import app_commands
 
 class TicketModal(discord.ui.Modal, title="Ticket Submission"):
     subject = discord.ui.TextInput(label="Subject", style=discord.TextStyle.short, required=True)
@@ -106,7 +97,6 @@ class TicketButtons(discord.ui.View):
         else:
             await interaction.response.send_message("You do not have permission to reject this ticket.", ephemeral=True)
 
-
 class CloseTicketButton(discord.ui.View):
     def __init__(self, ticket_user: discord.User):
         super().__init__(timeout=None)
@@ -129,6 +119,13 @@ class CloseTicketButton(discord.ui.View):
         else:
             await interaction.response.send_message("You do not have permission to close this ticket.", ephemeral=True)
 
+class ticketcmd(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @app_commands.command(name="ticket", description="Open a ticket")
+    async def slash_ticket(self, interaction: discord.Interaction):
+        await interaction.response.send_modal(TicketModal())
 
 async def setup(bot):
     await bot.add_cog(ticketcmd(bot))

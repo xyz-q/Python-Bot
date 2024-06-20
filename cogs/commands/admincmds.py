@@ -62,6 +62,7 @@ class AdminCommands(commands.Cog):
                 if str(reaction.emoji) == "🔴":
                     await warning_message.clear_reactions()  
                     await warning_message.edit(content=" :orange_circle: Bot TERMINATION cancelled.")
+                    print("Bot termination CANCELLED")
                 elif str(reaction.emoji) == "🟢":
                     await warning_message.clear_reactions()  
                     await warning_message.edit(content=":warning: Bot instance(s) TERMINATED.")
@@ -74,6 +75,7 @@ class AdminCommands(commands.Cog):
                     await self.bot.close()
             except asyncio.TimeoutError:
                 await warning_message.edit(content=":clock1:  Bot TERMINATION cancelled due to inactivity.")
+                print("Bot termination CANCELLED from inactivity")
                 await warning_message.clear_reactions()  
         else:
             await ctx.send(f":warning: [ERROR] {ctx.author.mention} is not permitted to operate this command.")

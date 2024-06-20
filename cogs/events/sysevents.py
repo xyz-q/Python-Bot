@@ -1,29 +1,16 @@
 import discord
 from discord.ext import commands, tasks
 import asyncio
-import json
-import os
 import traceback
-
-AFK_FILE = "afk_data.json"
 
 class SystemCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.allowed_channel_name = "admin-commands"  # Replace with your allowed channel name
+        self.allowed_channel_name = "admin-commands" 
         self.trusted_role_id = 1234567890  # Replace with your trusted role ID
-
-        
-
-
-   
 
     @commands.Cog.listener()
     async def on_ready(self):
-        
-
-        
-        
         print("\033[93mBot is now operational.\033[0m")
         print("\033[90mLogged in as {0}\033[0m".format(self.bot.user))
 
@@ -75,7 +62,6 @@ class SystemCommands(commands.Cog):
             await channel.send(error_details)
             await self.bot.close()
             await asyncio.sleep(5)  
-            
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -85,9 +71,17 @@ class SystemCommands(commands.Cog):
             pass
 
         if isinstance(error, commands.CommandNotFound):
-            bot_message = await ctx.send(f":warning: Command '{ctx.invoked_with}' not found.")
-        elif isinstance(error, commands.MissingRequiredArgument):
+            if ctx.message.channel.name == self.allowed_channel_name:
+                bot_message = await ctx.send(f":warning: Command '{ctx.invoked_with}' not found.")
+                print(f"\033[91m  command {ctx.invoked_with} not found.\033[0m")
+                await asyncio.sleep(7)
+                await bot_message.delete()
+            return  # Stop further processing for CommandNotFound errors
+
+        if isinstance(error, commands.MissingRequiredArgument):
             bot_message = await ctx.send("Missing required argument.")
+        elif isinstance(error, commands.CheckFailure):  # Check if error is due to channel check failure
+            return  # Stop further processing for channel check failures
         else:
             bot_message = await ctx.send("An error occurred.")
             print(f"An error occurred: {error}")
@@ -98,67 +92,57 @@ class SystemCommands(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author == self.bot.user:
-            return
+            return  
 
         if isinstance(message.channel, discord.DMChannel):
             await message.channel.send("I can only process commands in a guild. /setup for more info")
-            return
+            return   
 
-    # Delete messages in specific channel
         if message.channel.id == 1234310879072223292 and not message.author.bot:
-            try:
-                await message.delete()
-                warning_msg = await message.channel.send(f'{message.author.mention}, sending messages in this channel is not allowed.')
-                await asyncio.sleep(4)
-                await warning_msg.delete()
-            except discord.errors.NotFound:
-                pass  # Message was already deleted or cannot be found
-            return
+            await message.delete()
+            warning_msg = await message.channel.send(f'{message.author.mention}, sending messages in this channel is not allowed.')
+            await asyncio.sleep(4)
+            await warning_msg.delete()
+            return 
 
-    # Check for commands starting with ","
         if message.content.startswith(','):
             if message.content.startswith(',list') or message.content.startswith(',help'):
                 await self.bot.process_commands(message)
                 return
-
-        # Handle commands not starting with ",list" or ",help"
-        
-            if message.channel.name != self.allowed_channel_name:
-                error_message = ":warning: Commands can only be used in the #admin-commands channel. [/setup]"
-                try:
+            
+            if not message.content.startswith(',setup'):
+                if message.channel.name != self.allowed_channel_name:
+                    error_message = ":warning: Commands can only be used in the #admin-commands channel. [/setup]"
+                    try:
+                        await message.delete()
+                    except discord.errors.NotFound:
+                        pass
+                    response = await message.channel.send(error_message)
+                    await asyncio.sleep(4)
+                    await response.delete()
+                    return
+                trusted_role = discord.utils.get(message.guild.roles, id=self.trusted_role_id)
+                if trusted_role and trusted_role not in message.author.roles:
+                    response = await message.channel.send(f" :warning: [ERROR] {message.author.mention} is not permitted to operate commands.")
                     await message.delete()
-                except discord.errors.NotFound:
-                    pass
-                response = await message.channel.send(error_message)
-                await asyncio.sleep(4)
-                await response.delete()
-                return
-
-            trusted_role = discord.utils.get(message.guild.roles, id=self.trusted_role_id)
-            if trusted_role and trusted_role not in message.author.roles:
-                error_message = f" :warning: [ERROR] {message.author.mention} is not permitted to operate commands."
-                try:
+                    await asyncio.sleep(4)
+                    await response.delete()
+                    return
+                trusted_role = discord.utils.get(message.guild.roles, id=self.trusted_role_id)
+                if trusted_role and trusted_role not in message.author.roles:
+                    response = await message.channel.send(f" :warning: [ERROR] {message.author.mention} is not permitted to operate commands.")
                     await message.delete()
-                except discord.errors.NotFound:
-                    pass
-                response = await message.channel.send(error_message)
-                await asyncio.sleep(4)
-                await response.delete()
-                return
-
-    # Delete non-command messages in admin-commands channel
+                    await asyncio.sleep(4)
+                    await response.delete()
+                    return 
+   
         if not message.content.startswith(',') and message.channel.name == self.allowed_channel_name:
-            try:
-                await message.delete()
-                warning_msg = await message.channel.send(f'{message.author.mention}, you need to be using a command in this channel.')
-                await asyncio.sleep(4)
-                await warning_msg.delete()
-            except discord.errors.NotFound:
-                pass  # Message was already deleted or cannot be found
+            await message.delete()
+            warning_msg = await message.channel.send(f'{message.author.mention}, you need to be using a command in this channel.')
+            await asyncio.sleep(4)
+            await warning_msg.delete()
             return
-
-        await self.bot.process_commands(message)
-
+ 
 
 async def setup(bot):
     await bot.add_cog(SystemCommands(bot))
