@@ -9,25 +9,18 @@ class TicketModal(discord.ui.Modal, title="Ticket Submission"):
     async def on_submit(self, interaction: discord.Interaction):
         subject = self.subject.value
         description = self.description.value
-
-        # Ensure guild exists before accessing its attributes
         if interaction.guild:
-            # Check if interaction occurs in a DM channel
             if isinstance(interaction.channel, discord.DMChannel):
                 await interaction.response.send_message("Slash commands are not available in DMs.", ephemeral=True)
                 return
 
-            # Assuming 'tickets' channel exists
             ticket_channel = discord.utils.get(interaction.guild.text_channels, name="tickets")
-
             if ticket_channel is not None:
                 embed = discord.Embed(title="New Ticket", color=discord.Color.dark_grey())
                 embed.add_field(name="Subject", value=subject, inline=False)
                 embed.add_field(name="Description", value=description, inline=False)
                 embed.add_field(name="Submitted by", value=interaction.user.name, inline=False)
-
                 view = TicketButtons(interaction.user, subject, description)
-
                 await ticket_channel.send(embed=embed, view=view)
                 await interaction.response.send_message("Your ticket has been submitted!", ephemeral=True)
             else:
@@ -52,33 +45,25 @@ class TicketButtons(discord.ui.View):
             self.ticket_user: discord.PermissionOverwrite(read_messages=True),
             guild.me: discord.PermissionOverwrite(read_messages=True)
         }
-
-        support_role = discord.utils.get(guild.roles, name=".trusted")  # Adjust role name as needed
+        support_role = discord.utils.get(guild.roles, name=".trusted")  
         if support_role:
             overwrites[support_role] = discord.PermissionOverwrite(read_messages=True)
-
-        # Create a new category for the ticket at the bottom
         category = await guild.create_category(
             name=f"Ticket-{self.ticket_user.name}",
             overwrites=overwrites,
             reason="New ticket accepted"
         )
-        await category.edit(position=len(guild.categories))  # Move category to the bottom
-
-        # Create the ticket channel within the new category
+        await category.edit(position=len(guild.categories))  
         ticket_channel = await category.create_text_channel(
             name=f"ticket-{self.ticket_user.name}",
             topic=f"Support ticket for {self.ticket_user.name}",
             reason="New ticket accepted"
         )
-
         embed = discord.Embed(title="Ticket Details", color=discord.Color.dark_grey())
         embed.add_field(name="Subject", value=self.subject, inline=False)
         embed.add_field(name="Description", value=self.description, inline=False)
         embed.add_field(name="Submitted by", value=self.ticket_user.name, inline=False)
-
-        close_view = CloseTicketButton(self.ticket_user)  # Pass the ticket_user argument here
-
+        close_view = CloseTicketButton(self.ticket_user)  
         await ticket_channel.send(
             content=f"Hello {self.ticket_user.mention}, a support member will be with you shortly.",
             embed=embed, view=close_view)
@@ -91,7 +76,6 @@ class TicketButtons(discord.ui.View):
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         trusted_role = discord.utils.get(interaction.guild.roles, name=".trusted")
         if trusted_role in interaction.user.roles:
-            # Send rejection message to the user
             await self.ticket_user.send(f"Your ticket has been rejected by {interaction.user.name}.")
             await interaction.message.delete()
         else:
@@ -106,13 +90,8 @@ class CloseTicketButton(discord.ui.View):
     async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
         trusted_role = discord.utils.get(interaction.guild.roles, name=".trusted")
         if trusted_role in interaction.user.roles:
-            # Send closing message to the user
             await self.ticket_user.send(f"Your ticket has been closed by {interaction.user.name}.")
-
-            # Delete the ticket channel
             await interaction.channel.delete(reason="Ticket closed by support staff")
-
-            # Check if the category is now empty and delete it if so
             category = interaction.channel.category
             if category and len(category.channels) == 0:
                 await category.delete(reason="Category empty after ticket closed")

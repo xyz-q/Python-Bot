@@ -1,8 +1,9 @@
 import asyncio
 import discord
 from discord.ext import commands
-import youtube_dl
+#import youtube_dl
 from concurrent.futures import ThreadPoolExecutor
+import yt_dlp as youtube_dl
 
 # Suppress noise about console usage from youtube_dl
 youtube_dl.utils.bug_reports_message = lambda: ''

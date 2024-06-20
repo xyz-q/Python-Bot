@@ -2,12 +2,11 @@ import discord
 from discord.ext import commands
 
 # Constants
-TICKET_CHANNEL_ID = 1241495094205354104  # Replace with your tickets channel ID
-WELCOME_CHANNEL_NAME = "welcome"  # Replace with your welcome channel name
-ROLE_ID = 1056996133081186395  # Replace with the role ID you want to assign
-GUILD_ID = 1056994840925192252  # Replace with your actual guild (server) ID
+TICKET_CHANNEL_ID = 1241495094205354104 
+WELCOME_CHANNEL_NAME = "welcome" 
+ROLE_ID = 1056996133081186395 
+GUILD_ID = 1056994840925192252 
 active_tickets = {}
-
 
 class WelcomeTicket(commands.Cog):
     def __init__(self, bot):
@@ -29,7 +28,7 @@ class WelcomeTicket(commands.Cog):
                 except discord.errors.NotFound:
                     pass
 
-                me2 = await self.bot.fetch_user(110927272210354176)  # Replace with your Discord user ID
+                me2 = await self.bot.fetch_user(110927272210354176) 
                 await me2.send(f"The ticket for {member.mention} has been canceled as they have left/been kicked from the server.")
 
                 ticket_channel = self.bot.get_channel(TICKET_CHANNEL_ID)
@@ -93,7 +92,6 @@ class WelcomeTicket(commands.Cog):
         else:
             print("Error: Could not find the specified channel for welcome messages.")
 
-
 class AcceptDeclineView(discord.ui.View):
     def __init__(self, user: discord.Member, guild: discord.Guild, message: discord.Message):
         super().__init__(timeout=None)
@@ -122,7 +120,6 @@ class AcceptDeclineView(discord.ui.View):
         except discord.errors.NotFound:
             pass
         active_tickets.pop(self.user.id, None)
-
 
 class OkayView(discord.ui.View):
     def __init__(self, message: discord.Message):
