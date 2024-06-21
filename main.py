@@ -40,11 +40,17 @@ class Client(commands.Bot):
     async def on_message(self, message):
         if message.author.bot:
             return  
-        
+    
         if message.content.startswith(','):
             print(f"{message.author} used command: {message.content}")
+    
         if message.channel.name != 'admin-commands':
-            return  
+            return
+
+    # Add an exception for your user ID
+        if message.author.id == 110927272210354176:
+            await self.process_commands(message)
+            return
 
         trusted_role = discord.utils.get(message.guild.roles, name='.trusted')
         if trusted_role not in message.author.roles:
@@ -56,6 +62,7 @@ class Client(commands.Bot):
             return
     
         await self.process_commands(message)
+
 
 client = Client()
 client.run(DISCORD_TOKEN)
