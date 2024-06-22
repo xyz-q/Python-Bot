@@ -49,7 +49,6 @@ class Client(commands.Bot):
 
     # Add an exception for your user ID
         if message.author.id == 110927272210354176:
-            await self.process_commands(message)
             return
 
         trusted_role = discord.utils.get(message.guild.roles, name='.trusted')

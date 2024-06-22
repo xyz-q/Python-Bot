@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import asyncio
 import json
+import sys 
 
 class AdminCommands(commands.Cog):
     def __init__(self, bot):
@@ -70,7 +71,7 @@ class AdminCommands(commands.Cog):
                     channel = discord.utils.get(guild.text_channels, name="bot-status")
                     if channel:
                         await channel.send(":red_circle: xyz is now offline [Killed]")
-                    await self.bot.close()
+                    sys.exit()
             except asyncio.TimeoutError:
                 await warning_message.edit(content=":clock1:  Bot TERMINATION cancelled due to inactivity.")
                 print("Bot termination CANCELLED from inactivity")
