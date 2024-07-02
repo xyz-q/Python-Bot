@@ -32,6 +32,7 @@ commands_list = [
     (",pause", "Halts audio playback"),
     (",play <URL/Search>", "Plays youtube music"),
     (",mp3 <mp3>", "Plays Target MP3"),
+    ("/price", "Check the price of a CS2 skin on CSFloat"),
     (",ping", "Ping command - Test if the bot is responsive- displays the latency from the bot to the server"),
     (",purge <#channel/number> <number>", "Deletes messages in #channel if specified, default is 100"),
     (",q", "Shows the music queue"),

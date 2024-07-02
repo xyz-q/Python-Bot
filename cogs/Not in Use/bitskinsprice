@@ -1,0 +1,59 @@
+import discord
+from discord.ext import commands
+import requests
+from bs4 import BeautifulSoup
+import json
+from urllib.parse import urlencode
+
+class BitskinsSearch(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command(name='bitskins', aliases=['bs'])
+    async def bitskins_search(self, ctx, *, query):
+        try:
+            # Prepare the search query for URL
+            formatted_query = '+'.join(query.split())
+            search_query = {"where": {"skin_name": formatted_query}}
+
+            # Encode the search query for the URL
+            url_params = urlencode(search_query)
+            url = f"https://bitskins.com/market/cs2?search={url_params}"
+
+            # Make the request
+            response = requests.get(url)
+            response.raise_for_status()
+            
+            # Parse the HTML response
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            # Find the search results container
+            results_container = soup.find('div', {'class': 'market-items'})
+            if not results_container:
+                await ctx.send(f"The search query '{query}' did not return any results on Bitskins.")
+                return
+
+            # Extract the search results
+            results = results_container.find_all('div', {'class': 'market-item'})
+            if not results:
+                await ctx.send(f"No items found for '{query}' on Bitskins.")
+                return
+
+            # Format and send the search results
+            result_messages = []
+            for result in results[:5]:  # Limit to the first 5 results
+                item_name = result.find('div', {'class': 'item-name'}).text.strip()
+                item_price = result.find('div', {'class': 'item-price'}).text.strip()
+                result_message = f"{item_name} - {item_price}"
+                result_messages.append(result_message)
+
+            results_message = '\n'.join(result_messages)
+            await ctx.send(f"Search results for '{query}' on Bitskins:\n\n{results_message}")
+
+        except requests.exceptions.RequestException as e:
+            await ctx.send(f"An error occurred while fetching data from Bitskins: {e}")
+        except Exception as e:
+            await ctx.send(f"An unexpected error occurred: {e}")
+
+async def setup(bot):
+    await bot.add_cog(BitskinsSearch(bot))

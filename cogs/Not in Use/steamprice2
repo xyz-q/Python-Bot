@@ -1,0 +1,104 @@
+from discord.ext import commands
+import requests
+from bs4 import BeautifulSoup
+import re
+
+class SteamMarket(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.wear_levels = ['Battle-Scarred', 'Well-Worn', 'Field-Tested', 'Minimal Wear', 'Factory New']
+        self.common_names = {
+            'ak': 'AK-47',
+            'm4a1s': 'M4A1-S',
+            'awp': 'AWP',
+            # Add more common abbreviations and their full names here
+        }
+        self.knife_names = [
+            'Karambit', 'Bayonet', 'M9 Bayonet', 'Flip Knife', 'Gut Knife', 
+            'Huntsman Knife', 'Falchion Knife', 'Bowie Knife', 'Butterfly Knife', 
+            'Shadow Daggers', 'Navaja Knife', 'Stiletto Knife', 'Talon Knife', 
+            'Ursus Knife', 'Classic Knife', 'Skeleton Knife', 'Paracord Knife', 
+            'Survival Knife', 'Nomad Knife'
+        ]
+
+    def expand_query(self, query):
+        # Split the query into words
+        words = query.split()
+
+        # Expand common item names and capitalize the skin name
+        if len(words) < 2:
+            return None
+
+        gun = words[0]
+        skin = ' '.join(words[1:])
+
+        expanded_gun = self.common_names.get(gun.lower(), gun.upper())
+        expanded_skin = ' '.join([word.capitalize() for word in skin.split()])
+
+        # Join gun and skin name with '|'
+        return f'{expanded_gun} | {expanded_skin}'
+
+    def is_knife(self, query):
+        # Check if the item is a knife by looking for known knife names
+        for knife_name in self.knife_names:
+            if knife_name.lower() in query.lower():
+                return True
+        return False
+
+    @commands.command(name='search', aliases=['s'])
+    async def search_command(self, ctx, *, query=None):
+        if query is None:
+            await ctx.send("Please provide an item name to search for on the Steam market.")
+            return
+
+        # Expand the query to handle abbreviations and capitalization
+        expanded_query = self.expand_query(query)
+
+        if expanded_query is None:
+            await ctx.send("Please provide both a gun and skin name.")
+            return
+
+        # Add star for knives
+        if self.is_knife(expanded_query):
+            expanded_query = '★ ' + expanded_query.replace('★', '').strip()
+
+        item_name_base = expanded_query
+        lowest_prices = {}
+
+        for wear in self.wear_levels:
+            item_name_with_wear = f'{item_name_base} ({wear})'
+            item_name_encoded = item_name_with_wear.replace(' ', '%20')
+            url = f'https://steamcommunity.com/market/listings/730/{item_name_encoded}'
+
+            try:
+                response = requests.get(url)
+                response.raise_for_status()  # Raise an exception for non-2xx status codes
+                soup = BeautifulSoup(response.text, 'html.parser')
+
+                price_elements = soup.select('.market_listing_price_with_fee')
+                prices = []
+                for price_element in price_elements:
+                    price_text = price_element.text.strip()
+                    price_numeric = re.sub(r'[^0-9\.]', '', price_text)
+                    if price_numeric:
+                        prices.append(float(price_numeric))
+
+                if prices:
+                    lowest_price = min(prices)
+                    lowest_prices[wear] = lowest_price
+
+            except requests.exceptions.RequestException as e:
+                await ctx.send(f"An error occurred while fetching data from the Steam market: {e}")
+                return
+            except Exception as e:
+                await ctx.send(f"An unexpected error occurred: {e}")
+                return
+
+        if not lowest_prices:
+            await ctx.send(f'No prices found for {expanded_query} on the Steam market.')
+        else:
+            price_list = '\n'.join([f'{wear}: ${price:.2f}' for wear, price in lowest_prices.items()])
+            await ctx.send(f'Lowest prices for {expanded_query} on the Steam market:\n\n{price_list}')
+
+async def setup(bot):
+    await bot.add_cog(SteamMarket(bot))
