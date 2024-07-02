@@ -1,19 +1,19 @@
 import discord
 from discord.ext import commands
-from discord import app_commands, Interaction, Object
+from discord import app_commands, Interaction
 import requests
 
 WEAPON_NAMES = [
     '★ Karambit', '★ Bayonet', '★ M9 Bayonet', '★ Flip Knife', '★ Gut Knife',
     '★ Bowie Knife', '★ Butterfly Knife', '★ Shadow Daggers', '★ Huntsman Knife',
-    '★ Falchion Knife', '★ Shadow Daggers', '★ Ursus Knife', '★ Navaja Knife', '★ Stiletto Knife',
-    '★ Talon Knife', '★ Classic Knife', '★ Nomad Knife', '★ Skeleton Knife', '★ Sport Gloves', '★ Moto Gloves', '★ Hand Wraps', '★ Driver Gloves', '★ Specialist Gloves', '★ Bloodhound Gloves', '★ Hydra Gloves', '★ Broken Fang Gloves',
-    'Glock-18', 'USP-S', 'P2000', 'Dual Berettas', 'P250', 'Tec-9',
-    'Five-SeveN', 'CZ75-Auto', 'Desert Eagle', 'R8 Revolver', 'Nova',
-    'XM1014', 'Sawed-Off', 'MAG-7', 'M249', 'Negev', 'MP9', 'MAC-10',
-    'MP7', 'UMP-45', 'P90', 'PP-Bizon', 'AK-47', 'M4A4', 'M4A1-S',
-    'Galil AR', 'FAMAS', 'SG 553', 'AUG', 'AWP', 'G3SG1', 'SCAR-20',
-    'SSG 08', 'Zeus x27'
+    '★ Falchion Knife', '★ Ursus Knife', '★ Navaja Knife', '★ Stiletto Knife',
+    '★ Talon Knife', '★ Classic Knife', '★ Nomad Knife', '★ Skeleton Knife', '★ Sport Gloves', 
+    '★ Moto Gloves', '★ Hand Wraps', '★ Driver Gloves', '★ Specialist Gloves', '★ Bloodhound Gloves', 
+    '★ Hydra Gloves', '★ Broken Fang Gloves', 'Glock-18', 'USP-S', 'P2000', 'Dual Berettas', 
+    'P250', 'Tec-9', 'Five-SeveN', 'CZ75-Auto', 'Desert Eagle', 'R8 Revolver', 'Nova',
+    'XM1014', 'Sawed-Off', 'MAG-7', 'M249', 'Negev', 'MP9', 'MAC-10', 'MP7', 'UMP-45', 
+    'P90', 'PP-Bizon', 'AK-47', 'M4A4', 'M4A1-S', 'Galil AR', 'FAMAS', 'SG 553', 'AUG', 
+    'AWP', 'G3SG1', 'SCAR-20', 'SSG 08', 'Zeus x27'
 ]
 
 WEAR_CONDITIONS = [
@@ -59,7 +59,15 @@ class CSFloatSearch2(commands.Cog):
         skin_type="The type of skin (Normal, StatTrak, or Souvenir). Leave empty for Normal."
     )
     async def price(self, interaction: Interaction, weapon: str, skin: str, wear: str, skin_type: str = ""):
-        query = f"{skin_type + ' ' if skin_type else ''}{weapon} | {skin} ({wear})"
+        # Adjust the query construction logic
+        if weapon.startswith('★'):
+            if skin_type:
+                query = f"★ {skin_type} {weapon[2:]} | {skin} ({wear})"
+            else:
+                query = f"{weapon} | {skin} ({wear})"
+        else:
+            query = f"{skin_type + ' ' if skin_type else ''}{weapon} | {skin} ({wear})"
+        
         try:
             # Prepare the query parameters
             params = {
