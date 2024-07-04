@@ -1,0 +1,65 @@
+import discord
+from discord.ext import commands, tasks
+import asyncio
+import time
+from steam.client import SteamClient
+from steam.enums import EResult
+
+class SteamCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.steam_client = SteamClient()
+        self.steam_client.set_credential_location("path_to_store_credentials")
+
+        self.steam_client.on('logged_on', self.logged_on)
+        self.steam_client.on('disconnected', self.disconnected)
+        self.steam_client.on('logged_off', self.logged_off)
+        self.steam_client.on('error', self.error)
+        
+        self.steam_username = 'your_steam_username'
+        self.steam_password = 'your_steam_password'
+
+        self.connect_and_login.start()
+
+    def cog_unload(self):
+        self.connect_and_login.cancel()
+        self.steam_client.logout()
+
+    @tasks.loop(seconds=60)
+    async def connect_and_login(self):
+        if not self.steam_client.logged_on:
+            result = self.steam_client.cli_login(username=self.steam_username, password=self.steam_password)
+            if result != EResult.OK:
+                print(f"Failed to log in: {result}")
+
+    def logged_on(self):
+        print("Logged in to Steam!")
+
+    def disconnected(self):
+        print("Disconnected from Steam!")
+
+    def logged_off(self):
+        print("Logged off from Steam!")
+
+    def error(self, result):
+        print(f"Error: {result}")
+
+    @commands.command(name='depot_changes')
+    async def fetch_depot_changes(self, ctx, appid: int):
+        if not self.steam_client.logged_on:
+            await ctx.send("Not logged in to Steam.")
+            return
+
+        await ctx.send("Fetching depot changes...")
+
+        # Placeholder for actual method to get depot changes
+        changes = self.steam_client.get_app_depot_builds(appid)
+        
+        if changes:
+            changes_message = "\n".join([f"Depot ID: {change['depot_id']}, Build ID: {change['build_id']}, Time: {change['time']}" for change in changes])
+            await ctx.send(f"Latest Depot Changes:\n{changes_message}")
+        else:
+            await ctx.send("No changes found for the depot.")
+
+def setup(bot):
+    bot.add_cog(SteamCog(bot))

@@ -15,9 +15,6 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=',', intents=intents)
 
-
-
-
 class Client(commands.Bot):
     def __init__(self):
         super().__init__(   help_command=None, command_prefix=commands.when_mentioned_or(','), intents=discord.Intents().all())
@@ -41,7 +38,6 @@ class Client(commands.Bot):
         print(prfx + " Discord Version " + Fore.YELLOW + discord.__version__)
         print(prfx + " Python Version " + Fore.YELLOW + str(platform.python_version()))
 
-
     async def on_message(self, message):
         if message.author.bot:
             return  
@@ -52,7 +48,6 @@ class Client(commands.Bot):
         if message.channel.name != 'admin-commands':
             return
 
-    # Add an exception for your user ID
         if message.author.id == 110927272210354176:
             return
 
@@ -67,10 +62,8 @@ class Client(commands.Bot):
     
         await self.process_commands(message)
 
-
 client = Client()
 client.run(DISCORD_TOKEN)
-
 if __name__ == "__main__":
     client = Client()
     client.run(DISCORD_TOKEN)
