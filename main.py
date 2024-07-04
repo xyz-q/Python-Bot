@@ -64,6 +64,4 @@ class Client(commands.Bot):
 
 client = Client()
 client.run(DISCORD_TOKEN)
-if __name__ == "__main__":
-    client = Client()
-    client.run(DISCORD_TOKEN)
+

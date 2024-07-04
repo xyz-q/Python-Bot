@@ -49,7 +49,7 @@ class AdminCommands(commands.Cog):
         await ctx.send("Hello world!")
 
     @commands.command()
-    async def kill(self, ctx):
+    async def kill2(self, ctx):
         if ctx.author.id == 110927272210354176: 
             warning_message = await ctx.send(":warning: Are you sure you want to TERMINATE the bot? This action cannot be undone.")
             await warning_message.add_reaction("🔴")  

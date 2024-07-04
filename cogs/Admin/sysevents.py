@@ -49,19 +49,6 @@ class SystemCommands(commands.Cog):
         elif channel:
             await channel.send(":red_circle: xyz has been disconnected from Discord's servers. The bot is currently offline.")
 
-    @commands.Cog.listener()
-    async def on_error(self, event, *args, **kwargs):
-        guild = self.bot.get_guild(1056994840925192252)   
-        channel = discord.utils.get(guild.text_channels, name="bot-status")
-
-        if channel:
-            await channel.send(":orange_circle: Network interruption, attempting to reconnect...")
-
-            error_details = f"An error occurred during the `{event}` event.\n" \
-                            f"Error details:\n```{traceback.format_exc()}```"
-            await channel.send(error_details)
-            await self.bot.close()
-            await asyncio.sleep(5)  
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
