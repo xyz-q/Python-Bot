@@ -5,7 +5,7 @@ import asyncio
 commands_list = [
     ("/setup", "Bot setup info (This is the only /slash command)"),
     (",autodelete", "Toggles the bot's autodelete function"),
-    (",avatar <@user>", "Gets user's avatar"),
+    (",audit", "Audit logs"),
     (",afk", "Toggle your status of AFK"),
     (",clearq", "Removes all music from the queue"),
     (",cogs", "Lists all cogs"),
