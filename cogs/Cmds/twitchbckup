@@ -13,7 +13,7 @@ class Twitch(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.twitch_username = 'zxpqqq'
-        self.discord_channel_id = 1176833761787265034
+        self.discord_channel_id = 1261338143056072704
         self.twitch_client_id = 'gp762nuuoqcoxypju8c569th9wz7q5'
         self.twitch_access_token = '3aem92vd1y6x0ad67xlcj731rreyfp'  # Replace with your new OAuth token
         self.stream_status.start()
@@ -44,17 +44,21 @@ class Twitch(commands.Cog):
         is_live = self.check_stream_status()
 
         if is_live:
+            title = is_live.get('title', 'No title available')
+            category = is_live.get('game_name', 'No category available')
             if self.previous_status != 'live':
                 stream_url = f"https://www.twitch.tv/{self.twitch_username}"
                 embed = discord.Embed(title=f"{self.twitch_username} is now live!", url=stream_url, color=0x00FF00)
+                embed.add_field(name="Title", value=title, inline=False)
+                embed.add_field(name="Category", value=category, inline=False)
                 embed.set_thumbnail(url=f"https://static-cdn.jtvnw.net/previews-ttv/live_user_{self.twitch_username}-320x180.jpg")
                 stream_button = StreamButton(stream_url)
-                await channel.send(embed=embed, view=stream_button)
+                await channel.send("@here", embed=embed, view=stream_button) 
                 self.previous_status = 'live'
         else:
             if self.previous_status != 'offline':
                 twitch_channel_url = f"https://www.twitch.tv/{self.twitch_username}"
-                embed = discord.Embed(title=f"{self.twitch_username} is currently offline", url=twitch_channel_url, color=0xFF0000)
+                embed = discord.Embed(title=f"{self.twitch_username} is now now currently offline", url=twitch_channel_url, color=0xFF0000)
                 await channel.send(embed=embed)
                 self.previous_status = 'offline'
 
@@ -64,12 +68,16 @@ class Twitch(commands.Cog):
         is_live = self.check_stream_status()
 
         if is_live:
+            title = is_live.get('title', 'No title available')
+            category = is_live.get('game_name', 'No category available')
             if self.previous_status != 'live':
                 stream_url = f"https://www.twitch.tv/{self.twitch_username}"
                 embed = discord.Embed(title=f"{self.twitch_username} is now live!", url=stream_url, color=0x00FF00)
+                embed.add_field(name="Title", value=title, inline=False)
+                embed.add_field(name="Category", value=category, inline=False)
                 embed.set_thumbnail(url=f"https://static-cdn.jtvnw.net/previews-ttv/live_user_{self.twitch_username}-320x180.jpg")
                 stream_button = StreamButton(stream_url)
-                await channel.send(embed=embed, view=stream_button)
+                await channel.send("@here", embed=embed, view=stream_button) 
                 self.previous_status = 'live'
         else:
             if self.previous_status != 'offline':
