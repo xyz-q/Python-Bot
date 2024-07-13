@@ -15,6 +15,8 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=',', intents=intents)
 
+
+
 class Client(commands.Bot):
     def __init__(self):
         super().__init__(   help_command=None, command_prefix=commands.when_mentioned_or(','), intents=discord.Intents().all())
