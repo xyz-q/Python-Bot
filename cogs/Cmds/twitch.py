@@ -11,7 +11,7 @@ class StreamButton(ui.View):
 class Twitch(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.twitch_username = 'zxpqqq'
+        self.twitch_username = 'nolimitkryptik'
         self.discord_channel_id = 1261338143056072704
         self.twitch_client_id = 'gp762nuuoqcoxypju8c569th9wz7q5'
         self.twitch_access_token = '3aem92vd1y6x0ad67xlcj731rreyfp'  # Replace with your new OAuth token
@@ -42,7 +42,7 @@ class Twitch(commands.Cog):
         else:
             return None
 
-    @tasks.loop(seconds=3)  # Check every 60 seconds
+    @tasks.loop(seconds=45)  # Check every 60 seconds
     async def stream_status(self):
         channel = self.bot.get_channel(self.discord_channel_id)
         if channel is None:
