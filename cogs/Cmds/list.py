@@ -38,6 +38,7 @@ commands_list = [
     (",ping", "Ping command - Test if the bot is responsive- displays the latency from the bot to the server"),
     (",purge <#channel/number> <number>", "Deletes messages in #channel if specified, default is 100"),
     (",q", "Shows the music queue"),
+    (",role <@user> <@role>", "Add or remove a role from the user"),
     (",release <@user>", "Releases the user from the '.jail' role"),
     (",resetstatus", "Resets the bot's status"),
     (",resume", "Continues audio playback"),

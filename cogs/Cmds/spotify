@@ -1,0 +1,133 @@
+import discord
+from discord.ext import commands
+import yt_dlp as youtube_dl
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+
+# Suppress noise about console usage from errors
+youtube_dl.utils.bug_reports_message = lambda: ''
+
+# Spotify API credentials
+sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials())
+
+# ytdl options
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0'  # bind to ipv4 since ipv6 addresses cause issues sometimes
+}
+
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
+class Player(wavelink.Player):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.queue = []
+
+    async def play_song(self, ctx):
+        # Get the next song from the queue
+        url = self.queue.pop(0)
+
+        # Play the song
+        self.play(discord.FFmpegPCMAudio(url), after=lambda e: self.bot.loop.create_task(self.play_song(ctx)))
+        await ctx.send(f"Now playing: {url}")
+
+class Music(commands.Cog, wavelink.WavelinkMixin):
+    def __init__(self, bot):
+        self.bot = bot
+        self.voice_client = None
+
+        if not hasattr(bot, 'wavelink'):
+            bot.wavelink = wavelink.Client(bot=bot)
+
+        bot.loop.create_task(self.start_nodes())
+
+    async def start_nodes(self):
+        await self.bot.wait_until_ready()
+
+        # Configure nodes here
+
+    @wavelink.WavelinkMixin.listener('on_track_end')
+    async def on_track_end(self, player, track, reason):
+        if player.queue:
+            await player.play_song(self.ctx)
+
+    @commands.command(name='play', aliases=['p'])
+    async def play_from_spotify_link(self, ctx, *, spotify_link):
+        # Check if the user is in a voice channel
+        if not ctx.author.voice:
+            await ctx.send("You are not connected to a voice channel.")
+            return
+
+        # Connect to the user's voice channel
+        voice_channel = ctx.author.voice.channel
+        if not self.voice_client:
+            self.voice_client = await voice_channel.connect()
+        else:
+            await self.voice_client.move_to(voice_channel)
+
+        player = self.voice_client.get_player(ctx.guild.id, cls=Player)
+
+        # Get the track information from the Spotify link
+        track = sp.track(spotify_link)
+        song_name = f"{track['name']} by {', '.join([artist['name'] for artist in track['artists']])}"
+
+        # Search for the song on YouTube
+        info = ytdl.extract_info(f"ytsearch:{song_name}", download=False)['entries'][0]
+        url = info['formats'][0]['url']
+
+        # Add the song to the queue
+        player.queue.append(url)
+
+        # If the bot is not playing anything, start playing the first song in the queue
+        if not player.is_playing():
+            await player.play_song(ctx)
+
+        await ctx.send(f"Added {song_name} to the queue.")
+
+    @commands.command(name='playlist', aliases=['pl'])
+    async def play_from_spotify_playlist(self, ctx, *, spotify_playlist_link):
+        # Check if the user is in a voice channel
+        if not ctx.author.voice:
+            await ctx.send("You are not connected to a voice channel.")
+            return
+
+        # Connect to the user's voice channel
+        voice_channel = ctx.author.voice.channel
+        if not self.voice_client:
+            self.voice_client = await voice_channel.connect()
+        else:
+            await self.voice_client.move_to(voice_channel)
+
+        player = self.voice_client.get_player(ctx.guild.id, cls=Player)
+
+        # Get the playlist tracks from the Spotify link
+        playlist = sp.playlist_tracks(spotify_playlist_link)
+        tracks = playlist['items']
+
+        # Add each track to the queue
+        for track in tracks:
+            song_name = f"{track['track']['name']} by {', '.join([artist['name'] for artist in track['track']['artists']])}"
+
+            # Search for the song on YouTube
+            info = ytdl.extract_info(f"ytsearch:{song_name}", download=False)['entries'][0]
+            url = info['formats'][0]['url']
+
+            player.queue.append(url)
+
+        # If the bot is not playing anything, start playing the first song in the queue
+        if not player.is_playing():
+            await player.play_song(ctx)
+
+        await ctx.send(f"Added {len(tracks)} songs from the playlist to the queue.")
+
+async def setup(bot):
+    await bot.add_cog(Music(bot))
