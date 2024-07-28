@@ -8,7 +8,7 @@ class DowntimeCog(commands.Cog):
     @commands.command(name='downtime')
     @commands.is_owner()
     async def downtime(self, ctx):
-        downtime_message = "Hello, this is an automated message to inform you that I will be going for downtime for maintenance purposes. During this time, I may be unavailable or experience some disruptions in service. Thank you for your understanding."
+        downtime_message = "Hi! The bot will be offline for a little bit. Please check the status to see when im online!"
 
         for guild in self.bot.guilds:
             owner = guild.owner
@@ -18,7 +18,7 @@ class DowntimeCog(commands.Cog):
             except discord.HTTPException:
                 await ctx.send(f"Unable to send downtime message to the owner of {guild.name}")
 
-        await ctx.send("Downtime messages sent to all server owners.")
+        await ctx.send("Downtime message sent to all server owners.")
 
 async def setup(bot):
     await bot.add_cog(DowntimeCog(bot))
