@@ -8,7 +8,7 @@ class DowntimeCog(commands.Cog):
     @commands.command(name='downtime')
     @commands.is_owner()
     async def downtime(self, ctx):
-        downtime_message = "Hi! The bot will be offline for a little bit. Please check the status to see when im online!"
+        downtime_message = "The bot will be offline for a bit. Please check the status to see when I put it back online"
 
         for guild in self.bot.guilds:
             owner = guild.owner
