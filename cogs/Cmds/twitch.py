@@ -61,7 +61,7 @@ class Twitch(commands.Cog):
                 embed.add_field(name="Category", value=category, inline=False)
                 embed.set_thumbnail(url=f"https://static-cdn.jtvnw.net/previews-ttv/live_user_{self.twitch_username}-320x180.jpg")
                 stream_button = StreamButton(stream_url)
-                await channel.send("@here", embed=embed, view=stream_button)
+                await channel.send("@everyone", embed=embed, view=stream_button)
                 self.previous_status = 'live'
         else:
             if self.previous_status != 'offline':
