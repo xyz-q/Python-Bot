@@ -48,7 +48,8 @@ class CSFloatSearch2(commands.Cog):
         self.bot = bot
         self.api_url = 'https://csfloat.com/api/v1/listings'
 
-    @app_commands.command(description="Get a CS2 skin price from CSFloat.com")
+    #@app_commands.command(description="Get a CS2 skin price from CSFloat.com")
+    @app_commands.command(description="I AM CURRENTLY IP BLOCKED FROM SCRAPING THIS WEBSITE! NOT WORKING RIGHT NOW")
     @app_commands.autocomplete(weapon=weapon_autocomplete)
     @app_commands.autocomplete(wear=wear_autocomplete)
     @app_commands.autocomplete(skin_type=skin_type_autocomplete)
