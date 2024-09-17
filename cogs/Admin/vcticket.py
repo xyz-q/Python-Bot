@@ -3,8 +3,8 @@ import os
 import discord
 from discord.ext import commands
 
-TICKET_CHANNEL_ID = 1241495094205354104 
-GUILD_ID = 1056994840925192252  
+TICKET_CHANNEL_ID = 1241495094205354104
+GUILD_ID = 1056994840925192252
 active_tickets = {}
 
 class VCTicket(commands.Cog):
@@ -35,17 +35,21 @@ class VCTicket(commands.Cog):
                                 await asyncio.sleep(1)
                     except Exception as e:
                         print(f"Error playing mp3: {e}")
-        if member.bot or member == self.bot.user or member.id == 110927272210354176:
-            return  
 
-        if after.channel and after.channel.name == '.waiting-room':
-            await self.send_voice_request_message(member, member.guild)
+        if member.bot or member == self.bot.user or member.id == 110927272210354176:
+            return
+
+        # Check if the user joined a voice channel
+        if before.channel is None and after.channel is not None:
+            if after.channel.name == '.waiting-room':
+                await self.send_voice_request_message(member, member.guild)
+        # Check if the user left the waiting room
         elif before.channel and before.channel.name == '.waiting-room' and (not after.channel or after.channel.name != '.waiting-room'):
             await self.cancel_voice_request(member, member.guild)
 
     @commands.command(name="vc_ticket", description="Open a voice channel ticket")
     async def vc_ticket(self, ctx):
-        await ctx.send("Opening voice channel ticket...") 
+        await ctx.send("Opening voice channel ticket...")
         await ctx.send(f"Voice channel ticket command executed by {ctx.author}")
 
     @commands.Cog.listener()
@@ -53,7 +57,7 @@ class VCTicket(commands.Cog):
         print("VCTicketCog is ready.")
 
     async def send_voice_request_message(self, member: discord.Member, guild: discord.Guild):
-        me = await self.bot.fetch_user(110927272210354176)  
+        me = await self.bot.fetch_user(110927272210354176)
         ticket_channel = self.bot.get_channel(TICKET_CHANNEL_ID)
         if ticket_channel:
             embed = discord.Embed(
@@ -62,7 +66,7 @@ class VCTicket(commands.Cog):
                 color=discord.Color.gold()
             )
             message = await ticket_channel.send(embed=embed)
-            view = self.AcceptDeclineView2(member, guild, message)  
+            view = self.AcceptDeclineView2(member, guild, message)
             await message.edit(view=view)
             active_tickets[member.id] = message
             await me.send(f"A user has joined the waiting room {ticket_channel.mention}.")
@@ -77,7 +81,7 @@ class VCTicket(commands.Cog):
                 try:
                     await message.delete()
                 except discord.errors.NotFound:
-                    pass 
+                    pass
 
                 embed = discord.Embed(
                     title="Ticket Canceled",
@@ -85,7 +89,7 @@ class VCTicket(commands.Cog):
                     color=discord.Color.red()
                 )
                 cancel_message = await ticket_channel.send(embed=embed)
-                view = self.OkayView2(cancel_message)  
+                view = self.OkayView2(cancel_message)
                 await cancel_message.edit(view=view)
 
     class AcceptDeclineView2(discord.ui.View):
@@ -105,9 +109,9 @@ class VCTicket(commands.Cog):
                     await self.member.move_to(main_channel)
 
             try:
-                await self.message.delete() 
+                await self.message.delete()
             except discord.errors.NotFound:
-                pass 
+                pass
 
             active_tickets.pop(self.member.id, None)
 
@@ -116,12 +120,12 @@ class VCTicket(commands.Cog):
             waiting_room = discord.utils.get(self.guild.voice_channels, name=".waiting-room")
             if waiting_room:
                 if self.member.voice and self.member.voice.channel == waiting_room:
-                    await self.member.move_to(None) 
+                    await self.member.move_to(None)
 
             try:
-                await self.message.delete()  
+                await self.message.delete()
             except discord.errors.NotFound:
-                pass  
+                pass
 
             active_tickets.pop(self.member.id, None)
 
