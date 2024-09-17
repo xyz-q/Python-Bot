@@ -2,12 +2,14 @@ import asyncio
 import discord
 from discord.ext import commands
 import yt_dlp as youtube_dl
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor  # Import ThreadPoolExecutor
 
 # Suppress noise about console usage from youtube_dl
 youtube_dl.utils.bug_reports_message = lambda: ''
 
 # Global variables for queue and voice client
+is_playing = False  # Initialize is_playing as False initially
+voice_client = None
 queue = []
 current_playing_url = None
 loop_song = False
@@ -29,77 +31,57 @@ ytdl_format_options = {
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
-    'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
+    'source_address': '0.0.0.0',
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 class MusicControls(discord.ui.View):
-    def __init__(self, ctx, voice_client, queue):
+    def __init__(self, ctx, voice_client):
         super().__init__(timeout=None)
         self.ctx = ctx
         self.voice_client = voice_client
-        self.queue = queue
-        self.bot = bot 
-        self.is_playing = False
-        self.play_pause_button = self.children[0]
+        self.is_playing = False  
 
-    async def play_next(self):
-        if self.queue:
-            url = self.queue.pop(0)
-            self.voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(), self.bot.loop).result())
-            self.is_playing = True
-            self.play_pause_button.emoji = "\u23F8"  # Pause emoji
-
-    @discord.ui.button(emoji="\u25B6\uFE0F", style=discord.ButtonStyle.blurple)  # Play emoji
+    @discord.ui.button(label="▶▐▐", style=discord.ButtonStyle.blurple)
     async def play_pause_button(self, interaction, button):
-        await interaction.response.defer()  # Defer the interaction response
-
         if self.voice_client.is_playing():
             self.voice_client.pause()
-            self.is_playing = False
-            button.emoji = "\u25B6\uFE0F"  # Play emoji
+            button.label = "Resume"
+            self.is_playing = False 
+            await interaction.response.send_message("Playback paused.")
+        elif self.voice_client.is_paused():
+            self.voice_client.resume()
+            button.label = "Pause"
+            self.is_playing = True 
+            await interaction.response.send_message("Playback resumed.")
         else:
-            if self.voice_client.is_paused():
-                self.voice_client.resume()
-                self.is_playing = True
-                button.emoji = "\u23F8"  # Pause emoji
-            else:
-                await self.play_next()
-        await interaction.message.edit(view=self)  # Update the message with the new button state
+            await interaction.response.send_message("I'm not playing anything right now.")
 
-    @discord.ui.button(emoji="\u23ED", style=discord.ButtonStyle.red)  # Skip emoji
+    @discord.ui.button(label="Skip", style=discord.ButtonStyle.red)
     async def skip_button(self, interaction, button):
-        await interaction.response.defer()  # Defer the interaction response
-
-        if self.voice_client.is_playing():
+        if self.voice_client.is_playing() or self.voice_client.is_paused():
             self.voice_client.stop()
-            await self.play_next()
-        await interaction.message.edit(view=self)  # Update the message with the new button state
+            await interaction.response.send_message("Skipped the current song.")
+            await self.play_next(self.ctx)
+            self.is_playing = False  
+        else:
+            await interaction.response.send_message("I'm not playing anything right now.")
 
-    @discord.ui.button(emoji="\u23F9", style=discord.ButtonStyle.gray)  # Stop emoji
+    @discord.ui.button(label="Stop", style=discord.ButtonStyle.gray)
     async def stop_button(self, interaction, button):
-        await interaction.response.defer()  # Defer the interaction response
-
-        if self.voice_client.is_playing():
+        if self.voice_client.is_playing() or self.voice_client.is_paused():
             self.voice_client.stop()
-            self.is_playing = False
-            self.play_pause_button.emoji = "\u25B6\uFE0F"  # Play emoji
-            self.queue.clear()
-        await interaction.message.edit(view=self)  # Update the message with the new button state
+            await interaction.response.send_message("Stopped playback.")
+            self.is_playing = False  
+        else:
+            await interaction.response.send_message("I'm not playing anything right now.")
+
+
 
 class YouTubeCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
-    async def play_next(self, ctx, voice_client):
-        if queue:
-            url = queue.pop(0)
-            voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx, voice_client), self.bot.loop).result())
-            controls = MusicControls(ctx, voice_client, queue)
-            await ctx.send(view=controls)
-        else:
-            await ctx.send("Queue is empty.")
 
     async def download_info(self, query, ydl_opts):
         loop = asyncio.get_event_loop()
@@ -114,12 +96,59 @@ class YouTubeCommands(commands.Cog):
                 print(f'Error extracting info: {e}')
                 return None
 
+    async def play_next(self, ctx):
+        global queue, current_playing_url
+    
+        if queue:
+            next_query = queue.pop(0)
+            author = ctx.message.author
+    
+            if not voice_channel:
+                await ctx.send('You need to be in a voice channel to use this command.')
+                return
+    
+            voice_client = ctx.guild.voice_client
+    
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'noplaylist': True,  # Prevent downloading playlists
+            }
+    
+            info = await self.download_info(next_query, ydl_opts)
+            if info is None:
+                await ctx.send(f'No video found for query: {next_query}')
+                return
+    
+            if 'entries' in info:
+                video = info['entries'][0]
+                url = video['url']
+                title = video['title']
+                play_message = await ctx.send(f'Now playing: {title}')
+                current_playing_url = url
+    
+                def after_callback(error):
+                    if error:
+                        print(f"Error occurred during playback: {error}")
+                        traceback.print_exception(type(error), error, error.__traceback__)
+                    else:
+                        asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
+    
+                try:
+                    voice_client.play(discord.FFmpegPCMAudio(url), after=after_callback)
+                except Exception as e:
+                    print(f"Error occurred while playing audio: {e}")
+                    traceback.print_exception(type(e), e, e.__traceback__)
+    
+                # Create and send the MusicControls view
+                controls = MusicControls(ctx, voice_client)
+                await play_message.edit(view=controls)
+     
     @commands.command()
     async def play(self, ctx, *, query):
         global queue, current_playing_url
 
         author = ctx.message.author
-        voice_channel = author.voice.channel
+        voice_channel = author.voice.channel if author.voice else None
 
         if not voice_channel:
             await ctx.send('You need to be in a voice channel to use this command.')
@@ -150,22 +179,18 @@ class YouTubeCommands(commands.Cog):
             download_msg = await ctx.send(f'Downloading: {title}')
             await asyncio.sleep(4)  # Simulate downloading delay
 
-            if voice_client.is_playing() or queue:
-                queue.append(url)
+            if voice_client.is_playing() or is_playing:
+                queue.append(query)
                 await ctx.send(f'Added to queue: {title}')
                 await download_msg.delete()  # Delete download message if added to queue
             else:
                 await download_msg.delete()  # Delete download message if starting to play now
                 play_message = await ctx.send(f'Now playing: {title}')
                 current_playing_url = url
+                voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop))
 
-                # Create an instance of MusicControls
-                controls = MusicControls(ctx, voice_client, queue)
-
-                # Start playing the audio and call play_next on the YouTubeCommands instance
-                voice_client.play(discord.FFmpegPCMAudio(url), after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx, voice_client), self.bot.loop).result())
-
-                # Send the MusicControls view
+                # Create and send the MusicControls view
+                controls = MusicControls(ctx, voice_client)
                 await play_message.edit(view=controls)
 
     # Command to show the current queue
@@ -174,7 +199,6 @@ class YouTubeCommands(commands.Cog):
         if not queue:
             await ctx.send('The queue is currently empty.')
         else:
-            queue_list = '\n'.join(f'{i+1}. {queue[i]}' for i in range(len(queue)))
             await ctx.send(f'**Current Queue:**\n{queue_list}')
 
     # Command to clear the queue
@@ -186,6 +210,7 @@ class YouTubeCommands(commands.Cog):
         else:
             queue.clear()
             await ctx.send('Queue cleared.')
+
 
     @commands.command()
     async def leave(self, ctx):
