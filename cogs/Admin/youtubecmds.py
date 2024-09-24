@@ -24,7 +24,7 @@ ytdl_format_options = {
         'preferredquality': '192',
     }],
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'noplaylist': True,
+    'noplaylist': False,
     'nocheckcertificate': True,
     'ignoreerrors': False,
     'logtostderr': False,
@@ -85,6 +85,7 @@ class YouTubeCommands(commands.Cog):
 
     async def download_info(self, query, ydl_opts):
         loop = asyncio.get_event_loop()
+        ydl_opts['noplaylist'] = False  # Change this line to allow playlists
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             try:
                 info = await loop.run_in_executor(executor, lambda: ydl.extract_info(f'ytsearch:{query}', download=False))

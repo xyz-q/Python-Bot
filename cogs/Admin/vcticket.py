@@ -127,6 +127,25 @@ class VCTicket(commands.Cog):
             except discord.errors.NotFound:
                 pass
 
+        @discord.ui.button(label="Stay", style=discord.ButtonStyle.primary)
+        async def stay(self, button: discord.ui.Button, interaction: discord.Interaction):
+            waiting_room = discord.utils.get(self.guild.voice_channels, name=".waiting-room")
+            if waiting_room:
+                if self.member.voice and self.member.voice.channel == waiting_room:
+                    await self.message.delete()
+
+           
+                
+            
+                
+
+    
+            # Delete the original message
+            try:
+                await self.message.delete()
+            except discord.errors.NotFound:
+                pass
+
             active_tickets.pop(self.member.id, None)
 
     class OkayView2(discord.ui.View):
