@@ -8,18 +8,16 @@ class Uptime(commands.Cog):
         self.bot = bot
         self.start_time = datetime.utcnow()
 
-    @commands.command(name="uptime")
+    @commands.command(name="uptime", aliases=["runtime"])
     async def uptime(self, ctx):
         """Shows how long the bot has been running."""
         current_time = datetime.utcnow()
         uptime_delta = current_time - self.start_time
         
-        # Convert timedelta to days, hours, minutes, seconds
         days = uptime_delta.days
         hours, remainder = divmod(uptime_delta.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
 
-        # Create a nice formatted message
         uptime_str = f"I've been running for: "
         if days > 0:
             uptime_str += f"{days} days, "
@@ -29,7 +27,6 @@ class Uptime(commands.Cog):
             uptime_str += f"{minutes} minutes, "
         uptime_str += f"{seconds} seconds"
 
-        # Create and send an embed
         embed = discord.Embed(
             title="🕒 Bot Uptime",
             description=uptime_str,

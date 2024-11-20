@@ -57,7 +57,7 @@ class ChatCommands(commands.Cog):
         await channel.send(message)
 
     @commands.command()
-    async def purge(self, ctx, channel: typing.Optional[discord.TextChannel] = None, limit: int = 100):
+    async def purge(self, ctx, channel: typing.Optional[discord.TextChannel] = None, limit: int = 10):
         if limit <= 0:
             await ctx.send("Please specify a positive number for the limit.")
             return
