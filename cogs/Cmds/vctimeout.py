@@ -21,7 +21,7 @@ class VoiceTimeout(commands.Cog):
                         time_elapsed = asyncio.get_event_loop().time() - self.empty_voice_channels[voice_channel.id]
                         if time_elapsed >= 10: 
                             await guild.voice_client.disconnect()
-                            print("Bot has left the channel due to inactivity.")
+                            await print("Bot has left the channel due to inactivity.")
                             del self.empty_voice_channels[voice_channel.id]
                     else:
                         self.empty_voice_channels[voice_channel.id] = asyncio.get_event_loop().time()
