@@ -20,24 +20,56 @@ class AdminCommands(commands.Cog):
     def save_auto_delete_status(self):
         with open(self.AUTO_DELETE_FILE, "w") as f:
             json.dump(self.auto_delete_enabled, f)
-
+#############################################
     @commands.command()
     async def kick(self, ctx, members: commands.Greedy[discord.Member], *, reason: str = None):
         if not ctx.guild.me.guild_permissions.kick_members:
             await ctx.send("I don't have permission to kick members.")
             return
+
+        from datetime import datetime
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         for member in members:
             try:
+                # Create embed for DM
+                embed = discord.Embed(
+                    title="⚠️ Kick Notification",
+                    description=f"You have been kicked from {ctx.guild.name}",
+                    color=discord.Color.red(),
+                    timestamp=datetime.now()
+                )
+                embed.add_field(name="Kicked By", value=f"{ctx.author.name}", inline=False)
+                embed.add_field(name="Reason", value=reason if reason else "No reason provided", inline=False)
+                embed.add_field(name="Date & Time", value=current_time, inline=False)
+
+                # First, try to send DM
+                try:
+                    # Create a DM channel and send message BEFORE kicking
+                    dm_channel = await member.create_dm()
+                    await dm_channel.send(embed=embed)
+                except discord.Forbidden:
+                    await ctx.send(f"Could not DM {member.mention} about their kick.")
+                except Exception as e:
+                    await ctx.send(f"Error sending DM to {member.mention}: {str(e)}")
+
+                # Only after DM is sent (or attempted), proceed with kick
                 await member.kick(reason=reason)
-                if reason:
-                    await ctx.send(f"{member.mention} has been kicked. Reason: {reason}")
-                else:
-                    await ctx.send(f"{member.mention} has been kicked.")
+                
+                # Send confirmation in the channel
+                await ctx.send(f"{member.mention} has been kicked. Reason: {reason if reason else 'No reason provided'}")
+
             except discord.Forbidden:
                 await ctx.send(f"I don't have permission to kick {member.mention}.")
             except discord.HTTPException:
                 await ctx.send(f"An error occurred while trying to kick {member.mention}.")
 
+
+
+
+
+
+############################################
     @commands.command()
     async def ping(self, ctx):
         bot_latency = round(self.bot.latency * 1000) 
