@@ -51,6 +51,7 @@ commands_list = [
     (",skip", "Skips a song in queue"),
     (",say <#channel> 'TEXT'", "Makes the bot chat the desired text in specified channel"),
     ("/ticket", "Creates a ticket"),
+    ("tts <text>", "Makes the bot do a text to speech in the voice channel if its in one."),
     (",tuck", "Puts users to bed"),
     (",user <@user>", "Displays info on user"),
     (",uptime", "Displays bot's uptime"),
