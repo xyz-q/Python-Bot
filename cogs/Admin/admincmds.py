@@ -10,7 +10,6 @@ class AdminCommands(commands.Cog):
         self.auto_delete_enabled = False
         self.AUTO_DELETE_FILE = "auto_delete.json"
         self.ORIGINAL_NAME = "xyz"
-
         try:
             with open(self.AUTO_DELETE_FILE, "r") as f:
                 self.auto_delete_enabled = json.load(f)
@@ -20,7 +19,7 @@ class AdminCommands(commands.Cog):
     def save_auto_delete_status(self):
         with open(self.AUTO_DELETE_FILE, "w") as f:
             json.dump(self.auto_delete_enabled, f)
-#############################################
+
     @commands.command()
     async def kick(self, ctx, members: commands.Greedy[discord.Member], *, reason: str = None):
         if not ctx.guild.me.guild_permissions.kick_members:
@@ -32,7 +31,6 @@ class AdminCommands(commands.Cog):
 
         for member in members:
             try:
-                # Create embed for DM
                 embed = discord.Embed(
                     title="⚠️ Kick Notification",
                     description=f"You have been kicked from {ctx.guild.name}",
@@ -43,9 +41,7 @@ class AdminCommands(commands.Cog):
                 embed.add_field(name="Reason", value=reason if reason else "No reason provided", inline=False)
                 embed.add_field(name="Date & Time", value=current_time, inline=False)
 
-                # First, try to send DM
                 try:
-                    # Create a DM channel and send message BEFORE kicking
                     dm_channel = await member.create_dm()
                     await dm_channel.send(embed=embed)
                 except discord.Forbidden:
@@ -53,10 +49,7 @@ class AdminCommands(commands.Cog):
                 except Exception as e:
                     await ctx.send(f"Error sending DM to {member.mention}: {str(e)}")
 
-                # Only after DM is sent (or attempted), proceed with kick
                 await member.kick(reason=reason)
-                
-                # Send confirmation in the channel
                 await ctx.send(f"{member.mention} has been kicked. Reason: {reason if reason else 'No reason provided'}")
 
             except discord.Forbidden:
@@ -66,10 +59,6 @@ class AdminCommands(commands.Cog):
 
 
 
-
-
-
-############################################
     @commands.command()
     async def ping(self, ctx):
         bot_latency = round(self.bot.latency * 1000) 

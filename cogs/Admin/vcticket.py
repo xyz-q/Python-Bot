@@ -134,13 +134,6 @@ class VCTicket(commands.Cog):
                 if self.member.voice and self.member.voice.channel == waiting_room:
                     await self.message.delete()
 
-           
-                
-            
-                
-
-    
-            # Delete the original message
             try:
                 await self.message.delete()
             except discord.errors.NotFound:

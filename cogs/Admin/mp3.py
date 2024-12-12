@@ -7,7 +7,6 @@ class Mp3(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # Command: `mp3`
     @commands.command()
     async def mp3(self, ctx, *keywords: str):
         if not ctx.author.voice or not ctx.author.voice.channel:
@@ -24,11 +23,7 @@ class Mp3(commands.Cog):
 
             current_dir = os.path.dirname(os.path.abspath(__file__))
             soundboard_dir = os.path.join(current_dir, '.mp3')
-
-            # Get all mp3 files in the .mp3 directory
             mp3_files = [file for file in os.listdir(soundboard_dir) if file.endswith('.mp3')]
-
-            # Find mp3 files that match any of the keywords
             matched_files = []
             for keyword in keywords:
                 for mp3_file in mp3_files:
@@ -39,7 +34,6 @@ class Mp3(commands.Cog):
                 await ctx.send("No matching mp3 files found.")
                 return
 
-            # If multiple matches found, inform the user and let them choose
             if len(matched_files) > 1:
                 await ctx.send(f"Multiple matching files found: {', '.join(matched_files)}. Please specify a more specific keyword.")
                 return
@@ -59,7 +53,6 @@ class Mp3(commands.Cog):
             print(f"Error playing mp3: {e}")
             await ctx.send("An error occurred while trying to play the mp3.")
 
-    # Command: Stop mp3
     @commands.command()
     async def stop(self, ctx):
         await self.stop_audio(ctx)

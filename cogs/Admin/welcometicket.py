@@ -59,7 +59,7 @@ class WelcomeTicket(commands.Cog):
                 print("Error: Could not find the specified channel for farewell messages.")
 
     async def send_ticket_message(self, member: discord.Member, guild: discord.Guild):
-        me2 = await self.bot.fetch_user(110927272210354176)  # Replace with your Discord user ID
+        me2 = await self.bot.fetch_user(110927272210354176) 
         ticket_channel = self.bot.get_channel(TICKET_CHANNEL_ID)
         if ticket_channel:
             embed = discord.Embed(
