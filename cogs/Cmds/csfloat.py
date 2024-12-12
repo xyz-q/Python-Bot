@@ -7,7 +7,7 @@ class CSFloatSearch(commands.Cog):
         self.bot = bot
         self.api_url = 'https://csfloat.com/api/v1/listings'
 
-    @commands.command(name='csfloat', aliases=['cf'])
+    @commands.command(name='csfloat', aliases=['csfloat'])
     async def csfloat_search(self, ctx, *, query):
         try:
             # Prepare the query parameters
