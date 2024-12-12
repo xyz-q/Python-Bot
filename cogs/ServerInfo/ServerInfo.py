@@ -7,7 +7,7 @@ class ServerInfo(commands.Cog):
     
     @commands.dm_only()  # This ensures the command only works in DMs
     @commands.command()
-    async def listservers(self, ctx):
+    async def serverlist(self, ctx):
         try:
             servers_list = []
             for guild in self.bot.guilds:
@@ -27,7 +27,7 @@ class ServerInfo(commands.Cog):
     
     @commands.dm_only()
     @commands.command()
-    async def listchannels(self, ctx, server_id: int):
+    async def channellist(self, ctx, server_id: int):
         try:
             guild = self.bot.get_guild(server_id)
             if guild is None:
@@ -81,13 +81,34 @@ class ServerInfo(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
 
-    @listservers.error
-    @listchannels.error
+    @serverlist.error
+    @channellist.error
     async def command_error(self, ctx, error):
         if isinstance(error, commands.PrivateMessageOnly):
             await ctx.send("This command can only be used in DMs!")
         else:
             await ctx.send(f"An error occurred: {str(error)}")
+
+    @commands.command()
+    async def serverhelp(ctx):
+        help_text = """
+    **Available Commands:**
+    ,voiceinfo <server_id> - Get information about voice channels in a server
+    ,servermembers <server_id> - Get a list of members in a server
+    ,serverlist
+    ,channellist <server_id> - Get a list of channels in a server
+    ,serverjoin <server_id> [channel_id] - Join a server's vc (optional channel ID)
+    ,inviteserver <server_id> - Get an invite link for a server
+    ,messages <serverid> <channelid> <limit> - Get messages from a channel
+
+
+
+
+
+
+        """
+        await ctx.send(help_text)
+
 
 async def setup(bot):
     await bot.add_cog(ServerInfo(bot))

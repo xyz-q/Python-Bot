@@ -62,6 +62,8 @@ commands_list = [
     
 ]
 
+
+
 per_page = 5
 
 class ListCog(commands.Cog):

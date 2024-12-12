@@ -1,0 +1,63 @@
+import discord
+from discord.ext import commands
+
+class DMTracker(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        # Only track DMs, not bot messages
+        if isinstance(message.channel, discord.DMChannel) and not message.author.bot:
+            # This ensures the DM channel stays in the cache
+            self.bot.private_channels.add(message.channel)
+
+    @commands.command(name='dmlist')
+    @commands.has_permissions(administrator=True)
+    async def list_dm_users(self, ctx):
+        """Lists all users who have DMed the bot"""
+        dm_users = set()  # Use a set to avoid duplicates
+
+        # Check private channels
+        for channel in self.bot.private_channels:
+            if isinstance(channel, discord.DMChannel) and channel.recipient != self.bot.user:
+                dm_users.add(channel.recipient)
+
+        # Also check message cache for DMs
+        for channel in self.bot.cached_messages:
+            if isinstance(channel.channel, discord.DMChannel) and not channel.author.bot:
+                dm_users.add(channel.author)
+
+        if not dm_users:
+            await ctx.send("No users have DMed the bot yet.")
+            return
+
+        # Create embed with user list
+        embed = discord.Embed(
+            title="Users who have DMed the bot", 
+            color=discord.Color.blue(),
+            description=f"Total users: {len(dm_users)}"
+        )
+
+        # Add each user to the embed
+        for i, user in enumerate(dm_users, 1):
+            embed.add_field(
+                name=f"{i}. {user.name}",
+                value=f"User ID: {user.id}",
+                inline=False
+            )
+
+            # Discord has a limit of 25 fields per embed
+            if i % 25 == 0 and i < len(dm_users):
+                await ctx.send(embed=embed)
+                embed = discord.Embed(
+                    title="Users who have DMed the bot (Continued)", 
+                    color=discord.Color.blue()
+                )
+
+        # Send the final embed
+        if embed.fields:
+            await ctx.send(embed=embed)
+
+async def setup(bot):
+    await bot.add_cog(DMTracker(bot))
