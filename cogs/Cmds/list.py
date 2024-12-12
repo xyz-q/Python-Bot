@@ -36,6 +36,7 @@ commands_list = [
     (",names <@user>", "Gets the old nicknames of a user"),
     (",online", "Sets bot status as 'Online'"),
     (",offline", "Sets bot status as 'Offline'"),
+    (",pc", "Check the price of a RS3 skin on Ely.gg"),
     (",pause", "Halts audio playback"),
     (",play <URL/Search>", "Plays youtube music"),
     ("/price", "Check the price of a CS2 skin on CSFloat"),

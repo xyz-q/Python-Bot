@@ -1,104 +1,81 @@
 import discord
 from discord.ext import commands
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
+import requests
 from bs4 import BeautifulSoup
-import time
 
-class RunescapePrices(commands.Cog):
+class RecentTrades(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.chrome_options = Options()
-        self.chrome_options.add_argument('--headless')
-        self.chrome_options.add_argument('--no-sandbox')
-        self.chrome_options.add_argument('--disable-dev-shm-usage')
-        self.chrome_options.add_argument('--disable-gpu')
-        self.chrome_options.add_argument('--window-size=1920,1080')
 
-    @commands.command(name='price', aliases=['rscheck', 'pc'])
-    async def check_price(self, ctx, *, item_name: str):
-        """Check the price of a RuneScape 3 item"""
-        # Start typing indicator at the very beginning
-        async with ctx.typing():  # This will show typing until the with block ends
-            try:
+    @commands.command(name='recent', aliases=['price', 'pc'])
+    async def check_recent(self, ctx, *, item_name: str):
+        """Check recent trades for a RuneScape 3 item"""
+        try:
+            async with ctx.typing():
                 formatted_item = item_name.replace(' ', '%20')
                 url = f"https://www.ely.gg/search?search_item={formatted_item}"
                 
-                driver = webdriver.Chrome(options=self.chrome_options)
-                try:
-                    print(f"Navigating to URL: {url}")
-                    driver.get(url)
-                    time.sleep(2)
-                    
-                    elements = driver.find_elements(By.TAG_NAME, "a")
-                    print(f"Found {len(elements)} clickable elements")
-                    
-                    item_element = None
-                    for element in elements:
-                        if item_name.lower() in element.text.lower():
-                            item_element = element
-                            print(f"Found matching element: {element.text}")
-                            break
-                    
-                    if item_element:
-                        print("Clicking item element")
-                        driver.execute_script("arguments[0].click();", item_element)
-                        time.sleep(3)
-                        
-                        price_element = driver.find_element(By.ID, "stock_price")
-                        print("Found price element")
-                        
-                        page_source = driver.page_source
-                        soup = BeautifulSoup(page_source, 'html.parser')
-                        price_div = soup.find('p', {'id': 'stock_price'})
-                        
-                        print(f"Price div content: {price_div}")
-                        
-                        if price_div:
-                            price_text = price_div.text.strip()
-                            embed = discord.Embed(
-                                title=f"RS3 Price Check: {item_name}",
-                                color=discord.Color.gold()
-                            )
-                            embed.add_field(name="Current Price", value=price_text if price_text else "Price not available")
-                            embed.set_footer(text="Data from ely.gg")
-                        else:
-                            embed = discord.Embed(
-                                title="Error",
-                                description="Could not find price information",
-                                color=discord.Color.red()
-                            )
-                    else:
-                        embed = discord.Embed(
-                            title="Error",
-                            description="Item not found, no support for acronyms etc yet.",
-                            color=discord.Color.red()
-                        )
-                    
-                    # The typing indicator will stay until this message is sent
-                    await ctx.send(embed=embed)
-                    
-                finally:
-                    driver.quit()
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
                 
-            except Exception as e:
-                print(f"Error occurred: {str(e)}")
-                error_embed = discord.Embed(
-                    title="Error",
-                    description=f"Failed to fetch price data",
-                    color=discord.Color.red()
-                )
-                # Even on error, typing indicator will stay until message is sent
-                await ctx.send(embed=error_embed)
+                response = requests.get(url, headers=headers)
+                response.raise_for_status()
+                
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                # Find the center-recent div
+                center_recent = soup.find('div', class_='center-recent')
+                
+                if center_recent:
+                    # Extract month
+                    month = center_recent.find('h4', class_='czMglK')
+                    month_text = month.text if month else "Unknown"
+                    
+                    # Extract day
+                    day = center_recent.find('p', class_='iNHHmI')
+                    day_text = day.text.strip() if day else "Unknown"
+                    
+                    # Extract price and transaction type
+                    price_div = center_recent.find('h4', class_='bought')
+                    if not price_div:
+                        price_div = center_recent.find('h4', class_='sold')
+                    
+                    price_text = price_div.text if price_div else "Unknown"
+                    transaction_type = "Bought" if 'bought' in price_div.get('class', []) else "Sold" if price_div else "Unknown"
+                    
+                    # Extract time
+                    time = center_recent.find_all('p', class_='iNHHmI')[1]
+                    time_text = time.text.strip() if time else "Unknown"
+                    
+                    # Extract price change percentage
+                    price_change = center_recent.find('p', class_='pricel')
+                    price_change_text = price_change.text if price_change else "Unknown"
+                    
+                    # Create and send embedded message
+                    embed = discord.Embed(
+                        title=f"Recent Trade: {item_name}",
+                        color=discord.Color.gold()
+                    )
+                    
+                    embed.add_field(name="Date", value=f"{month_text} {day_text}", inline=True)
+                    embed.add_field(name="Time", value=time_text, inline=True)
+                    embed.add_field(name="Transaction", value=f"{transaction_type}: {price_text}", inline=False)
+                    embed.add_field(name="Price Change", value=price_change_text, inline=True)
+                    
+                    await ctx.send(embed=embed)
+                else:
+                    await ctx.send("No recent trades found")
+                
+        except requests.RequestException as e:
+            await ctx.send(f"Error: {str(e)}")
+        except Exception as e:
+            await ctx.send(f"An error occurred while processing the data: {str(e)}")
 
-    @check_price.error
-    async def price_error(self, ctx, error):
+    @check_recent.error
+    async def recent_error(self, ctx, error):
         if isinstance(error, commands.MissingRequiredArgument):
-            async with ctx.typing():
-                await ctx.send("Please provide an item name. Usage: `,price <item name>`")
+            await ctx.send("Please provide an item name. Usage: `,recent <item name>`")
 
 async def setup(bot):
-    await bot.add_cog(RunescapePrices(bot))
+    await bot.add_cog(RecentTrades(bot))
