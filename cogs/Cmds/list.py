@@ -27,7 +27,6 @@ commands_list = [
     (",kick <@user(s)> <reason>", "Kicks the user(s) from the server"),
     (",listcogs", "Lists all cogs"),
     (",links", "Displays my links"),  
-    (",lock", "Locks current channel."),
     (",leave", "Leaves the channel the bot is in"),
     (",mock <@user>", "toggles the mocking of target user(s)"),
     (",mute <@user>", "Mutes target user"),
@@ -58,7 +57,6 @@ commands_list = [
     (",tuck", "Puts users to bed"),
     (",user <@user>", "Displays info on user"),
     (",uptime", "Displays bot's uptime"),
-    (",unlock", "Unocks current channel."),
     ("[WIP],volume <1-100>", "Sets the bot's volume"),
     
 ]
