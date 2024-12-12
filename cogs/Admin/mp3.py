@@ -6,6 +6,9 @@ from discord.ext import commands
 class Mp3(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        # Define the soundboard directory once in the init
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.soundboard_dir = os.path.join(current_dir, '.mp3')
 
     @commands.command()
     async def mp3(self, ctx, *keywords: str):
@@ -21,9 +24,8 @@ class Mp3(commands.Cog):
             else:
                 voice_client = ctx.voice_client
 
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            soundboard_dir = os.path.join(current_dir, '.mp3')
-            mp3_files = [file for file in os.listdir(soundboard_dir) if file.endswith('.mp3')]
+            # Use the same directory as mp3list
+            mp3_files = [file for file in os.listdir(self.soundboard_dir) if file.endswith('.mp3')]
             matched_files = []
             for keyword in keywords:
                 for mp3_file in mp3_files:
@@ -38,10 +40,10 @@ class Mp3(commands.Cog):
                 await ctx.send(f"Multiple matching files found: {', '.join(matched_files)}. Please specify a more specific keyword.")
                 return
 
-            mp3_file = os.path.join(soundboard_dir, matched_files[0])
+            mp3_file = os.path.join(self.soundboard_dir, matched_files[0])
 
             if not os.path.exists(mp3_file):
-                await ctx.send(f"{matched_files[0]} file not found in the .mp3 file.")
+                await ctx.send(f"{matched_files[0]} file not found.")
                 return
 
             if not voice_client.is_playing():
@@ -66,20 +68,31 @@ class Mp3(commands.Cog):
 
     @commands.command()
     async def mp3list(self, ctx):
-        soundboard_folder = '.mp3'
-        if not os.path.exists(soundboard_folder):
+        # Use the same directory as defined in init
+        if not os.path.exists(self.soundboard_dir):
             await ctx.send("The '.mp3' folder does not exist.")
             return
 
-        sound_files = [file for file in os.listdir(soundboard_folder) if file.endswith('.mp3')]
+        sound_files = [file for file in os.listdir(self.soundboard_dir) if file.endswith('.mp3')]
 
         if not sound_files:
             await ctx.send("No .mp3 files found in the '.mp3' folder.")
             return
 
-        await ctx.send("List of available songs:")
-        for song in sound_files:
-            await ctx.send(song)
+        # Create an embedded message for better formatting
+        embed = discord.Embed(title="Available MP3 Files", color=discord.Color.blue())
+        # Join all song names with newlines for cleaner display
+        song_list = "\n".join(sound_files)
+        embed.description = song_list
+        await ctx.send(embed=embed)
+
+    @commands.command()
+    async def disconnect(self, ctx):
+        if ctx.voice_client:
+            await ctx.voice_client.disconnect()
+            await ctx.send("Disconnected from voice channel.")
+        else:
+            await ctx.send("I'm not connected to a voice channel.")
 
 async def setup(bot):
     await bot.add_cog(Mp3(bot))

@@ -138,35 +138,68 @@ class AdminCommands(commands.Cog):
     @commands.has_permissions(view_audit_log=True)
     async def audit(self, ctx, limit: int = 10):
         try:
-            audit_log = await ctx.guild.audit_logs(limit=limit).flatten()
-        
-            embed = discord.Embed(title="Moderation Audit Log", color=discord.Color.blurple())
-        
-            for entry in audit_log:
-                action_type = entry.action
-                target = entry.target
-                responsible_user = entry.user
-                reason = entry.reason or "No reason provided"
+            # Convert audit logs to a list using list comprehension
+            audit_log = [entry async for entry in ctx.guild.audit_logs(limit=limit)]
             
-                embed.add_field(name=f"{action_type.name}", value=f"Target: {target.mention}\nResponsible: {responsible_user.mention}\nReason: {reason}", inline=False)
-        
-            await ctx.send(embed=embed)
-    
+            if not audit_log:
+                await ctx.send("No audit log entries found.")
+                return
+                
+            embed = discord.Embed(title="Moderation Audit Log", color=discord.Color.blurple())
+            
+            for entry in audit_log:
+                try:
+                    action_type = entry.action
+                    target = entry.target
+                    responsible_user = entry.user
+                    reason = entry.reason or "No reason provided"
+                    
+                    target_text = target.mention if target else "Unknown Target"
+                    
+                    embed.add_field(
+                        name=f"{action_type.name}", 
+                        value=f"Target: {target_text}\nResponsible: {responsible_user.mention}\nReason: {reason}", 
+                        inline=False
+                    )
+                except AttributeError as e:
+                    print(f"Error processing entry: {e}")
+                    continue
+
+            # Create the X button
+            delete_button = discord.ui.Button(style=discord.ButtonStyle.danger, label="Close")
+            
+            # Create a view and add the button
+            view = discord.ui.View(timeout=60)
+            view.add_item(delete_button)
+
+            # Button callback
+            async def delete_callback(interaction):
+                if interaction.user.id == ctx.author.id:
+                    await interaction.message.delete()
+                else:
+                    await interaction.response.send_message("You can't delete this message!", ephemeral=True)
+
+            delete_button.callback = delete_callback
+            
+            # Send the message with the view
+            message = await ctx.send(embed=embed, view=view)
+            
+            # Delete after 60 seconds
+            await asyncio.sleep(60)
+            try:
+                await message.delete()
+            except discord.NotFound:
+                pass  # Message was already deleted manually
+
         except discord.Forbidden:
             await ctx.send("I don't have permission to view the audit log.")
+        except Exception as e:
+            await ctx.send(f"An error occurred: {str(e)}")
+            print(f"Error in audit command: {e}")
 
-    @commands.command()
-    @commands.has_permissions(manage_channels=True)
-    async def lock(self, ctx, channel: discord.TextChannel = None):
-        if not channel:
-            channel = ctx.channel
-    
-        try:
-            await channel.set_permissions(ctx.guild.default_role, send_messages=False)
-            await ctx.send(f"{channel.mention} has been locked.")
-    
-        except discord.Forbidden:
-            await ctx.send("I don't have permission to manage this channel.")
+
+
+
 
 async  def setup(bot):
     await bot.add_cog(AdminCommands(bot))

@@ -62,7 +62,7 @@ class RoleCmds(commands.Cog):
             role = discord.utils.get(ctx.guild.roles, name=role_str)
 
         if member is None or role is None:
-            await ctx.send("Invalid member or role provided.")
+            await ctx.send("Invalid member or role provided, make sure the proper syntax is used. (,role <@user> <@role>)")
             return
 
         if ctx.guild.me.top_role <= role:
