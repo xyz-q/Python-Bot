@@ -6,11 +6,35 @@ from bs4 import BeautifulSoup
 class RecentTrades(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        # Dictionary of common item aliases
+        self.item_aliases = {
+            "fsoa": "Staff of Armadyl",
+            "phat": "Partyhat",
+            "hween": "Halloween mask",
+            "rsh": "Red Santa Hat",
+            "bsh": "Black Hanta Hat",
+            "push": "Purple Santa Hat",
+            "pish": "Pink Santa hat",
+            "gsh": "Green Santa hat",
+
+
+
+                
+        }
+
+
+
+
+
+
+
+        
 
     @commands.command(name='recent', aliases=['price', 'pc'])
     async def check_recent(self, ctx, *, item_name: str):
         """Check recent trades for a RuneScape 3 item"""
         try:
+            item_name = self.item_aliases.get(item_name.lower(), item_name)
             async with ctx.typing():
                 formatted_item = item_name.replace(' ', '%20')
                 url = f"https://www.ely.gg/search?search_item={formatted_item}"
@@ -54,7 +78,7 @@ class RecentTrades(commands.Cog):
                     
                     # Create and send embedded message
                     embed = discord.Embed(
-                        title=f"Recent Trade: {item_name}",
+                        title=f"Price for - {item_name}",
                         color=discord.Color.gold()
                     )
                     
