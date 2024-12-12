@@ -38,6 +38,11 @@ ytdl_format_options = {
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
+
+
+
+
+
 class MusicControls(discord.ui.View):
     def __init__(self, ctx, voice_client):
         super().__init__(timeout=None)
@@ -106,41 +111,60 @@ class YouTubeCommands(commands.Cog):
 
     async def play_next(self, ctx):
         global queue, current_playing_url
-    
-        if queue:
-            next_query = queue.pop(0)
-            author = ctx.message.author
-            voice_channel = author.voice.channel if author.voice else None
-    
-            if not voice_channel:
-                await ctx.send('You need to be in a voice channel to use this command.')
-                return
-    
+
+        # Cleanup previous message
+        async for message in ctx.channel.history(limit=50):
+            if message.author == self.bot.user and "Now playing:" in message.content:
+                try:
+                    await message.delete()
+                except discord.errors.NotFound:
+                    pass
+                break
+
+        if not queue:
+            # If queue is empty, perform final cleanup
             voice_client = ctx.guild.voice_client
-            
-            try:
-                fresh_url = await self.get_fresh_url(next_query)
-                if fresh_url:
-                    current_playing_url = fresh_url
-                    info = await self.download_info(next_query, self.ytdl_format_options)
-                    if info and 'entries' in info:
-                        title = info['entries'][0]['title']
-                        play_message = await ctx.send(f'Now playing: {title}')
-                        
-                        voice_client.play(
-                            discord.FFmpegPCMAudio(
-                                current_playing_url,
-                                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
-                            ),
-                            after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
-                        )
-                        
-                        controls = MusicControls(ctx, voice_client)
-                        await play_message.edit(view=controls)
-                else:
-                    await ctx.send("Could not get a valid URL for the next song.")
-            except Exception as e:
-                await ctx.send(f"An error occurred while playing the next song: {str(e)}")
+            if voice_client and voice_client.is_connected():
+                await print("Queue is empty, cleaning up.")
+            return
+
+        next_query = queue.pop(0)
+        author = ctx.message.author
+        voice_channel = author.voice.channel if author.voice else None
+
+        if not voice_channel:
+            await ctx.send('You need to be in a voice channel to use this command.')
+            return
+
+        voice_client = ctx.guild.voice_client
+        
+        try:
+            fresh_url = await self.get_fresh_url(next_query)
+            if fresh_url:
+                current_playing_url = fresh_url
+                info = await self.download_info(next_query, self.ytdl_format_options)
+                if info and 'entries' in info:
+                    title = info['entries'][0]['title']
+                    
+                    # Send new "Now playing" message with fresh controls
+                    play_message = await ctx.send(f'Now playing: {title}')
+                    
+                    voice_client.play(
+                        discord.FFmpegPCMAudio(
+                            current_playing_url,
+                            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                        ),
+                        after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
+                    )
+                    
+                    controls = MusicControls(ctx, voice_client)
+                    await play_message.edit(view=controls)
+            else:
+                await ctx.send("Could not get a valid URL for the next song.")
+        except Exception as e:
+            await ctx.send(f"An error occurred while playing the next song: {str(e)}")
+
+
 
     @commands.command()
     async def play(self, ctx, *, query):
@@ -203,8 +227,10 @@ class YouTubeCommands(commands.Cog):
         if not queue:
             await ctx.send('The queue is currently empty.')
         else:
-            queue_list = '\n'.join(queue)
+            queue_list = '\n'.join(f'{index + 1}. {song.title}' for index, song in enumerate(queue))
             await ctx.send(f'**Current Queue:**\n{queue_list}')
+
+
 
     @commands.command()
     async def clearq(self, ctx):
@@ -223,6 +249,19 @@ class YouTubeCommands(commands.Cog):
             queue.clear()
         else:
             await ctx.send("I'm not connected to any voice channel.")
+
+    async def cleanup(self, ctx):
+        """Clean up messages and disconnect when done"""
+        # Remove "Now Playing" messages
+        async for message in ctx.channel.history(limit=50):
+            if message.author == self.bot.user and ("Now playing:" in message.content):
+                try:
+                    await message.delete()
+                except discord.errors.NotFound:
+                    pass
+
+
+
 
 async def setup(bot):
     await bot.add_cog(YouTubeCommands(bot))
