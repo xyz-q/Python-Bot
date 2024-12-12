@@ -6,7 +6,7 @@ class CoinFlip(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="coinflip", description="Flip a coin")
+    @commands.command(name='coinflip', aliases=['cf',])
     async def coinflip(self, ctx: commands.Context):
         result = random.choice(["Heads", "Tails"])
         embed = discord.Embed(

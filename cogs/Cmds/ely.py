@@ -78,14 +78,13 @@ class RecentTrades(commands.Cog):
                     
                     # Create and send embedded message
                     embed = discord.Embed(
-                        title=f"Price for - {item_name}",
+                        title=f"{price_change_text}",
                         color=discord.Color.gold()
                     )
                     
                     embed.add_field(name="Date", value=f"{month_text} {day_text}", inline=True)
                     embed.add_field(name="Time", value=time_text, inline=True)
                     embed.add_field(name="Transaction", value=f"{transaction_type}: {price_text}", inline=False)
-                    embed.add_field(name="Price Change", value=price_change_text, inline=True)
                     
                     await ctx.send(embed=embed)
                 else:
