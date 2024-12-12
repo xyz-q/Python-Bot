@@ -86,13 +86,7 @@ class Mp3(commands.Cog):
         embed.description = song_list
         await ctx.send(embed=embed)
 
-    @commands.command()
-    async def disconnect(self, ctx):
-        if ctx.voice_client:
-            await ctx.voice_client.disconnect()
-            await ctx.send("Disconnected from voice channel.")
-        else:
-            await ctx.send("I'm not connected to a voice channel.")
+
 
 async def setup(bot):
     await bot.add_cog(Mp3(bot))
