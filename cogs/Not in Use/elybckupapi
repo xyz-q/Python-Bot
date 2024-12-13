@@ -1,43 +1,24 @@
 import discord
 from discord.ext import commands
 import aiohttp
-import sys
-import os
-
-# Add the parent directory to sys.path to allow imports from there
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from elydata import data  # Changed to import 'data' instead of 'item_dictionary'
 
 class PriceChecker(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.item_dictionary = data  # Use the imported 'data' here
+        # Dictionary mapping item names to their IDs
+        self.item_ids = {
+            "black phat": "880",
+            "black": "880",
+            "black partyhat": "880",
+            # Add more items here in format:
+            # "item_name": "item_id",
+            # You can add multiple names for the same ID (like aliases)
+        }
         print("PriceChecker cog initialized")
+
     @commands.Cog.listener()
     async def on_ready(self):
         print("PriceChecker cog is ready")
-
-
-
-    def get_item_id_from_name(self, item_name: str) -> str:
-        """Convert item name to item ID using the dictionary"""
-        item_name = item_name.lower()
-        print(f"Looking up: {item_name}")  # Debug print
-        
-        # Exact match first
-        for item_id, item_data in self.item_dictionary.items():
-            if item_data['value'].lower() == item_name:
-                print(f"Found exact match: {item_id}")  # Debug print
-                return str(item_id)
-                
-        # If no exact match, try partial match
-        for item_id, item_data in self.item_dictionary.items():
-            if item_name in item_data['value'].lower():
-                print(f"Found partial match: {item_id}")  # Debug print
-                return str(item_id)
-        
-        print("No match found")  # Debug print
-        return None
 
     @commands.command(name='recent', aliases=['price', 'pc'])
     async def check_recent(self, ctx, *, item_name: str = None):
@@ -45,32 +26,20 @@ class PriceChecker(commands.Cog):
             await ctx.send("Please provide an item name. Usage: ,recent <item name>")
             return
 
-        print(f"Searching for item: {item_name}")  # We see this print
-        print(f"Looking up: {item_name}")  # We see this print
-
-        # Get item ID using the dictionary
-        found_item = None
-        search_name = item_name.lower()
+        # Convert item name to lowercase for case-insensitive matching
+        item_name_lower = item_name.lower()
         
-        # Search through the list of dictionaries
-        for item in self.item_dictionary:
-            if item['value'].lower() == search_name:
-                found_item = item
-                break
-
-        if found_item is None:
-            await ctx.send(f"Could not find item: {item_name}")
+        # Get item ID from dictionary
+        item_id = self.item_ids.get(item_name_lower)
+        
+        if item_id is None:
+            await ctx.send(f"Item '{item_name}' not found in database. Please check the item name.")
             return
-
-        item_id = found_item['id']
-        # Rest of your existing code...
-
 
         # Show typing indicator while processing
         async with ctx.typing():
             try:
                 url = f"https://www.ely.gg/chart/{item_id}/prices"
-                print(f"Attempting to fetch URL: {url}")  # Debug print
                 
                 headers = {
                     'accept': '*/*',
@@ -135,7 +104,7 @@ class PriceChecker(commands.Cog):
                                 f"**Average:** {format_price(avg_price)} gp\n"
                                 f"**Margin:** {format_price(margin)} gp ({margin_percentage:.1f}%)\n"
                                 f"**Range:** `H: {format_price(highest_price)}` • `L: {format_price(lowest_price)}`\n"
-                                f"**Trend:** {trend_symbol} {format_price(oldest_price)} → {format_price(newest_price)} ({'+'if trend_percentage > 0 else ''}{trend_percentage:.1f}%)"
+                                f"**Trend:** {trend_symbol} {format_price(oldest_price)} → {format_price(newest_price)} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%)"
                             )
                             
                             embed.add_field(
@@ -176,7 +145,6 @@ class PriceChecker(commands.Cog):
             except Exception as e:
                 print(f"Error in check_recent: {e}")
                 await ctx.send(f"An error occurred: {str(e)}")
-
 
 async def setup(bot):
     await bot.add_cog(PriceChecker(bot))
