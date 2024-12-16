@@ -26,10 +26,14 @@ class PriceChecker(commands.Cog):
             "bsh": "black santa hat",
             "rsh": "red santa hat",
             "hween": "halloween mask",
-            "whip": "abyssal whip",
-            "dboot": "dragon boots",
-            "scimmy": "amulet of fury",
-            "bgloves": "barrows gloves",
+            "xmas": "christmas",
+            "hsr": "signet ring",
+            "osh": "orlando",
+            
+            
+            
+
+
             # Add more aliases as needed
         }
         print("PriceChecker cog initialized")
@@ -40,16 +44,33 @@ class PriceChecker(commands.Cog):
 
     def process_item_name(self, item_name: str) -> str:
         """Process item name and check for aliases including compound names"""
-        words = item_name.lower().split()
+        print(f"Processing item name: {item_name}")
         
-        # Check if the last word is an alias
-        if words[-1] in self.item_aliases:
-            # Replace the last word with its alias
-            words[-1] = self.item_aliases[words[-1]]
-            return " ".join(words)
-            
-        # If no alias found, return original name
-        return item_name.lower()
+        # Add compound aliases first
+        compound_aliases = {
+            "black xmas": "black christmas scythe",
+            "black xmas scythe": "black christmas scythe",
+            # Add other compound aliases here
+        }
+        
+        # Check compound aliases first
+        item_lower = item_name.lower()
+        for alias, full_name in compound_aliases.items():
+            if alias in item_lower:
+                return full_name
+    
+        # Then check regular aliases
+        if item_lower in self.item_aliases:
+            return self.item_aliases[item_lower]
+        
+        # Check partial matches in regular aliases
+        for alias in sorted(self.item_aliases.keys(), key=len, reverse=True):
+            if alias in item_lower:
+                return item_lower.replace(alias, self.item_aliases[alias])
+        
+        return item_lower
+    
+    
 
     def get_item_id_from_name(self, item_name: str) -> str:
         """Convert item name to item ID using the dictionary"""
@@ -76,26 +97,55 @@ class PriceChecker(commands.Cog):
         if item_name is None:
             await ctx.send("Please provide an item name. Usage: ,recent <item name>")
             return
-
+    
         # Process item name with aliases
         processed_name = self.process_item_name(item_name)
         print(f"Searching for item: {processed_name}")
-
-        # Get item ID using the dictionary
-        found_item = None
-        
-        # Search through the list of dictionaries
+    
+        matches = []
+        exact_matches = []
+    
+        # Two-pass search: first for exact matches, then for partial
         for item in self.item_dictionary:
-            if item['value'].lower() == processed_name:
-                found_item = item
-                break
-
-        if found_item is None:
+            item_name_lower = item['value'].lower()
+            if item_name_lower == processed_name:  # Exact match
+                exact_matches.append(item)
+            elif processed_name in item_name_lower:  # Partial match
+                # Only add if it's not already an exact match
+                if item not in exact_matches:
+                    matches.append(item)
+    
+        # If we have exact matches, use those instead of partial matches
+        if exact_matches:
+            matches = exact_matches
+    
+        if not matches:
             await ctx.send(f"Could not find item: {item_name}")
             return
-
+    
+        if len(matches) > 1:
+            embed = discord.Embed(
+                title="Multiple matches found",
+                description="Please be more specific. Found these items:",
+                color=discord.Color.blue()
+            )
+            # Sort matches by length of name to show closest matches first
+            matches.sort(key=lambda x: len(x['value']))
+            for item in matches[:10]:  # Limit to 10 matches
+                embed.add_field(
+                    name=item['value'],
+                    value=f"ID: {item['id']}",
+                    inline=False
+                )
+            await ctx.send(embed=embed)
+            return
+    
+        found_item = matches[0]
         item_id = found_item['id']
-
+    
+        # Rest of your existing price check code...
+    
+    
         # Show typing indicator while processing
         async with ctx.typing():
             try:
@@ -115,7 +165,7 @@ class PriceChecker(commands.Cog):
                     'sec-fetch-site': 'same-origin',
                     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OPR/114.0.0.0 (Edition std-1)'
                 }
-
+    
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, headers=headers) as response:
                         if response.status == 200:
@@ -124,13 +174,13 @@ class PriceChecker(commands.Cog):
                             trades.reverse()  # Reverse to show newest first
                             
                             embed = discord.Embed(
-                                title=f"Recent Trades for {item_name}",
+                                title=f"Recent Trades for {found_item['value']}",
                                 color=discord.Color.gold()
                             )
-
+    
                             def format_price(price):
                                 return f"{int(price):,}"
-
+    
                             def get_days_ago(date_str):
                                 from datetime import datetime
                                 trade_date = datetime.strptime(date_str, '%Y-%m-%d-%H:%M')
@@ -142,25 +192,25 @@ class PriceChecker(commands.Cog):
                                     return "1 day ago"
                                 else:
                                     return f"{delta.days} days ago"
-
+    
                             def format_percentage(old_price, new_price):
                                 percentage = ((new_price - old_price) / old_price) * 100
                                 sign = '+' if percentage > 0 else ''
                                 return f"({sign}{percentage:.1f}%)"
-
+    
                             # Calculate prices
                             avg_price = sum(trade['price'] for trade in trades) / len(trades)
                             highest_price = max(trade['price'] for trade in trades)
                             lowest_price = min(trade['price'] for trade in trades)
                             margin = highest_price - lowest_price
                             margin_percentage = ((highest_price - lowest_price) / lowest_price) * 100
-
+    
                             # Calculate price trend
                             oldest_price = trades[-1]['price']
                             newest_price = trades[0]['price']
                             trend_percentage = ((newest_price - oldest_price) / oldest_price) * 100
                             trend_symbol = "📈" if trend_percentage > 0 else "📉"
-
+    
                             # Add price information
                             price_info = (
                                 f"**Average:** {format_price(avg_price)} gp\n"
@@ -174,7 +224,7 @@ class PriceChecker(commands.Cog):
                                 value=price_info,
                                 inline=False
                             )
-
+    
                             # Create trade history string
                             trade_history = ""
                             for i, trade in enumerate(trades):
@@ -188,24 +238,19 @@ class PriceChecker(commands.Cog):
                                     trade_history += f"`{time}` ({days_ago}) • {trade['purchase']} for **{price}** gp {percentage}\n"
                                 else:
                                     trade_history += f"`{time}` ({days_ago}) • {trade['purchase']} for **{price}** gp\n"
-
+    
                             embed.add_field(
                                 name="Recent Trades",
                                 value=trade_history,
                                 inline=False
                             )
-
-                            # Add footer with date
-                            latest_date = trades[0]['date'].split('-')
-                            embed.set_footer(text=f"📅{latest_date[2]}/{latest_date[1]}/{latest_date[0]}")
-
+    
                             await ctx.send(embed=embed)
                         else:
-                            await ctx.send(f"Error getting price data: {response.status}")
-            
+                            await ctx.send("Error fetching price data.")
             except Exception as e:
-                print(f"Error in check_recent: {e}")
-                await ctx.send(f"An error occurred: {str(e)}")
-
+                print(f"Error: {e}")
+                await ctx.send("An error occurred while fetching price data.")
+    
 async def setup(bot):
     await bot.add_cog(PriceChecker(bot))
