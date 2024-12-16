@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from difflib import get_close_matches
 import aiohttp
 import sys
 import os
@@ -42,61 +43,76 @@ class PriceChecker(commands.Cog):
     async def on_ready(self):
         print("PriceChecker cog is ready")
 
+    from difflib import get_close_matches
+    
     def process_item_name(self, item_name: str) -> str:
         """Process item name and check for aliases including compound names"""
         print(f"Processing item name: {item_name}")
         
-        # Add compound aliases first
+        # Add compound aliases
         compound_aliases = {
             "black xmas": "black christmas scythe",
             "black xmas scythe": "black christmas scythe",
             # Add other compound aliases here
         }
         
-        # Check compound aliases first
         item_lower = item_name.lower()
+        
+        # First check complete phrase in compound aliases
         for alias, full_name in compound_aliases.items():
-            if alias in item_lower:
+            if alias == item_lower:
                 return full_name
-    
-        # Then check regular aliases
-        if item_lower in self.item_aliases:
-            return self.item_aliases[item_lower]
         
-        # Check partial matches in regular aliases
-        for alias in sorted(self.item_aliases.keys(), key=len, reverse=True):
-            if alias in item_lower:
-                return item_lower.replace(alias, self.item_aliases[alias])
+        # Get all actual item names from dictionary
+        all_item_names = [item['value'].lower() for item in self.item_dictionary]
         
-        return item_lower
-    
-    
-
-    def get_item_id_from_name(self, item_name: str) -> str:
-        """Convert item name to item ID using the dictionary"""
-        processed_name = self.process_item_name(item_name)
-        print(f"Looking up: {processed_name}")  # Debug print
+        # Try exact match first
+        if item_lower in all_item_names:
+            return item_lower
+            
+        # If no exact match, try fuzzy matching the complete phrase
+        complete_matches = get_close_matches(item_lower, all_item_names, n=1, cutoff=0.7)
+        if complete_matches:
+            return complete_matches[0]
+            
+        # If still no match, try word by word
+        words = item_lower.split()
+        final_words = []
         
-        # Exact match first
-        for item_id, item_data in self.item_dictionary.items():
-            if item_data['value'].lower() == processed_name:
-                print(f"Found exact match: {item_id}")  # Debug print
-                return str(item_id)
+        for word in words:
+            # Try exact matches first
+            if word in all_item_names:
+                final_words.append(word)
+                continue
                 
-        # If no exact match, try partial match
-        for item_id, item_data in self.item_dictionary.items():
-            if processed_name in item_data['value'].lower():
-                print(f"Found partial match: {item_id}")  # Debug print
-                return str(item_id)
+            # Then try fuzzy matching
+            word_matches = get_close_matches(word, all_item_names, n=1, cutoff=0.7)
+            if word_matches:
+                final_words.append(word_matches[0])
+            else:
+                final_words.append(word)
         
-        print("No match found")  # Debug print
-        return None
-
+        result = " ".join(final_words)
+        print(f"Corrected search term: {result}")
+        return result
+    
+    
+    
+    
     @commands.command(name='recent', aliases=['price', 'pc'])
     async def check_recent(self, ctx, *, item_name: str = None):
         if item_name is None:
             await ctx.send("Please provide an item name. Usage: ,recent <item name>")
             return
+    
+        original_name = item_name
+        processed_name = self.process_item_name(item_name)
+        
+        if processed_name != item_name.lower():
+            print(f"Corrected '{original_name}' to '{processed_name}'")
+        
+        # Rest of your existing code...
+    
     
         # Process item name with aliases
         processed_name = self.process_item_name(item_name)
