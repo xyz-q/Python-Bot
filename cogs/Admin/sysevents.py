@@ -6,7 +6,7 @@ import traceback
 class SystemCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.allowed_channel_name = "admin-commands" 
+        self.allowed_channel_name = "price-check" 
         self.trusted_role_id = 1234567890  
 
     @commands.Cog.listener()
@@ -92,7 +92,7 @@ class SystemCommands(commands.Cog):
             
             if not message.content.startswith(',setup'):
                 if message.channel.name != self.allowed_channel_name:
-                    error_message = ":warning: Commands can only be used in the #admin-commands channel. [/setup]"
+                    error_message = ":warning: Commands can only be used in the #price-check channel. [/setup]"
                     try:
                         await message.delete()
                     except discord.errors.NotFound:
