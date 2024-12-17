@@ -59,13 +59,13 @@ class PriceChecker(commands.Cog):
         
 
         compound_aliases = {
-            "black xmas": "black christmas scythe",
-            "black xmas scythe": "black christmas scythe",
+            "black xmas": "Black Christmas Scythe",
+            "black xmas scythe": "Black Christmas Scythe",
             "3a": "third age",
             "2a": "second age",
             "top": "Platebody",
             "bottoms": "Platelegs",
-            "walks": "walk",
+            "walks": "Walk",
             "scythes": "scythe",
             "disk": "disk of returning",
             "xmas": "christmas",
@@ -189,7 +189,7 @@ class PriceChecker(commands.Cog):
             embed = discord.Embed(
                 title=f"{item_name}",
                 description=f"Prices matching item {item_name}",
-                color=discord.Color.blue()
+                color=discord.Color.gold()
             )
         
             headers = {
