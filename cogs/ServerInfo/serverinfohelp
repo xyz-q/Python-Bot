@@ -1,19 +1,35 @@
-@bot.command()
-async def serverhelp(ctx):
-    help_text = """
-**Available Commands:**
-,voiceinfo <server_id> - Get information about voice channels in a server
-,servermembers <server_id> - Get a list of members in a server
-,serverlist
-,channellist <server_id> - Get a list of channels in a server
-,serverjoin <server_id> [channel_id] - Join a server's vc (optional channel ID)
-,inviteserver <server_id> - Get an invite link for a server
-,messages <serverid> <channelid> <limit> - Get messages from a channel
+import discord
+from discord.ext import commands
+from difflib import get_close_matches
+import aiohttp
+import sys
+import os
+import asyncio
+from discord import app_commands, Interaction
+
+
+dmhelplist = [
+                *Available Commands:**
+                ,voiceinfo <server_id> - Get information about voice channels in a server
+                ,servermembers <server_id> - Get a list of members in a server
+                ,serverlist
+                ,channellist <server_id> - Get a list of channels in a server
+                ,serverjoin <server_id> [channel_id] - Join a servers vc [optional channel ID]
+                ,inviteserver <server_id> - Get an invite link for a server
+                ,messages <serverid> <channelid> <limit> - Get messages from a channel
+                    
+                ]
+
+class dmhelp(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+    
+    @commands.dm_only()
+    @commands.hybrid_command(name="dmhelp", description="dmhelp")
+    async def dmhelp(self, interaction: discord.Interaction):
+        await interaction.response.send_message('\n'.join(dmhelplist), ephemeral=True)
 
 
 
-
-
-
-    """
-    await ctx.send(help_text)
+async def setup(bot):
+    await bot.add_cog(dmhelp(bot))
