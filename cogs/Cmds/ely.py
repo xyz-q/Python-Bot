@@ -59,12 +59,14 @@ class PriceChecker(commands.Cog):
         
 
         compound_aliases = {
+            "black xmas": "black christmas scythe",
             "black xmas scythe": "black christmas scythe",
+            
             "3a": "third age",
             "2a": "second age",
-            "top": "platebody",
-            "bottoms": "platelegs",
-            "walks": "Walk",
+            "top": "Platebody",
+            "bottoms": "Platelegs",
+            "walks": "walk",
             "scythes": "scythe",
             "disk": "disk of returning",
             "xmas": "christmas",

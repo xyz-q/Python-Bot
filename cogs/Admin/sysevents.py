@@ -7,7 +7,7 @@ class SystemCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.allowed_channel_name = "admin-commands" 
-        self.trusted_role_id = 1234567890  
+        self.trusted_role_name = ".trusted"
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -86,11 +86,11 @@ class SystemCommands(commands.Cog):
             return 
 
         if message.content.startswith(','):
-            if message.content.startswith(',list') or message.content.startswith(',help') or message.content.startswith(',pc'):
+            if message.content.startswith(',pc') or message.content.startswith(',help') or message.content.startswith(',invite'):
                 await self.bot.process_commands(message)
                 return
             
-            if not message.content.startswith(',setup',):
+            if not message.content.startswith(',pc'):
                 if message.channel.name != self.allowed_channel_name:
                     error_message = ":warning: Commands can only be used in the #admin-commands channel. [/setup]"
                     try:
@@ -101,14 +101,14 @@ class SystemCommands(commands.Cog):
                     await asyncio.sleep(4)
                     await response.delete()
                     return
-                trusted_role = discord.utils.get(message.guild.roles, id=self.trusted_role_id)
+                trusted_role = discord.utils.get(message.guild.roles, id=self.trusted_role_name)
                 if trusted_role and trusted_role not in message.author.roles:
                     response = await message.channel.send(f" :warning: [ERROR] {message.author.mention} is not permitted to operate commands.")
                     await message.delete()
                     await asyncio.sleep(4)
                     await response.delete()
                     return
-                trusted_role = discord.utils.get(message.guild.roles, id=self.trusted_role_id)
+                trusted_role = discord.utils.get(message.guild.roles, id=self.trusted_role_name)
                 if trusted_role and trusted_role not in message.author.roles:
                     response = await message.channel.send(f" :warning: [ERROR] {message.author.mention} is not permitted to operate commands.")
                     await message.delete()

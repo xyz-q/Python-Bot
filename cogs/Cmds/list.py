@@ -7,6 +7,7 @@ commands_list = [
     (",autodelete", "Toggles the bot's autodelete function"),
     (",audit <#>", "Displays audit logs"),
     (",afk", "Toggle your status of AFK"),
+    (",avatar <@user>", "Displays specified users avatar."),
     (",ban <reason> <delete message history (0-7)>", "Bans the user, showing who banned them and for what"),
     (",clearq", "Removes all music from the queue"),
     (",cogs", "Lists all cogs"),

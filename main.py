@@ -51,7 +51,7 @@ class Client(commands.Bot):
         if message.content.startswith(','):
             print(f"{message.author} used command: {message.content}")
     
-        if message.channel.name != 'price-check':
+        if message.channel.name != 'admin-commands':
             return
 
         if message.author.id == 110927272210354176:

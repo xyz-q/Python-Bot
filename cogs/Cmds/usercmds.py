@@ -70,7 +70,7 @@ class UserCommands(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.command(name='avatar', aliases=['pfp', 'pic'])
     async def avatar(self, ctx, user: discord.User = None, user_id: int = None):
         if user_id:
             try:
