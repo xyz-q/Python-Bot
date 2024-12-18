@@ -59,12 +59,11 @@ class PriceChecker(commands.Cog):
         
 
         compound_aliases = {
-            "black xmas": "Black Christmas Scythe",
-            "black xmas scythe": "Black Christmas Scythe",
+            "black xmas scythe": "black christmas scythe",
             "3a": "third age",
             "2a": "second age",
-            "top": "Platebody",
-            "bottoms": "Platelegs",
+            "top": "platebody",
+            "bottoms": "platelegs",
             "walks": "Walk",
             "scythes": "scythe",
             "disk": "disk of returning",
@@ -83,7 +82,7 @@ class PriceChecker(commands.Cog):
             "xmas": "christmas",
             "hsr": "signet ring",
             "osh": "orlando",            
-            "bcs": "black xmas",
+            "bcs": "black christmas scythe",
             "3a": "third age",
             "phats": "partyhat",
             "phat set": "partyhat",
