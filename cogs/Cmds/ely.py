@@ -60,12 +60,12 @@ class PriceChecker(commands.Cog):
 
         compound_aliases = {
             "black xmas": "black christmas scythe",
-            "black xmas scythe": "black christmas scythe",
-            
-            "3a": "third age",
+            "black xmas scythe": "black christmas scythe",         
             "2a": "second age",
-            "top": "Platebody",
-            "bottoms": "Platelegs",
+            "3a": "third age",
+             "3a dye": "third age dye",
+            "3a top": "third age platebody",
+            "3a bottoms": "third age platelegs",
             "walks": "walk",
             "scythes": "scythe",
             "disk": "disk of returning",
@@ -84,8 +84,7 @@ class PriceChecker(commands.Cog):
             "xmas": "christmas",
             "hsr": "signet ring",
             "osh": "orlando",            
-            "bcs": "black christmas scythe",
-            "3a": "third age",
+            "bcs": "black christmas scythe",            
             "phats": "partyhat",
             "phat set": "partyhat",
             "hween set": "halloween mask",
@@ -96,6 +95,9 @@ class PriceChecker(commands.Cog):
             "purple hween": "purple halloween mask",
             "orange hween": "orange halloween mask",
             "orange": "orange halloween mask",
+            "taggas": "tagga's",
+            "fyre": "sana's fyrtorch",
+            "hypno": "skeka's hypnowand",
 
             
 
@@ -183,13 +185,13 @@ class PriceChecker(commands.Cog):
             matches = exact_matches
     
         if not matches:
-            await ctx.send(f"Could not find item: {item_name}")
+            await ctx.send(f"Could not find item: {item_name.title()}")
             return
     
         if len(matches) > 1:
             embed = discord.Embed(
-                title=f"{item_name}",
-                description=f"Prices matching item {item_name}",
+                title=f"{item_name.title()}",
+                description=f"Prices matching item - {item_name.title()}",
                 color=discord.Color.gold()
             )
         
@@ -291,30 +293,58 @@ class PriceChecker(commands.Cog):
                                       
                             try:
                                 base_url = "https://www.ely.gg"
-                                icon_url = base_url + found_item['icon'] 
+                                icon_path = found_item['icon']
+                                
+                                # Remove any accidental double https:// if present
+                                if 'cdn.discordapp.com' in icon_path:
+                                    icon_url = icon_path.replace('https://www.ely.gghttps://', 'https://')
+                                else:
+                                    icon_url = base_url + icon_path
+                                
                                 print(f"Attempting to set thumbnail with URL: {icon_url}")  
                                 embed.set_thumbnail(url=icon_url)
                                 print(f"Image set found with: {icon_url}")
                                 await asyncio.sleep(1)  
                             except Exception as e:
                                 print(f"Failed to set thumbnail: {e}")
+                            
+                            
 
                             def format_price(price):
                                 return f"{int(price):,}"
 
 
     
-                            def get_days_ago(date_str):
-                                from datetime import datetime
+                            def get_time_ago(date_str):
+                                from datetime import datetime, timedelta
                                 trade_date = datetime.strptime(date_str, '%Y-%m-%d-%H:%M')
+                                
+                                # Adjust for 8 hour difference
+                                trade_date = trade_date - timedelta(hours=8)
+                                
                                 now = datetime.now()
                                 delta = now - trade_date
-                                if delta.days == 0:
-                                    return "today"
-                                elif delta.days == 1:
-                                    return "1 day ago"
+                                
+                                # Convert to minutes
+                                total_minutes = int(delta.total_seconds() / 60)
+                                
+                                if total_minutes < 1:
+                                    return "just now"
+                                elif total_minutes == 1:
+                                    return "1 minute ago"
+                                elif total_minutes < 60:
+                                    return f"{total_minutes} minutes ago"
+                                elif total_minutes < 1440:  # Less than 24 hours
+                                    hours = total_minutes // 60
+                                    minutes = total_minutes % 60
+                                    if minutes == 0:
+                                        return f"{hours} hours ago"
+                                    return f"{hours}h {minutes}m ago"
                                 else:
-                                    return f"{delta.days} days ago"
+                                    days = total_minutes // 1440
+                                    return f"{days} days ago"
+                            
+                            
     
                             def format_percentage(old_price, new_price):
                                 percentage = ((new_price - old_price) / old_price) * 100
@@ -351,16 +381,16 @@ class PriceChecker(commands.Cog):
                             trade_history = ""
                             for i, trade in enumerate(trades):
                                 time = trade['date'].split('-')[-1]
-                                days_ago = get_days_ago(trade['date'])
+                                time_ago = get_time_ago(trade['date']) 
                                 price = format_price(trade['price'])
                                 
                                 if i > 0:
                                     prev_price = trades[i-1]['price']
                                     percentage = format_percentage(prev_price, trade['price'])
-                                    trade_history += f"`{time}` ({days_ago}) • {trade['purchase']} for **{price}** gp {percentage}\n"
+                                    trade_history += f" ({time_ago}) • {trade['purchase']} for **{price}** gp {percentage}\n"
                                 else:
-                                    trade_history += f"`{time}` ({days_ago}) • {trade['purchase']} for **{price}** gp\n"
-    
+                                    trade_history += f" ({time_ago}) • {trade['purchase']} for **{price}** gp\n"
+                            
                             embed.add_field(
                                 name="Recent Trades",
                                 value=trade_history,
