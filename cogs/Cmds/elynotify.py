@@ -278,7 +278,7 @@ class ElyNotify(commands.Cog):
 
         embed = discord.Embed(
             title="Your Price Alerts",
-            color=discord.Color.blue()
+            color=discord.Color.gold()
         )
 
         for item_id, target_price, item_name, direction in self.price_alerts[ctx.author.id]:
@@ -324,7 +324,7 @@ class ElyNotify(commands.Cog):
         embeds = []
         current_embed = discord.Embed(
             title="All Active Alerts",
-            color=discord.Color.blue()
+            color=discord.Color.gold()
         )
         field_count = 0
 
@@ -349,7 +349,7 @@ class ElyNotify(commands.Cog):
                 embeds.append(current_embed)
                 current_embed = discord.Embed(
                     title="All Active Alerts (Continued)",
-                    color=discord.Color.blue()
+                    color=discord.Color.gold()
                 )
                 field_count = 0
 
