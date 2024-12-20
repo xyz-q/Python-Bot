@@ -217,6 +217,8 @@ class ElyNotify(commands.Cog):
 
     @commands.command(name='notify', aliases=['alert', 'setalert'])
     async def add_alert(self, ctx, *, text: str = None):
+        async with ctx.typing():
+            asyncio.sleep(0.5)
         print(f"\nNotify command received from {ctx.author}: {text}")
         
         if text is None:
@@ -270,6 +272,8 @@ class ElyNotify(commands.Cog):
 
     @commands.command(name='myalerts')
     async def list_alerts(self, ctx):
+        async with ctx.typing():
+            asyncio.sleep(0.5)
         print(f"\nListing alerts for {ctx.author}")
         
         if ctx.author.id not in self.price_alerts or not self.price_alerts[ctx.author.id]:
@@ -293,6 +297,8 @@ class ElyNotify(commands.Cog):
 
     @commands.command(name='removealert')
     async def remove_alert(self, ctx, *, item_name: str):
+        async with ctx.typing():
+            asyncio.sleep(0.5)
         print(f"\nRemoving alert for {ctx.author}: {item_name}")
         
         if ctx.author.id not in self.price_alerts:
@@ -315,6 +321,8 @@ class ElyNotify(commands.Cog):
     @commands.command(name='alerts')
     @commands.is_owner()  # This makes the command only usable by the bot owner
     async def all_alerts(self, ctx):
+        async with ctx.typing():
+            asyncio.sleep(0.5)
         print("\nListing all alerts for all users")
         
         if not self.price_alerts:
