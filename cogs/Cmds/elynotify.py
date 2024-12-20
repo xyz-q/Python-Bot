@@ -20,18 +20,18 @@ class ElyNotify(commands.Cog):
         self.check_prices.start()
 
         self.item_aliases = {
-            "hween": "halloween mask",
             "black xmas": "black christmas scythe",
             "black xmas scythe": "black christmas scythe",         
             "2a": "second age",
             "3a": "third age",
-            "3a dye": "third age dye",
+             "3a dye": "third age dye",
             "3a top": "third age platebody",
             "3a bottoms": "third age platelegs",
             "walks": "walk",
             "scythes": "scythe",
             "disk": "disk of returning",
             "xmas": "christmas",
+            "bph": "black partyhat",
             "black": "black partyhat",
             "red": "red partyhat",
             "white": "white partyhat",
@@ -42,9 +42,26 @@ class ElyNotify(commands.Cog):
             "bsh": "black santa hat",
             "rsh": "red santa hat",
             "hween": "halloween mask",
+            "xmas": "christmas",
             "hsr": "signet ring",
             "osh": "orlando",            
-            "bcs": "black christmas scythe",
+            "bcs": "black christmas scythe",            
+            "phats": "partyhat",
+            "phat set": "partyhat",
+            "phat set": "partyhat",
+            "phat": "partyhat",
+            "hween set": "halloween mask",
+            "hweens": "halloween mask",
+            "santas": "santa hat",
+            "blue hween": "blue halloween mask",
+            "green hween": "green halloween mask",
+            "red hween": "red halloween mask",
+            "purple hween": "purple halloween mask",
+            "orange hween": "orange halloween mask",
+            "orange": "orange halloween mask",
+            "taggas": "tagga's",
+            "fyre": "sana's fyrtorch",
+            "hypno": "skeka's hypnowand",                     
         }
 
     def load_alerts(self):
@@ -198,7 +215,7 @@ class ElyNotify(commands.Cog):
     async def before_check_prices(self):
         await self.bot.wait_until_ready()
 
-    @commands.command(name='notify', aliases=['alert', 'alrt'])
+    @commands.command(name='notify', aliases=['alert', 'setalert'])
     async def add_alert(self, ctx, *, text: str = None):
         print(f"\nNotify command received from {ctx.author}: {text}")
         
