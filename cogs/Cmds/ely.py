@@ -88,6 +88,7 @@ class PriceChecker(commands.Cog):
             "phats": "partyhat",
             "phat set": "partyhat",
             "phat set": "partyhat",
+            "phat": "partyhat",
             "hween set": "halloween mask",
             "hweens": "halloween mask",
             "santas": "santa hat",
