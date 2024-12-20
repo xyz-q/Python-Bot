@@ -86,11 +86,11 @@ class SystemCommands(commands.Cog):
             return 
 
         if message.content.startswith(','):
-            if message.content.startswith(',pc') or message.content.startswith(',help') or message.content.startswith(',invite'):
+            if message.content.startswith(',pc') or message.content.startswith(',help') or message.content.startswith(',invite') or message.content.startswith(',alert') or message.content.startswith(',myalerts') or message.content.startswith(',removealert'):
                 await self.bot.process_commands(message)
                 return
             
-            if not message.content.startswith(',pc'):
+            if not message.content.startswith(',pc') or message.content.startswith(',alert') or message.content.startswith(',myalerts') or message.content.startswith(',removealert'):
                 if message.channel.name != self.allowed_channel_name:
                     error_message = ":warning: Commands can only be used in the #admin-commands channel. [/setup]"
                     try:
