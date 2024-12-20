@@ -82,6 +82,7 @@ class PriceChecker(commands.Cog):
             "rsh": "red santa hat",
             "gsh": "green santa hat",
             "ash": "aurora santa hat",
+            "aurora trail": "aurora trail token",
             "hween": "halloween mask",
             "xmas": "christmas",
             "hsr": "signet ring",
