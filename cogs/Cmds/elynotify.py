@@ -18,7 +18,6 @@ class ElyNotify(commands.Cog):
         self.alerts_file = 'alerts.json'
         self.load_alerts()  # Load saved alerts when bot starts
         self.check_prices.start()
-        self.bot.loop.create_task(self.preload_images())
 
         self.item_aliases = {
             "hween": "halloween mask",
@@ -74,27 +73,6 @@ class ElyNotify(commands.Cog):
         except Exception as e:
             print(f"Error saving alerts: {e}")
 
-    async def preload_images(self):
-        """Preload all images silently"""
-        await self.bot.wait_until_ready()
-        base_url = "https://www.ely.gg"
-        
-        print("\nStarting to preload images...")
-        loaded = 0
-        total = len(self.item_dictionary)
-        
-        async with aiohttp.ClientSession() as session:
-            for item in self.item_dictionary:
-                if 'icon' in item:
-                    icon_url = base_url + item['icon']
-                    try:
-                        await session.head(icon_url)
-                        loaded += 1
-                        print(f"Preloaded {loaded}/{total}: {item['value']}")
-                    except:
-                        print(f"Failed to preload: {item['value']}")
-        
-        print(f"\nPreload complete! Loaded {loaded} images.")
 
     def process_item_name(self, item_name: str) -> str:
         """Process item name and check for aliases"""
