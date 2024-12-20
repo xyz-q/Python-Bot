@@ -70,7 +70,7 @@ class PriceChecker(commands.Cog):
             "scythes": "scythe",
             "disk": "disk of returning",
             "xmas": "christmas",
-            
+            "bph": "black partyhat",
             "black": "black partyhat",
             "red": "red partyhat",
             "white": "white partyhat",
@@ -87,8 +87,10 @@ class PriceChecker(commands.Cog):
             "bcs": "black christmas scythe",            
             "phats": "partyhat",
             "phat set": "partyhat",
+            "phat set": "partyhat",
             "hween set": "halloween mask",
             "hweens": "halloween mask",
+            "santas": "santa hat",
             "blue hween": "blue halloween mask",
             "green hween": "green halloween mask",
             "red hween": "red halloween mask",
@@ -208,47 +210,47 @@ class PriceChecker(commands.Cog):
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OPR/114.0.0.0 (Edition std-1)'
             }
         
-            async with ctx.typing():  # Show typing indicator while fetching
-                for item in matches[:10]:
-                    try:
-                        url = f"https://www.ely.gg/chart/{item['id']}/prices"
-                        print(f"Fetching prices for: {item['value']} from {url}")  # Debug print
-                        
-                        async with aiohttp.ClientSession() as session:
-                            async with session.get(url, headers=headers) as response:
-                                if response.status == 200:
-                                    data = await response.json()
-                                    recent_trades = data['items'][-5:]  # Get last 5 trades
-                                    
-                                    if recent_trades:
-                                        prices = [trade['price'] for trade in recent_trades]
-                                        min_price = min(prices)
-                                        max_price = max(prices)
-                                        price_range = f"Range: {min_price:,} - {max_price:,} gp"
-                                    else:
-                                        price_range = "No recent trades"
-                                else:
-                                    price_range = f"Error: Status {response.status}"
-                                    
+            async def fetch_single_item(session, item):
+                url = f"https://www.ely.gg/chart/{item['id']}/prices"
+                try:
+                    async with session.get(url, headers=headers) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            recent_trades = data['items'][-5:]
+                            
+                            if recent_trades:
+                                prices = [trade['price'] for trade in recent_trades]
+                                min_price = min(prices)
+                                max_price = max(prices)
+                                return item['value'], f"Range: {min_price:,} - {max_price:,} gp"
+                            return item['value'], "No recent trades"
+                        return item['value'], f"Error: Status {response.status}"
+                except Exception as e:
+                    print(f"Error fetching prices for {item['value']}: {e}")
+                    return item['value'], f"Error fetching prices: {str(e)}"
+        
+            async with ctx.typing():
+                async with aiohttp.ClientSession() as session:
+                    # Create all fetch tasks at once
+                    tasks = [fetch_single_item(session, item) for item in matches[:10]]
+                    # Execute all tasks concurrently
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    
+                    # Process results
+                    for result in results:
+                        if isinstance(result, Exception):
+                            print(f"Error in fetch: {result}")
+                            continue
+                        item_name, price_range = result
                         embed.add_field(
-                            name=item['value'],
+                            name=item_name,
                             value=price_range,
-                            inline=False
-                        )
-                        
-                        # Add a small delay between requests to avoid rate limiting
-                        await asyncio.sleep(0.5)
-                        
-                    except Exception as e:
-                        print(f"Error fetching prices for {item['value']}: {e}")  # Debug print
-                        embed.add_field(
-                            name=item['value'],
-                            value=f"Error fetching prices: {str(e)}",
                             inline=False
                         )
         
             await ctx.send(embed=embed)
             return
+        
         
         
     
