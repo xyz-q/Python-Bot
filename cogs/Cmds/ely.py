@@ -80,6 +80,8 @@ class PriceChecker(commands.Cog):
             "yellow": "yellow partyhat",
             "bsh": "black santa hat",
             "rsh": "red santa hat",
+            "gsh": "green santa hat",
+            "ash": "aurora santa hat",
             "hween": "halloween mask",
             "xmas": "christmas",
             "hsr": "signet ring",
