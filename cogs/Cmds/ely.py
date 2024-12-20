@@ -70,7 +70,7 @@ class PriceChecker(commands.Cog):
             "scythes": "scythe",
             "disk": "disk of returning",
             "xmas": "christmas",
-            "phat": "partyhat",
+            
             "black": "black partyhat",
             "red": "red partyhat",
             "white": "white partyhat",
