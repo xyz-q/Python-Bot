@@ -23,26 +23,36 @@ class PriceChecker(commands.Cog):
         }
         
     async def preload_images(self):
-        """Preload all images silently"""
         await self.bot.wait_until_ready()
         base_url = "https://www.ely.gg"
-        
-        print("\nStarting to preload images...")
-        loaded = 0
-        total = len(self.item_dictionary)
+        loaded_images = 0
+        total_items = len(self.item_dictionary)
+        await asyncio.sleep(3) 
+        print("Starting to preload images...")
         
         async with aiohttp.ClientSession() as session:
-            for item in self.item_dictionary:
-                if 'icon' in item:
-                    icon_url = base_url + item['icon']
+            for item in self.item_dictionary:  # Changed to iterate over list directly
+                if 'icon' in item:  # Check if the item has an icon field
+                    icon_path = item['icon']
+                    item_name = item.get('name', 'Unknown')  # Get item name, default to 'Unknown' if not found
+                    
+                    if 'cdn.discordapp.com' in icon_path:
+                        icon_url = icon_path.replace('https://www.ely.gghttps://', 'https://')
+                    else:
+                        icon_url = base_url + icon_path
+                    
                     try:
-                        await session.head(icon_url)
-                        loaded += 1
-                        print(f"Preloaded {loaded}/{total}: {item['value']}")
-                    except:
-                        print(f"Failed to preload: {item['value']}")
+                        async with session.head(icon_url) as response:
+                            if response.status == 200:
+                                loaded_images += 1
+                            else:
+                                print(f"Failed to preload: {item_name}")
+                    except Exception as e:
+                        print(f"Error preloading {item_name}: {str(e)}")
         
-        print(f"\nPreload complete! Loaded {loaded} images.")
+        print(f"Finished preloading {loaded_images} images")
+
+
 
 
 
@@ -237,12 +247,12 @@ class PriceChecker(commands.Cog):
         
             async with ctx.typing():
                 async with aiohttp.ClientSession() as session:
-                    # Create all fetch tasks at once
+                  
                     tasks = [fetch_single_item(session, item) for item in matches[:10]]
-                    # Execute all tasks concurrently
+                 
                     results = await asyncio.gather(*tasks, return_exceptions=True)
                     
-                    # Process results
+                  
                     for result in results:
                         if isinstance(result, Exception):
                             print(f"Error in fetch: {result}")
@@ -303,7 +313,7 @@ class PriceChecker(commands.Cog):
                                 base_url = "https://www.ely.gg"
                                 icon_path = found_item['icon']
                                 
-                                # Remove any accidental double https:// if present
+                              
                                 if 'cdn.discordapp.com' in icon_path:
                                     icon_url = icon_path.replace('https://www.ely.gghttps://', 'https://')
                                 else:
@@ -327,13 +337,13 @@ class PriceChecker(commands.Cog):
                                 from datetime import datetime, timedelta
                                 trade_date = datetime.strptime(date_str, '%Y-%m-%d-%H:%M')
                                 
-                                # Adjust for 8 hour difference
+                               
                                 trade_date = trade_date - timedelta(hours=8)
                                 
                                 now = datetime.now()
                                 delta = now - trade_date
                                 
-                                # Convert to minutes
+                              
                                 total_minutes = int(delta.total_seconds() / 60)
                                 
                                 if total_minutes < 1:
@@ -342,7 +352,7 @@ class PriceChecker(commands.Cog):
                                     return "1 minute ago"
                                 elif total_minutes < 60:
                                     return f"{total_minutes} minutes ago"
-                                elif total_minutes < 1440:  # Less than 24 hours
+                                elif total_minutes < 1440:  
                                     hours = total_minutes // 60
                                     minutes = total_minutes % 60
                                     if minutes == 0:

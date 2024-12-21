@@ -209,7 +209,7 @@ class ElyNotify(commands.Cog):
                 except Exception as e:
                     print(f"Error checking price for {item_name}: {e}")
                 
-                await asyncio.sleep(0.5)  # Prevent rate limiting
+                await asyncio.sleep(0.5)  
 
     @check_prices.before_loop
     async def before_check_prices(self):
@@ -263,7 +263,7 @@ class ElyNotify(commands.Cog):
         
         if alert_data not in self.price_alerts[ctx.author.id]:
             self.price_alerts[ctx.author.id].append(alert_data)
-            self.save_alerts()  # Save after adding alert
+            self.save_alerts()  
             direction_text = "rises above" if direction.lower() == 'h' else "drops below"
             await ctx.send(f"Alert set! You'll be notified when {item['value']} {direction_text} {target_price:,} gp")
             print(f"Alert set for {ctx.author}: {item['value']} at {target_price:,} gp ({direction_text})")
@@ -311,7 +311,7 @@ class ElyNotify(commands.Cog):
         for alert in alerts[:]:
             if processed_name in alert[2].lower():
                 self.price_alerts[ctx.author.id].remove(alert)
-                self.save_alerts()  # Save after removing alert
+                self.save_alerts()  
                 await ctx.send(f"Alert removed for {alert[2]}")
                 print(f"Alert removed for {ctx.author}: {alert[2]}")
                 return
@@ -319,7 +319,7 @@ class ElyNotify(commands.Cog):
         await ctx.send(f"No alert found for {item_name}")
 
     @commands.command(name='alerts')
-    @commands.is_owner()  # This makes the command only usable by the bot owner
+    @commands.is_owner() 
     async def all_alerts(self, ctx):
         async with ctx.typing():
             asyncio.sleep(0.5)
@@ -346,13 +346,13 @@ class ElyNotify(commands.Cog):
             if not alerts:
                 continue
 
-            # Create field for each user's alerts
+         
             alert_text = ""
             for item_id, target_price, item_name, direction in alerts:
                 direction_text = ">" if direction == 'h' else "<"
                 alert_text += f"{item_name}: {direction_text} {target_price:,} gp\n"
 
-            # If this embed is full (25 fields), create a new one
+           
             if field_count >= 25:
                 embeds.append(current_embed)
                 current_embed = discord.Embed(
@@ -368,16 +368,16 @@ class ElyNotify(commands.Cog):
             )
             field_count += 1
 
-        # Add the last embed if it has any fields
+   
         if field_count > 0:
             embeds.append(current_embed)
 
-        # Add total count to first embed's description
+     
         total_alerts = sum(len(alerts) for alerts in self.price_alerts.values())
         total_users = len(self.price_alerts)
         embeds[0].description = f"Total Alerts: {total_alerts}\nTotal Users: {total_users}"
 
-        # Send all embeds
+       
         for embed in embeds:
             await ctx.send(embed=embed)
 

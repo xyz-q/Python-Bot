@@ -1,5 +1,7 @@
-
+merchant_preferences.json
 alerts.json
 mocked_users.json
 previous_status.txt
 auto_delete.json
+*.json
+
