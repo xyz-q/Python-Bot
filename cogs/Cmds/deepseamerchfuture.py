@@ -63,7 +63,7 @@ class MerchantUpdater(commands.Cog):
         # Run once when loaded
         await self.update_merchant_stock()
 
-    @commands.command(name="updatemerchant")
+    @commands.command(name="updatemerchant", aliases=['merchupdate'])
     @commands.has_permissions(administrator=True)
     async def update_merchant_command(self, ctx):
         """Manually update the merchant stock data"""

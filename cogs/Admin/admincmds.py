@@ -127,13 +127,33 @@ class AdminCommands(commands.Cog):
         await self.update_bot_username(ctx)
 
     async def update_bot_username(self, ctx):
-        new_nickname = f" 🗑️ {self.ORIGINAL_NAME} ️" if self.auto_delete_enabled else self.ORIGINAL_NAME
-        try:
-            for guild in self.bot.guilds:
-                await guild.me.edit(nick=new_nickname)
-        except discord.HTTPException as e:
-            print(f"Failed to update bot's nickname: {e}")
+        """Update the bot's nickname dynamically for each guild."""
+        for guild in self.bot.guilds:
+            try:
+                # Get the current nickname or fall back to the default username
+                current_nickname = guild.me.nick  # Current nickname
+                if current_nickname and current_nickname.startswith("🗑"):
+                    # Extract the name after the emoji (remove it)
+                    original_name = current_nickname[2:].strip()
+                else:
+                    # Use the current nickname or default username as the original name
+                    original_name = guild.me.nick or guild.me.name
+                
+                # Build the new nickname based on auto_delete_enabled
+                if self.auto_delete_enabled:
+                    new_nickname = f"🗑 {original_name}"
+                else:
+                    new_nickname = original_name
 
+                # Ensure the nickname doesn't exceed 32 characters
+                if len(new_nickname) > 32:
+                    new_nickname = new_nickname[:32]
+
+                # Avoid redundant updates
+                if current_nickname != new_nickname:
+                    await guild.me.edit(nick=new_nickname)
+            except discord.HTTPException as e:
+                print(f"Failed to update bot's nickname in guild {guild.name}: {e}")
     @commands.command()
     @commands.has_permissions(view_audit_log=True)
     async def audit(self, ctx, limit: int = 10):
