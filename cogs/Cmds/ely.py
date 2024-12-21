@@ -238,7 +238,7 @@ class PriceChecker(commands.Cog):
                                 prices = [trade['price'] for trade in recent_trades]
                                 min_price = min(prices)
                                 max_price = max(prices)
-                                return item['value'], f"Range: {min_price:,} - {max_price:,} gp"
+                                return item['value'], f"Range: {min_price:,} - {max_price:,} <:goldpoints:1319902464115343473> "
                             return item['value'], "No recent trades"
                         return item['value'], f"Error: Status {response.status}"
                 except Exception as e:
@@ -261,6 +261,7 @@ class PriceChecker(commands.Cog):
                         embed.add_field(
                             name=item_name,
                             value=price_range,
+                            
                             inline=False
                         )
         
@@ -304,7 +305,9 @@ class PriceChecker(commands.Cog):
                             trades.reverse()  
                             
                             embed = discord.Embed(
-                                title=f"Recent Trades for {found_item['value']}",
+                                
+                                description="*Written by* <@110927272210354176>",
+                                title=f"{found_item['value']}",
                                 color=discord.Color.gold()
                             )
     
@@ -383,18 +386,19 @@ class PriceChecker(commands.Cog):
                             trend_symbol = "📈" if trend_percentage > 0 else "📉"
     
                             price_info = (
-                                f"**Average:** {format_price(avg_price)} gp\n"
-                                f"**Margin:** {format_price(margin)} gp ({margin_percentage:.1f}%)\n"
-                                f"**Range:** `H: {format_price(highest_price)}` • `L: {format_price(lowest_price)}`\n"
-                                f"**Trend:** {trend_symbol} {format_price(oldest_price)} → {format_price(newest_price)} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%)"
+                                
+                                f"**Current street price:** {format_price(newest_price)} <:goldpoints:1319902464115343473> \n\n"
+                                f"**Margin:** {format_price(margin)} <:goldpoints:1319902464115343473>  ({margin_percentage:.1f}%)\n"                              
+                                f"**Trend:** {trend_symbol} {format_price(oldest_price)} → {format_price(newest_price)} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%)\n"
+                                f" \u200B \n"
                             )
                             
                             embed.add_field(
-                                name="Price Information",
+                                name=f"",
                                 value=price_info,
                                 inline=False
                             )
-    
+                            
                        
                             trade_history = ""
                             for i, trade in enumerate(trades):
@@ -405,16 +409,16 @@ class PriceChecker(commands.Cog):
                                 if i > 0:
                                     prev_price = trades[i-1]['price']
                                     percentage = format_percentage(prev_price, trade['price'])
-                                    trade_history += f" ({time_ago}) • {trade['purchase']} for **{price}** gp {percentage}\n"
+                                    trade_history += f" ({time_ago}) • {trade['purchase']} for **{price}**  {percentage}\n"
                                 else:
-                                    trade_history += f" ({time_ago}) • {trade['purchase']} for **{price}** gp\n"
+                                    trade_history += f" ({time_ago}) • {trade['purchase']} for **{price}** \n"
                             
                             embed.add_field(
                                 name="Recent Trades",
                                 value=trade_history,
                                 inline=False
                             )
-    
+                            embed.set_footer(text="Use ,alert to get notified when the price changes! ")
                             await ctx.send(embed=embed)
                         else:
                             await ctx.send("Error fetching price data.")

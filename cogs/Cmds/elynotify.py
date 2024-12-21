@@ -222,7 +222,7 @@ class ElyNotify(commands.Cog):
         print(f"\nNotify command received from {ctx.author}: {text}")
         
         if text is None:
-            await ctx.send("Please use: ,notify [item name] [price] [h/l]\nExample: ,notify bcs 85m h")
+            await ctx.send("Please use: ,alert [item name] [price] [h/l]\nYou can also use ,myalerts ,removealerts")
             return
 
         try:
