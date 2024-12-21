@@ -270,7 +270,7 @@ class TravellingMerchant(commands.Cog):
         """Clean up when cog is unloaded"""
         self.daily_notification.cancel()
 
-    @commands.command(name="merchusers")
+    @commands.command(name="merchusers", aliases=['merchers'])
     @commands.is_owner()
     async def show_merch_users(self, ctx):
         async with ctx.typing():
