@@ -234,7 +234,7 @@ class PriceChecker(commands.Cog):
                     async with session.get(url, headers=headers) as response:
                         if response.status == 200:
                             data = await response.json()
-                            recent_trades = data['items'][-5:]
+                            recent_trades = data['items'][-8:]
                             
                             if recent_trades:
                                 prices = [trade['price'] for trade in recent_trades]
@@ -303,7 +303,7 @@ class PriceChecker(commands.Cog):
                     async with session.get(url, headers=headers) as response:
                         if response.status == 200:
                             data = await response.json()
-                            trades = data['items'][-5:]  
+                            trades = data['items'][-8:]  
                             trades.reverse()  
                             
                             embed = discord.Embed(
