@@ -116,6 +116,8 @@ class PriceChecker(commands.Cog):
             "taggas": "tagga's",
             "fyre": "sana's fyrtorch",
             "hypno": "skeka's hypnowand",
+            "titles": "demonic",
+            "title": "demonic",
 
             
 
