@@ -18,6 +18,7 @@ class TravellingMerchant(commands.Cog):
         self.user_preferences = {}
         self.load_preferences()
         self.daily_notification.start()  
+        self.YOUR_USER_ID = 123456789012345678  
         self.item_emojis = {
     "Advanced pulse core": "<:pulsecore:1319913865231863848>",   
     "Anima crystal": "<:anima:1319914262918987827>",   
@@ -29,10 +30,10 @@ class TravellingMerchant(commands.Cog):
     "Distraction & Diversion reset token (monthly)": "<:dndmonthly:1319913049687326783>",   
     "Distraction & Diversion reset token (weekly)": "<:dndweekly:1319913101629456384>",    
     "Dragonkin lamp": "<:dragonkinlamp:1319913393309876284>",   
-    "Dungeoneering Wildcard": "<:dungwildcard:1319913320320335943>:",   
+    "Dungeoneering Wildcard": "<:dungwildcard:1319913320320335943>: 1–3",   
     "Gift for the Reaper": "<:reaper:1319913757522006026>",   
     "Goebie burial charm": "<:mdBC:1319914382716698664>",   
-    "Harmonic dust": "<:harmdust:1319912882603032587>",   
+    "Harmonic dust": "<:harmdust:1319912882603032587> 500–1,000",   
     "Horn of honour": "<:hoh:1319913663997542500>",   
     "Large goebie burial charm": "<:lgBC:1319913569139032075>",   
     "Livid plant (Deep Sea Fishing)": "<:livid:1319913820143091793>",   
@@ -41,17 +42,17 @@ class TravellingMerchant(commands.Cog):
     "Menaphite gift offering (small)": "<:mgos:1319914367554424924>",   
     "Message in a bottle (Deep Sea Fishing)": "<:miab:1319913509995151412",          
     "Sacred clay (Deep Sea Fishing)": "<:sacredclay:1319913989244850228>",   
-    "Shattered anima": "<:shatteredanima:1319913925042638888>",   
-    "Silverhawk down": "<:silverhawkdown:1319913701859524618>",   
+    "Shattered anima": "<:shatteredanima:1319913925042638888> 500,000–2,000,000",   
+    "Silverhawk down": "<:silverhawkdown:1319913701859524618> 50-100",   
     "Slayer VIP Coupon": "<:slayervip:1319914225879224410>",   
     "Small goebie burial charm": "<:smlBC:1319914525364977664>",   
     "Starved ancient effigy": "<:effigy:1319912983815520287>",   
-    "Taijitu": "<:taijitu:1319913154763030528>",   
+    "Taijitu": "<:taijitu:1319913154763030528> 3–5",   
     "Tangled fishbowl": "<:tangledfish:1319914645057830924>",   
     "Uncharted island map (Deep Sea Fishing)": "<:unchartedmap:1319914742306832416>",         
     "Unfocused damage enhancer": "<:dmgenhan:1319914077702721637>",   
     "Unfocused reward enhancer": "<:rewardenhancer:1319912675282784306>",   
-    "Unstable air rune": "<:unsairrune:1319914292891357214>",   
+    "Unstable air rune": "<:unsairrune:1319914292891357214> ",   
     "default": "📦"
 }
 
@@ -127,12 +128,13 @@ class TravellingMerchant(commands.Cog):
                 if items and len(items) > 0:
                     embed = discord.Embed(
                         title="Travelling Merchant's Stock",
-                        description=" ",
+                        description="*Written by* <@110927272210354176>",
                         color=discord.Color.gold(),
                         timestamp=datetime.now(pytz.UTC)
                     )
                     embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png") 
-                    embed.set_footer(text=datetime.now(pytz.UTC).strftime('%a'))
+                    embed.set_footer(text= f"{datetime.now(pytz.UTC).strftime('%a')}")
+
                     
                     for item_name, price in items:
                         emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
