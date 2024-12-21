@@ -6,6 +6,7 @@ import aiohttp
 import discord
 from bs4 import BeautifulSoup
 import asyncio
+from merchant_stock import stock
 
 
 
@@ -128,21 +129,54 @@ class TravellingMerchant(commands.Cog):
                         title="Travelling Merchant's Stock",
                         description=" ",
                         color=discord.Color.gold(),
-                        timestamp = datetime.now(pytz.UTC)
+                        timestamp=datetime.now(pytz.UTC)
                     )
                     embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png") 
                     embed.set_footer(text=datetime.now(pytz.UTC).strftime('%a'))
+                    
                     for item_name, price in items:
                         emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
+                        
+                        # Skip future date calculation for uncharted island map
+                        if item_name == "Uncharted island map (Deep Sea Fishing)":
+                            embed.add_field(
+                                name=f"{emoji} {item_name}", 
+                                value=f"{price} <:goldpoints:1319902464115343473>", 
+                                inline=False
+                            )
+                            continue
+                        
+                        # Find next occurrence for other items
+                        next_date = None
+                        today = datetime.now(pytz.UTC).date()
+                        
+                        for date, daily_items in stock.items():
+                            try:
+                                stock_date = datetime.strptime(date, '%d %B %Y').date()
+                                if stock_date > today and item_name in daily_items:
+                                    if next_date is None or stock_date < next_date:
+                                        next_date = stock_date
+                            except ValueError as e:
+                                print(f"Error parsing date {date}: {e}")
+                                continue
+                        
+                        # Calculate days until next appearance and format the message
+                        if next_date:
+                            days_until = (next_date - today).days
+                            next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
+                            if days_until == 1:
+                                next_date_str += f" (Tomorrow)"
+                            else:
+                                next_date_str += f" ({days_until} days)"
+                        else:
+                            next_date_str = "\nNo future appearances found"
+    
                         embed.add_field(
                             name=f"{emoji} {item_name}", 
-                            value=f"{price} <:goldpoints:1319902464115343473>", 
+                            value=f"{price} <:goldpoints:1319902464115343473>{next_date_str}", 
                             inline=False
                         )
-                    
-
-                       
-
+    
                     await ctx.send(embed=embed)
                 else:
                     await ctx.send("Unable to fetch the merchant's stock. Please try again later.")
@@ -150,6 +184,9 @@ class TravellingMerchant(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
             print(f"Error in stock command: {e}")
+    
+    
+    
 
 
     @tasks.loop(time=time(hour=0, minute=00)) 
@@ -159,7 +196,7 @@ class TravellingMerchant(commands.Cog):
         
         if not items:
             return
-
+    
         embed = discord.Embed(
             title="Travelling Merchant's Stock",
             description="Today's items:",
@@ -171,13 +208,47 @@ class TravellingMerchant(commands.Cog):
         
         for item_name, price in items:
             emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
+            
+            # Skip future date calculation for uncharted island map
+            if item_name == "Uncharted island map (Deep Sea Fishing)":
+                embed.add_field(
+                    name=f"{emoji} {item_name}", 
+                    value=f"{price} <:goldpoints:1319902464115343473>", 
+                    inline=False
+                )
+                continue
+            
+            # Find next occurrence for other items
+            next_date = None
+            today = datetime.now(pytz.UTC).date()
+            
+            for date, daily_items in stock.items():
+                try:
+                    stock_date = datetime.strptime(date, '%d %B %Y').date()
+                    if stock_date > today and item_name in daily_items:
+                        if next_date is None or stock_date < next_date:
+                            next_date = stock_date
+                except ValueError as e:
+                    print(f"Error parsing date {date}: {e}")
+                    continue
+            
+            # Calculate days until next appearance and format the message
+            if next_date:
+                days_until = (next_date - today).days
+                next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
+                if days_until == 1:
+                    next_date_str += f" (Tomorrow)"
+                else:
+                    next_date_str += f" ({days_until} days)"
+            else:
+                next_date_str = "\nNo future appearances found"
+    
             embed.add_field(
                 name=f"{emoji} {item_name}", 
-                value=price, 
+                value=f"{price} <:goldpoints:1319902464115343473>{next_date_str}", 
                 inline=False
             )
-        
-
+    
         # Send to all subscribed users
         for user_id in self.user_preferences:
             try:
@@ -186,6 +257,9 @@ class TravellingMerchant(commands.Cog):
                     await user.send(embed=embed)
             except Exception as e:
                 print(f"Failed to send notification to user {user_id}: {e}")
+    
+    
+    
 
     @daily_notification.before_loop
     async def before_daily_notification(self):
