@@ -7,6 +7,9 @@ import discord
 from bs4 import BeautifulSoup
 import asyncio
 
+
+
+
 class TravellingMerchant(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -14,6 +17,42 @@ class TravellingMerchant(commands.Cog):
         self.user_preferences = {}
         self.load_preferences()
         self.daily_notification.start()  
+        self.item_emojis = {
+    "Advanced pulse core": "<:pulsecore:1319913865231863848>",   
+    "Anima crystal": "<:anima:1319914262918987827>",   
+    "Barrel of bait": "<:bob:1319914681133174787>",   
+    "Broken fishing rod": "<:brknrod:1319914596404039700>",   
+    "Crystal triskelion": "<:trisk:1319912812939710474>",   
+    "Deathtouched dart": "<:dtd:1319912760716427305>",   
+    "Distraction & Diversion reset token (daily)": "<:dnddaily:1319914162540777566>",     
+    "Distraction & Diversion reset token (monthly)": "<:dndmonthly:1319913049687326783>",   
+    "Distraction & Diversion reset token (weekly)": "<:dndweekly:1319913101629456384>",    
+    "Dragonkin lamp": "<:dragonkinlamp:1319913393309876284>",   
+    "Dungeoneering Wildcard": "<:dungwildcard:1319913320320335943>:",   
+    "Gift for the Reaper": "<:reaper:1319913757522006026>",   
+    "Goebie burial charm": "<:mdBC:1319914382716698664>",   
+    "Harmonic dust": "<:harmdust:1319912882603032587>",   
+    "Horn of honour": "<:hoh:1319913663997542500>",   
+    "Large goebie burial charm": "<:lgBC:1319913569139032075>",   
+    "Livid plant (Deep Sea Fishing)": "<:livid:1319913820143091793>",   
+    "Menaphite gift offering (large)": "<:mgol:1319913203379081246>",   
+    "Menaphite gift offering (medium)": "<:mgom:1319914340454895657>",   
+    "Menaphite gift offering (small)": "<:mgos:1319914367554424924>",   
+    "Message in a bottle (Deep Sea Fishing)": "<:miab:1319913509995151412",          
+    "Sacred clay (Deep Sea Fishing)": "<:sacredclay:1319913989244850228>",   
+    "Shattered anima": "<:shatteredanima:1319913925042638888>",   
+    "Silverhawk down": "<:silverhawkdown:1319913701859524618>",   
+    "Slayer VIP Coupon": "<:slayervip:1319914225879224410>",   
+    "Small goebie burial charm": "<:smlBC:1319914525364977664>",   
+    "Starved ancient effigy": "<:effigy:1319912983815520287>",   
+    "Taijitu": "<:taijitu:1319913154763030528>",   
+    "Tangled fishbowl": "<:tangledfish:1319914645057830924>",   
+    "Uncharted island map (Deep Sea Fishing)": "<:unchartedmap:1319914742306832416>",         
+    "Unfocused damage enhancer": "<:dmgenhan:1319914077702721637>",   
+    "Unfocused reward enhancer": "<:rewardenhancer:1319912675282784306>",   
+    "Unstable air rune": "<:unsairrune:1319914292891357214>",   
+    "default": "📦"
+}
 
     def load_preferences(self):
         try:
@@ -29,6 +68,7 @@ class TravellingMerchant(commands.Cog):
 
     @commands.command(name="merch")
     async def toggle_notifications(self, ctx):
+        print("test")
         """Toggle daily merchant notifications"""
         user_id = str(ctx.author.id)
         
@@ -93,7 +133,13 @@ class TravellingMerchant(commands.Cog):
                     embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png") 
                     embed.set_footer(text=datetime.now(pytz.UTC).strftime('%a'))
                     for item_name, price in items:
-                        embed.add_field(name=item_name, value=price, inline=False)
+                        emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
+                        embed.add_field(
+                            name=f"{emoji} {item_name}", 
+                            value=f"{price} <:goldpoints:1319902464115343473>", 
+                            inline=False
+                        )
+                    
 
                        
 
@@ -124,7 +170,13 @@ class TravellingMerchant(commands.Cog):
         embed.set_footer(text=datetime.now(pytz.UTC).strftime('%a'))
         
         for item_name, price in items:
-            embed.add_field(name=item_name, value=price, inline=False)
+            emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
+            embed.add_field(
+                name=f"{emoji} {item_name}", 
+                value=price, 
+                inline=False
+            )
+        
 
         # Send to all subscribed users
         for user_id in self.user_preferences:
@@ -192,6 +244,48 @@ class TravellingMerchant(commands.Cog):
         """Error handler for the merchusers command"""
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("❌ You need administrator permissions to use this command.")
+
+    @commands.command(name="listemoji")
+    async def list_emojis(self, ctx):
+        """Lists all emojis in the current server with their IDs"""
+        if not ctx.guild:
+            await ctx.send("This command can only be used in a server!")
+            return
+
+        emoji_list = []
+        for emoji in ctx.guild.emojis:
+            if emoji.animated:
+                emoji_text = f"• {emoji} `<a:{emoji.name}:{emoji.id}>`"
+            else:
+                emoji_text = f"• {emoji} `<:{emoji.name}:{emoji.id}>`"
+            emoji_list.append(emoji_text)
+
+        if not emoji_list:
+            await ctx.send("This server has no custom emojis!")
+            return
+
+        # Split into chunks of 15 emojis per field (Discord has a limit of 25 fields)
+        chunks = [emoji_list[i:i + 15] for i in range(0, len(emoji_list), 15)]
+        
+        embed = discord.Embed(
+            title=f"Emojis in {ctx.guild.name}",
+            color=discord.Color.blue()
+        )
+
+        # Add fields for each chunk
+        for i, chunk in enumerate(chunks, 1):
+            if len(chunks) > 1:
+                name = f"Emojis (Part {i}/{len(chunks)})"
+            else:
+                name = "Emojis"
+            embed.add_field(
+                name=name,
+                value="\n".join(chunk),
+                inline=False
+            )
+
+        embed.set_footer(text=f"Total Emojis: {len(emoji_list)}")
+        await ctx.send(embed=embed)
 
 
 
