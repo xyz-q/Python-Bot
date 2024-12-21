@@ -133,7 +133,7 @@ class TravellingMerchant(commands.Cog):
                         timestamp=datetime.now(pytz.UTC)
                     )
                     embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png") 
-                    embed.set_footer(text= f"{datetime.now(pytz.UTC).strftime('%a')}")
+                    embed.set_footer(text= f"Use ,merch to get daily notifications!")
 
                     
                     for item_name, price in items:
