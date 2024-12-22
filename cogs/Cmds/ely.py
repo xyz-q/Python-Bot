@@ -129,6 +129,8 @@ class PriceChecker(commands.Cog):
             "sgb": "seren godbow",
             "eof" : "essence of finality",
             "soul": "soul dye",
+            "nox": "noxious",
+            "ash": "aurora santa hat", 
 
             
             
