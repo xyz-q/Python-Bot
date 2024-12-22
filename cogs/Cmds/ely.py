@@ -387,13 +387,13 @@ class PriceChecker(commands.Cog):
                             oldest_price = trades[-1]['price']
                             newest_price = trades[0]['price']
                             trend_percentage = ((newest_price - oldest_price) / oldest_price) * 100
-                            trend_symbol = "📈" if trend_percentage > 0 else "📉"
+                            trend_symbol = "<:up:1320181605918183496>" if trend_percentage > 0 else "<:down:1320181619406929970>"
     
                             price_info = (
                                 
-                                f"**Current street price:** {format_price(newest_price)} <:goldpoints:1319902464115343473> \n\n"
-                                f"**Margin:** {format_price(margin)} <:goldpoints:1319902464115343473>  ({margin_percentage:.1f}%)\n"                              
-                                f"**Trend:** {trend_symbol} {format_price(oldest_price)} → {format_price(newest_price)} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%)\n"
+                                f"**Current street price  ** <:goldpoints:1319902464115343473> {format_price(newest_price)}  \n\n"
+                                f"**Margin:** ({margin_percentage:.1f}%) - {format_price(margin)} <:goldpoints:1319902464115343473> \n"                              
+                                f"**Trend:** {trend_symbol} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%) - {format_price(oldest_price)} → {format_price(newest_price)} \n"
                                 f" \u200B \n"
                             )
                             
