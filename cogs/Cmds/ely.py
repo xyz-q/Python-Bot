@@ -119,6 +119,7 @@ class PriceChecker(commands.Cog):
             "titles": "demonic",
             "title": "demonic",
             "gnome": "gnome scarf",
+            "gote": "grace of the elves",
 
             
 
