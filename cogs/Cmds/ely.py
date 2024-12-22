@@ -380,9 +380,9 @@ class PriceChecker(commands.Cog):
     
                             price_info = (
                                 
-                                f"Current Street Price <:goldpoints:1319902464115343473> **{format_price(newest_price)}**\n\n"
-                                f"**Margin:**<:margin:1320185569703100470>({margin_percentage:.1f}%) ~ **{format_price(margin)}**\n\n"                              
-                                f"**Trend:** {trend_symbol} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%) ~ **{format_price(oldest_price)}** → **{format_price(newest_price)}** \n\n"
+                                f"Current Street Price <:goldpoints:1319902464115343473> ***{format_price(newest_price)}***\n\n"
+                                f"**Margin:**<:margin:1320185569703100470>({margin_percentage:.1f}%) ~ ***{format_price(margin)}***\n\n"                              
+                                f"**Trend:** {trend_symbol} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%) ~ **{format_price(oldest_price)}** → ***{format_price(newest_price)}*** \n\n"
                                 f" \u200B \n"
                             )
                             
@@ -402,12 +402,12 @@ class PriceChecker(commands.Cog):
                                 if i > 0:
                                     prev_price = trades[i-1]['price']
                                     percentage = format_percentage(prev_price, trade['price'])
-                                    trade_history += f" **({time_ago})** • {trade['purchase']} for **{price}**  {percentage}\n"
+                                    trade_history += f" **({time_ago})** • *{trade['purchase']}* for ***{price}***  {percentage}\n"
                                 else:
-                                    trade_history += f" **({time_ago})** • {trade['purchase']} for **{price}** \n"
+                                    trade_history += f" **({time_ago})** • *{trade['purchase']}* for ***{price}*** \n"
                             
                             embed.add_field(
-                                name="Recent Trades",
+                                name="**Recent Trades**",
                                 value=trade_history,
                                 inline=False
                             )
