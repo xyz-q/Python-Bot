@@ -121,6 +121,19 @@ class PriceChecker(commands.Cog):
             "gnome": "gnome scarf",
             "gote": "grace of the elves",
             "chalo": "challenger halo",
+            "osh": "orlando smith",
+            "fsoa": "staff of armadyl", 
+            "ecb": "eldritch crossbow",
+            "bolg": "bow of the last guardian",
+            "ezk": "ek-zekkil",
+            "sgb": "seren godbow",
+            "eof" : "essence of finality",
+            "soul": "soul dye",
+
+            
+            
+
+
             
 
             
@@ -394,9 +407,9 @@ class PriceChecker(commands.Cog):
     
                             price_info = (
                                 
-                                f"**Current street price  **  {format_price(newest_price)}<:goldpoints:1319902464115343473> \n\n"
-                                f"**Margin:** <:margin:1320185569703100470> ({margin_percentage:.1f}%) - {format_price(margin)} <:goldpoints:1319902464115343473> \n"                              
-                                f"**Trend:** {trend_symbol} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%) - {format_price(oldest_price)} → {format_price(newest_price)} \n"
+                                f"**Current Street Price** <:goldpoints:1319902464115343473> {format_price(newest_price)}\n\n"
+                                f"**Margin:**<:margin:1320185569703100470>({margin_percentage:.1f}%) ~ {format_price(margin)}\n\n"                              
+                                f"**Trend:** {trend_symbol} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%) ~ {format_price(oldest_price)} → {format_price(newest_price)} \n\n"
                                 f" \u200B \n"
                             )
                             
