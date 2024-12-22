@@ -118,6 +118,7 @@ class PriceChecker(commands.Cog):
             "hypno": "skeka's hypnowand",
             "titles": "demonic",
             "title": "demonic",
+            "gnome": "gnome scarf",
 
             
 
@@ -214,7 +215,7 @@ class PriceChecker(commands.Cog):
                 description=f"Prices matching item - {item_name.title()}",
                 color=discord.Color.gold()
             )
-        
+            
             headers = {
                 'accept': '*/*',
                 'accept-language': 'en-US,en;q=0.9',
@@ -326,6 +327,7 @@ class PriceChecker(commands.Cog):
                                 
                                 print(f"Attempting to set thumbnail with URL: {icon_url}")  
                                 embed.set_thumbnail(url=icon_url)
+                                
                                 print(f"Image set found with: {icon_url}")
                                 await asyncio.sleep(1)  
                             except Exception as e:
