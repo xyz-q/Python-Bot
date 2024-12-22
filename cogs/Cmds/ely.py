@@ -380,7 +380,7 @@ class PriceChecker(commands.Cog):
     
                             price_info = (
                                 
-                                f"Current Street Price <:goldpoints:1319902464115343473> ***{format_price(newest_price)}***\n\n"
+                                f"**Current Street Price** <:goldpoints:1319902464115343473> ***{format_price(newest_price)}***\n\n"
                                 f"**Margin:**<:margin:1320185569703100470>({margin_percentage:.1f}%) ~ ***{format_price(margin)}***\n\n"                              
                                 f"**Trend:** {trend_symbol} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%) ~ **{format_price(oldest_price)}** → ***{format_price(newest_price)}*** \n\n"
                                 f" \u200B \n"
