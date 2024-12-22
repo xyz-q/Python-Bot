@@ -69,6 +69,8 @@ class ChatCommands(commands.Cog):
         if channel is None:
             channel = ctx.channel
 
+        limit += 1              
+
         try:
             def check(message):
                 return True
@@ -79,10 +81,10 @@ class ChatCommands(commands.Cog):
                 deleted = await channel.purge(limit=to_delete, check=check)
                 total_deleted += len(deleted)
 
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.25)
 
             confirmation_msg = await ctx.send(f"Purged {total_deleted} message(s) from {channel.mention}.")
-            await asyncio.sleep(5)
+            await asyncio.sleep(3.5)
             await confirmation_msg.delete()
 
         except discord.HTTPException as e:
