@@ -14,7 +14,7 @@ class PriceChecker(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.item_dictionary = data
-        self.bot.loop.create_task(self.preload_images()) 
+        
 
         self.item_aliases = {
             "hween": "halloween mask",
@@ -22,35 +22,6 @@ class PriceChecker(commands.Cog):
 
         }
         
-    async def preload_images(self):
-        await self.bot.wait_until_ready()
-        base_url = "https://www.ely.gg"
-        loaded_images = 0
-        total_items = len(self.item_dictionary)
-        await asyncio.sleep(3) 
-        print("Starting to preload images...")
-        
-        async with aiohttp.ClientSession() as session:
-            for item in self.item_dictionary:  # Changed to iterate over list directly
-                if 'icon' in item:  # Check if the item has an icon field
-                    icon_path = item['icon']
-                    item_name = item.get('name', 'Unknown')  # Get item name, default to 'Unknown' if not found
-                    
-                    if 'cdn.discordapp.com' in icon_path:
-                        icon_url = icon_path.replace('https://www.ely.gghttps://', 'https://')
-                    else:
-                        icon_url = base_url + icon_path
-                    
-                    try:
-                        async with session.head(icon_url) as response:
-                            if response.status == 200:
-                                loaded_images += 1
-                            else:
-                                print(f"Failed to preload: {item_name}")
-                    except Exception as e:
-                        print(f"Error preloading {item_name}: {str(e)}")
-        
-        print(f"Finished preloading {loaded_images} images")
 
 
 
@@ -409,9 +380,9 @@ class PriceChecker(commands.Cog):
     
                             price_info = (
                                 
-                                f"**Current Street Price** <:goldpoints:1319902464115343473> {format_price(newest_price)}\n\n"
-                                f"**Margin:**<:margin:1320185569703100470>({margin_percentage:.1f}%) ~ {format_price(margin)}\n\n"                              
-                                f"**Trend:** {trend_symbol} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%) ~ {format_price(oldest_price)} → {format_price(newest_price)} \n\n"
+                                f"Current Street Price <:goldpoints:1319902464115343473> **{format_price(newest_price)}**\n\n"
+                                f"**Margin:**<:margin:1320185569703100470>({margin_percentage:.1f}%) ~ **{format_price(margin)}**\n\n"                              
+                                f"**Trend:** {trend_symbol} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%) ~ **{format_price(oldest_price)}** → **{format_price(newest_price)}** \n\n"
                                 f" \u200B \n"
                             )
                             
@@ -431,9 +402,9 @@ class PriceChecker(commands.Cog):
                                 if i > 0:
                                     prev_price = trades[i-1]['price']
                                     percentage = format_percentage(prev_price, trade['price'])
-                                    trade_history += f" ({time_ago}) • {trade['purchase']} for **{price}**  {percentage}\n"
+                                    trade_history += f" **({time_ago})** • {trade['purchase']} for **{price}**  {percentage}\n"
                                 else:
-                                    trade_history += f" ({time_ago}) • {trade['purchase']} for **{price}** \n"
+                                    trade_history += f" **({time_ago})** • {trade['purchase']} for **{price}** \n"
                             
                             embed.add_field(
                                 name="Recent Trades",
