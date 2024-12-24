@@ -36,6 +36,8 @@ commands_list = [
     (",merch", "Toggles daily merchant PMs"),
     (",merchupdate", "Updates the future stock of the merchant"),
     (",merchers", "Lists all users subscribed to daily merchant PMs"),
+    (",addchannel", "Adds channel to merch list"),
+    (",unaddaddchannel", "Removes channel to merch list"),
     (",mute <@user>", "Mutes target user"),
     (",mp3list", "Shows a list of mp3s in the file"),
     (",mp3 <mp3>", "Plays Target MP3"),

@@ -12,7 +12,7 @@ class DMCommands(commands.Cog):
         self.bot = bot
 
     @commands.command(name='dm')
-    @commands.has_permissions(administrator=True) 
+    @commands.is_owner()
     async def dm(self, ctx, user_reference: str, *, message: str):
         # Delete the command message immediately
         await ctx.message.delete()
@@ -59,7 +59,7 @@ class DMCommands(commands.Cog):
 
 
     @commands.command(name='dms')
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def dms(self, ctx, user_reference: str):
         user = None
 

@@ -17,7 +17,10 @@ class TravellingMerchant(commands.Cog):
         self.channel_id = 1345
         self.user_preferences = {}
         self.load_preferences()
+        self.load_cpreferences()
+        self.channel_preferences = {}
         self.daily_notification.start()  
+        self.daily_channel.start()
         self.YOUR_USER_ID = 123456789012345678  
         self.item_emojis = {
     "Advanced pulse core": "<:pulsecore:1319913865231863848>",   
@@ -362,6 +365,181 @@ class TravellingMerchant(commands.Cog):
 
         embed.set_footer(text=f"Total Emojis: {len(emoji_list)}")
         await ctx.send(embed=embed)
+
+
+
+
+    @tasks.loop(time=time(hour=0, minute=00)) 
+    async def daily_notification(self):
+        """Send daily notifications to subscribed users"""
+        items = await self.get_merchant_stock()
+        
+        if not items:
+            return
+    
+        embed = discord.Embed(
+            title="Travelling Merchant's Stock",
+            description="Today's items:",
+            color=discord.Color.gold(),
+            timestamp=datetime.now(pytz.UTC)
+        )
+        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
+        embed.set_footer(text=datetime.now(pytz.UTC).strftime('%a'))
+        
+        for item_name, price in items:
+            emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
+            
+            # Skip future date calculation for uncharted island map
+            if item_name == "Uncharted island map (Deep Sea Fishing)":
+                embed.add_field(
+                    name=f"{emoji} {item_name}", 
+                    value=f"{price} <:goldpoints:1319902464115343473>", 
+                    inline=False
+                )
+                continue
+            
+            # Find next occurrence for other items
+            next_date = None
+            today = datetime.now(pytz.UTC).date()
+            
+            for date, daily_items in stock.items():
+                try:
+                    stock_date = datetime.strptime(date, '%d %B %Y').date()
+                    if stock_date > today and item_name in daily_items:
+                        if next_date is None or stock_date < next_date:
+                            next_date = stock_date
+                except ValueError as e:
+                    print(f"Error parsing date {date}: {e}")
+                    continue
+            
+            # Calculate days until next appearance and format the message
+            if next_date:
+                days_until = (next_date - today).days
+                next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
+                if days_until == 1:
+                    next_date_str += f" (Tomorrow)"
+                else:
+                    next_date_str += f" ({days_until} days)"
+            else:
+                next_date_str = "\nNo future appearances found"
+    
+            embed.add_field(
+                name=f"{emoji} {item_name}", 
+                value=f"{price} <:goldpoints:1319902464115343473>{next_date_str}", 
+                inline=False
+            )
+    
+        # Send to all subscribed users
+        for user_id in self.user_preferences:
+            try:
+                user = await self.bot.fetch_user(int(user_id))
+                if user:
+                    await user.send(embed=embed)
+            except Exception as e:
+                print(f"Failed to send notification to user {user_id}: {e}")
+
+    def load_cpreferences(self):
+        try:
+            with open('subscribed_channels.json', 'r') as f:
+                self.channel_preferences = json.load(f)
+        except FileNotFoundError:
+            self.channel_preferences = {}
+            self.save_cpreferences()  # Ensure the file is created even if it's empty
+
+    def save_cpreferences(self):
+        with open('subscribed_channels.json', 'w') as f:
+            json.dump(self.channel_preferences, f)
+
+    @commands.command(name="addchannel")
+    async def subscribe_channel(self, ctx):
+        """Allow a channel to subscribe to daily merchant notifications."""
+        channel_id = str(ctx.channel.id)
+
+        if channel_id in self.channel_preferences:
+            await ctx.send("This channel is already subscribed to daily notifications.")
+            return
+
+        self.channel_preferences[channel_id] = True
+        self.save_cpreferences()
+        await ctx.send(f"✅ This channel is now subscribed to daily merchant notifications!")
+
+    @commands.command(name="unaddchannel")
+    async def unsubscribe_channel(self, ctx):
+        """Allow a channel to unsubscribe from daily merchant notifications."""
+        channel_id = str(ctx.channel.id)
+
+        if channel_id not in self.channel_preferences:
+            await ctx.send("This channel is not subscribed to daily notifications.")
+            return
+
+        del self.channel_preferences[channel_id]
+        self.save_cpreferences()
+        await ctx.send(f"❌ This channel is now unsubscribed from daily merchant notifications.")
+
+    @tasks.loop(time=time(hour=0, minute=00))
+    async def daily_channel(self):
+        """Send daily notifications to subscribed channels"""
+        items = await self.get_merchant_stock()
+        if not items:
+            return
+
+        embed = discord.Embed(
+            title="Travelling Merchant's Stock",
+            description="Today's items:",
+            color=discord.Color.gold(),
+            timestamp=datetime.now(pytz.UTC)
+        )
+        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
+        embed.set_footer(text=datetime.now(pytz.UTC).strftime('%a'))
+
+        today = datetime.now(pytz.UTC).date()
+
+        for item_name, price in items:
+            emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
+            next_date = None
+
+            if item_name == "Uncharted island map (Deep Sea Fishing)":
+                embed.add_field(
+                    name=f"{emoji} {item_name}",
+                    value=f"{price} <:goldpoints:1319902464115343473>",
+                    inline=False
+                )
+                continue
+
+            # Find the next appearance of the item
+            for date, daily_items in stock.items():
+                try:
+                    stock_date = datetime.strptime(date, '%d %B %Y').date()
+                    if stock_date > today and item_name in daily_items:
+                        if next_date is None or stock_date < next_date:
+                            next_date = stock_date
+                except ValueError as e:
+                    print(f"Error parsing date {date}: {e}")
+
+            if next_date:
+                days_until = (next_date - today).days
+                next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
+                next_date_str += f" ({'Tomorrow' if days_until == 1 else f'{days_until} days'})"
+            else:
+                next_date_str = "\nNo future appearances found"
+
+            embed.add_field(
+                name=f"{emoji} {item_name}",
+                value=f"{price} <:goldpoints:1319902464115343473>{next_date_str}",
+                inline=False
+            )
+
+        # Send notifications to all subscribed channels
+        for channel_id in self.channel_preferences:
+            try:
+                channel = self.bot.get_channel(int(channel_id))
+                if channel:
+                    await channel.send(embed=embed)
+            except Exception as e:
+                print(f"Failed to send notification to channel {channel_id}: {e}")
+
+
+
 
 
 
