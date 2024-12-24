@@ -102,6 +102,7 @@ class PriceChecker(commands.Cog):
             "soul": "soul dye",
             "nox": "noxious",
             "ash": "aurora santa hat", 
+            "dyes": "dye",
 
             
             
