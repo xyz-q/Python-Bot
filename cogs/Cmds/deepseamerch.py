@@ -1,6 +1,6 @@
 import json
 from discord.ext import commands, tasks
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 import pytz
 import aiohttp
 import discord
@@ -127,16 +127,23 @@ class TravellingMerchant(commands.Cog):
         try:
             async with ctx.typing():
                 items = await self.get_merchant_stock()
-                
+
                 if items and len(items) > 0:
+                    now = datetime.now(pytz.UTC)
+                    next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                    time_until_midnight = next_midnight - now
+                    hours, remainder = divmod(time_until_midnight.total_seconds(), 3600)
+                    minutes = remainder // 60
                     embed = discord.Embed(
                         title="Travelling Merchant's Stock",
                         description="*Written by* <@110927272210354176>",
                         color=discord.Color.gold(),
-                        timestamp=datetime.now(pytz.UTC)
+                        
                     )
-                    embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png") 
-                    embed.set_footer(text= f"Use ,merch to get daily notifications!")
+                    embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
+                    embed.set_footer(
+                        text=f"Use ,merch to get daily notifications! | Resets in {int(hours)}h {int(minutes)}m"
+                    )
 
                     
                     for item_name, price in items:
