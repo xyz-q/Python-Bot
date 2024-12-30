@@ -63,7 +63,7 @@ class MerchantUpdater(commands.Cog):
         # Run once when loaded
         await self.update_merchant_stock()
 
-    @commands.command(name="updatemerchant", aliases=['merchupdate'])
+    @commands.command(name="stockupdate", aliases=['merchupdate'])
     @commands.has_permissions(administrator=True)
     async def update_merchant_command(self, ctx):
         """Manually update the merchant stock data"""
@@ -76,5 +76,8 @@ class MerchantUpdater(commands.Cog):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("You don't have permission to use this command!")
 
+
+
+    
 async def setup(bot):
     await bot.add_cog(MerchantUpdater(bot))

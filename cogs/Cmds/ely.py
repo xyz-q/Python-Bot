@@ -22,12 +22,6 @@ class PriceChecker(commands.Cog):
 
         }
         
-
-
-
-
-
-
     @commands.Cog.listener()
     async def on_ready(self):
         print("PriceChecker cog is ready")
@@ -103,6 +97,13 @@ class PriceChecker(commands.Cog):
             "nox": "noxious",
             "ash": "aurora santa hat", 
             "dyes": "dye",
+            "leng": "dark shard of leng",
+            "sliver": "dark sliver of leng",
+            "manuscripts": "manus",
+            "scripts": "scriptu",
+            "scriptures": "scriptu",
+
+            
 
             
             
@@ -202,10 +203,10 @@ class PriceChecker(commands.Cog):
         if len(matches) > 1:
             embed = discord.Embed(
                 title=f"{item_name.title()}",
-                description=f"Prices matching item - {item_name.title()}",
+                description=f"Prices matching item name - {item_name.title()}",
                 color=discord.Color.gold()
             )
-            
+            embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1323062450559516792/phatset.png?ex=6")
             headers = {
                 'accept': '*/*',
                 'accept-language': 'en-US,en;q=0.9',

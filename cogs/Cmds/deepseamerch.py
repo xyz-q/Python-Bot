@@ -43,7 +43,7 @@ class TravellingMerchant(commands.Cog):
     "Menaphite gift offering (large)": "<:mgol:1319913203379081246>",   
     "Menaphite gift offering (medium)": "<:mgom:1319914340454895657>",   
     "Menaphite gift offering (small)": "<:mgos:1319914367554424924>",   
-    "Message in a bottle (Deep Sea Fishing)": "<:miab:1319913509995151412",          
+    "Message in a bottle (Deep Sea Fishing)": "<:miab:1319913509995151412>",          
     "Sacred clay (Deep Sea Fishing)": "<:sacredclay:1319913989244850228>",   
     "Shattered anima": "<:shatteredanima:1319913925042638888> 500,000–2,000,000",   
     "Silverhawk down": "<:silverhawkdown:1319913701859524618> 50-100",   
