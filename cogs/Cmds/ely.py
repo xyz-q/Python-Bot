@@ -61,6 +61,7 @@ class PriceChecker(commands.Cog):
             "aurora trail": "aurora trail aura override token",
             "aurora scarf": "winter scarf",
             "hween": "halloween mask",
+            "h'ween": "halloween mask",
             "xmas": "christmas",
             "hsr": "signet ring",
             "osh": "orlando",            
