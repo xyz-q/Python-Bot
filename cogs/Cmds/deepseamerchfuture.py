@@ -15,7 +15,7 @@ class MerchantUpdater(commands.Cog):
     def cog_unload(self):
         self.update_merchant_stock.cancel()
 
-    @tasks.loop(time=time(0, 0))  # Runs at midnight (00:00)
+    @tasks.loop(time=time(23, 50)) 
     async def update_merchant_stock(self):
         """Update merchant stock data daily at UTC midnight"""
         async with aiohttp.ClientSession() as session:

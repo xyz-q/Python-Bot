@@ -267,6 +267,7 @@ class TravellingMerchant(commands.Cog):
                 user = await self.bot.fetch_user(int(user_id))
                 if user:
                     await user.send(embed=embed)
+                    print("sending embed to dms...")
             except Exception as e:
                 print(f"Failed to send notification to user {user_id}: {e}")
     
@@ -471,6 +472,7 @@ class TravellingMerchant(commands.Cog):
             try:
                 channel = self.bot.get_channel(int(channel_id))
                 if channel:
+                    print("sending embeds to channels...")
                     await channel.send(embed=embed)
             except Exception as e:
                 print(f"Failed to send notification to channel {channel_id}: {e}")
