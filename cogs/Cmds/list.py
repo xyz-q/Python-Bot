@@ -65,7 +65,7 @@ commands_list = [
     ("/ticket", "Creates a ticket"),
     (",timeout <@user> <duration> <reason>", "Times out a user, sending them a detailed message"),
     (",tts <text>", "Makes the bot do a text to speech in the voice channel if its in one"),
-    (",testmerchant" "Tests merch")
+    (",testmerchant" "Tests merch"),
     (",tuck", "Puts users to bed"),
     (",user <@user>", "Displays info on user"),
     (",untimeout <@user>", "Removes a timeout from a user"),
