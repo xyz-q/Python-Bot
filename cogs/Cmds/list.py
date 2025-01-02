@@ -30,7 +30,8 @@ commands_list = [
     (",kill", "KILLS THE BOT [restricted command]"),
     (",kick <@user(s)> <reason>", "Kicks the user(s) from the server"),
     (",listcogs", "Lists all cogs"),
-    (",links", "Displays my links"),  
+    (",links", "Displays my links"),
+    (",listsubscribed", "Displays subbed channels to the merchant"),
     (",leave", "Leaves the channel the bot is in"),
     (",mock <@user>", "toggles the mocking of target user(s)"),
     (",merch", "Toggles daily merchant PMs"),
@@ -64,6 +65,7 @@ commands_list = [
     ("/ticket", "Creates a ticket"),
     (",timeout <@user> <duration> <reason>", "Times out a user, sending them a detailed message"),
     (",tts <text>", "Makes the bot do a text to speech in the voice channel if its in one"),
+    (",testmerchant" "Tests merch")
     (",tuck", "Puts users to bed"),
     (",user <@user>", "Displays info on user"),
     (",untimeout <@user>", "Removes a timeout from a user"),
