@@ -227,8 +227,17 @@ class YouTubeCommands(commands.Cog):
         if not queue:
             await ctx.send('The queue is currently empty.')
         else:
-            queue_list = '\n'.join(f'{index + 1}. {song.title}' for index, song in enumerate(queue))
-            await ctx.send(f'**Current Queue:**\n{queue_list}')
+            queue_list = []
+            for index, query in enumerate(queue):
+                info = await self.download_info(query, self.ytdl_format_options)
+                if info and 'entries' in info:
+                    title = info['entries'][0]['title']
+                else:
+                    title = query  # Fallback to raw query if title extraction fails
+                queue_list.append(f'{index + 1}. {title}')
+            
+            queue_display = '\n'.join(queue_list)
+            await ctx.send(f'**Current Queue:**\n{queue_display}')
 
 
 

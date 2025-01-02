@@ -11,6 +11,7 @@ from merchant_stock import stock
 
 
 
+
 class TravellingMerchant(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -18,9 +19,11 @@ class TravellingMerchant(commands.Cog):
         self.user_preferences = {}
         self.load_preferences()
         self.load_cpreferences()
-        self.channel_preferences = {}
+        self.subscribed_channels = {}  # Changed from self.subscribed.channels
         self.daily_notification.start()  
         self.daily_channel.start()
+        self.subscribed_channels = []  # Initialize as empty list
+        self.load_subscribed_channels()  
         self.YOUR_USER_ID = 123456789012345678  
         self.item_emojis = {
     "Advanced pulse core": "<:pulsecore:1319913865231863848>",   
@@ -379,45 +382,22 @@ class TravellingMerchant(commands.Cog):
     def load_cpreferences(self):
         try:
             with open('subscribed_channels.json', 'r') as f:
-                self.channel_preferences = json.load(f)
+                self.subscribed_channels = json.load(f)
         except FileNotFoundError:
-            self.channel_preferences = {}
-            self.save_cpreferences()  # Ensure the file is created even if it's empty
+            self.subscribed_channels = {}
+            self.save_cpreferences()
 
     def save_cpreferences(self):
         with open('subscribed_channels.json', 'w') as f:
-            json.dump(self.channel_preferences, f)
+            json.dump(self.subscribed_channels, f)
 
-    @commands.command(name="addchannel")
-    async def subscribe_channel(self, ctx):
-        """Allow a channel to subscribe to daily merchant notifications."""
-        channel_id = str(ctx.channel.id)
 
-        if channel_id in self.channel_preferences:
-            await ctx.send("This channel is already subscribed to daily notifications.")
-            return
 
-        self.channel_preferences[channel_id] = True
-        self.save_cpreferences()
-        await ctx.send(f"✅ This channel is now subscribed to daily merchant notifications!")
-
-    @commands.command(name="unaddchannel")
-    async def unsubscribe_channel(self, ctx):
-        """Allow a channel to unsubscribe from daily merchant notifications."""
-        channel_id = str(ctx.channel.id)
-
-        if channel_id not in self.channel_preferences:
-            await ctx.send("This channel is not subscribed to daily notifications.")
-            return
-
-        del self.channel_preferences[channel_id]
-        self.save_cpreferences()
-        await ctx.send(f"❌ This channel is now unsubscribed from daily merchant notifications.")
-
-    @tasks.loop(time=time(hour=0, minute=00))
+    @tasks.loop(time=time(hour=0, minute=00))  # Using the same format as your daily_notification
     async def daily_channel(self):
         """Send daily notifications to subscribed channels"""
         items = await self.get_merchant_stock()
+        
         if not items:
             return
 
@@ -429,22 +409,23 @@ class TravellingMerchant(commands.Cog):
         )
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
         embed.set_footer(text=datetime.now(pytz.UTC).strftime('%a'))
-
-        today = datetime.now(pytz.UTC).date()
-
+        
         for item_name, price in items:
             emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
-            next_date = None
-
+            
+            # Skip future date calculation for uncharted island map
             if item_name == "Uncharted island map (Deep Sea Fishing)":
                 embed.add_field(
-                    name=f"{emoji} {item_name}",
-                    value=f"{price} <:goldpoints:1319902464115343473>",
+                    name=f"{emoji} {item_name}", 
+                    value=f"{price} <:goldpoints:1319902464115343473>", 
                     inline=False
                 )
                 continue
-
-            # Find the next appearance of the item
+            
+            # Find next occurrence for other items
+            next_date = None
+            today = datetime.now(pytz.UTC).date()
+            
             for date, daily_items in stock.items():
                 try:
                     stock_date = datetime.strptime(date, '%d %B %Y').date()
@@ -453,33 +434,164 @@ class TravellingMerchant(commands.Cog):
                             next_date = stock_date
                 except ValueError as e:
                     print(f"Error parsing date {date}: {e}")
-
+                    continue
+            
+            # Calculate days until next appearance and format the message
             if next_date:
                 days_until = (next_date - today).days
                 next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
-                next_date_str += f" ({'Tomorrow' if days_until == 1 else f'{days_until} days'})"
+                if days_until == 1:
+                    next_date_str += f" (Tomorrow)"
+                else:
+                    next_date_str += f" ({days_until} days)"
             else:
                 next_date_str = "\nNo future appearances found"
 
             embed.add_field(
-                name=f"{emoji} {item_name}",
-                value=f"{price} <:goldpoints:1319902464115343473>{next_date_str}",
+                name=f"{emoji} {item_name}", 
+                value=f"{price} <:goldpoints:1319902464115343473>{next_date_str}", 
                 inline=False
             )
 
-        # Send notifications to all subscribed channels
-        for channel_id in self.channel_preferences:
+        # Send to all subscribed channels
+        for channel_id in self.subscribed_channels:  # Changed from user_preferences to subscribed_channels
             try:
                 channel = self.bot.get_channel(int(channel_id))
                 if channel:
-                    print("sending embeds to channels...")
                     await channel.send(embed=embed)
+                    
             except Exception as e:
                 print(f"Failed to send notification to channel {channel_id}: {e}")
 
+    @commands.command(name="testmerchant")
+    @commands.has_permissions(administrator=True)  # Only admins can use this
+    async def test_merchant(self, ctx):
+        """Test command to manually trigger the merchant notification to all subscribed channels"""
+        try:
+            # First, confirm to the user that the test is starting
+            await ctx.send("Starting merchant notification test...")
+
+            # Get all subscribed channel IDs (you'll need to implement this based on how you store subscribed channels)
+            subscribed_channels = self.get_subscribed_channels()  # This method needs to exist in your code
+            
+            if not subscribed_channels:
+                await ctx.send("No subscribed channels found!")
+                return
+
+            items = await self.get_merchant_stock()  # Your existing method to get merchant stock
+            if not items:
+                await ctx.send("No items found in merchant stock.")
+                return
+
+            # Create the embed (using your existing embed creation logic)
+            embed = discord.Embed(
+                title="Travelling Merchant's Stock (TEST)",
+                description="*Written by* <@110927272210354176>",
+                color=discord.Color.gold(),
+                timestamp=datetime.now(pytz.UTC)
+            )
+            # ... rest of your embed creation code ...
+
+            # Send to all subscribed channels
+            success_count = 0
+            fail_count = 0
+            for channel_id in subscribed_channels:
+                try:
+                    channel = self.bot.get_channel(channel_id)
+                    if channel:
+                        await channel.send(embed=embed)
+                        success_count += 1
+                    else:
+                        fail_count += 1
+                        print(f"Could not find channel with ID: {channel_id}")
+                except Exception as e:
+                    fail_count += 1
+                    print(f"Failed to send to channel {channel_id}: {e}")
+
+            # Report results back to the command user
+            await ctx.send(f"Test completed!\n"
+                        f"Successfully sent to: {success_count} channels\n"
+                        f"Failed to send to: {fail_count} channels")
+
+        except Exception as e:
+            await ctx.send(f"An error occurred while testing: {str(e)}")
 
 
+    def load_subscribed_channels(self):
+        """Load subscribed channels from JSON file"""
+        try:
+            with open('subscribed_channels.json', 'r') as f:
+                data = json.load(f)
+                self.subscribed_channels = data.get('channels', [])
+        except FileNotFoundError:
+            self.subscribed_channels = []
+            self.save_subscribed_channels()  # Create the file if it doesn't exist
+        except json.JSONDecodeError:
+            print("Error reading subscribed_channels.json. File might be corrupted.")
+            self.subscribed_channels = []
 
+    def save_subscribed_channels(self):
+        """Save subscribed channels to JSON file"""
+        with open('subscribed_channels.json', 'w') as f:
+            json.dump({'channels': self.subscribed_channels}, f, indent=4)
+
+    def get_subscribed_channels(self):
+        """Return list of subscribed channel IDs"""
+        return self.subscribed_channels
+
+    @commands.command(name="addchannel")
+    @commands.is_owner()
+    async def subscribe(self, ctx):
+        """Subscribe the current channel to merchant notifications"""
+        channel_id = ctx.channel.id
+        if channel_id not in self.subscribed_channels:
+            self.subscribed_channels.append(channel_id)
+            self.save_subscribed_channels()
+            await ctx.send(f"Channel {ctx.channel.mention} has been subscribed to merchant notifications!")
+        else:
+            await ctx.send(f"This channel is already subscribed!")
+
+    @commands.command(name="unaddchannel")
+    @commands.is_owner()
+    async def unsubscribe(self, ctx):
+        """Unsubscribe the current channel from merchant notifications"""
+        channel_id = ctx.channel.id
+        if channel_id in self.subscribed_channels:
+            self.subscribed_channels.remove(channel_id)
+            self.save_subscribed_channels()
+            await ctx.send(f"Channel {ctx.channel.mention} has been unsubscribed from merchant notifications!")
+        else:
+            await ctx.send(f"This channel is not subscribed!")
+
+    @commands.command(name="listsubscribed")
+    @commands.has_permissions(administrator=True)
+    async def list_subscribed(self, ctx):
+        """List all subscribed channels"""
+        if not self.subscribed_channels:
+            await ctx.send("No channels are currently subscribed!")
+            return
+        
+        embed = discord.Embed(
+            title="Subscribed Channels",
+            color=discord.Color.blue()
+        )
+        
+        for channel_id in self.subscribed_channels:
+            channel = self.bot.get_channel(channel_id)
+            if channel:
+                embed.add_field(
+                    name=f"#{channel.name}",
+                    value=f"ID: {channel_id}\nServer: {channel.guild.name}",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="Unknown Channel",
+                    value=f"ID: {channel_id}\nChannel not found",
+                    inline=False
+                )
+        
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):
