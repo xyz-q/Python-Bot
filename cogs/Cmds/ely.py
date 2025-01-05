@@ -60,6 +60,7 @@ class PriceChecker(commands.Cog):
             "rainbow trail": "rainbow trail aura override token",
             "aurora trail": "aurora trail aura override token",
             "aurora scarf": "winter scarf",
+            "aurora": "auro",
             "hween": "halloween mask",
             "h'ween": "halloween mask",
             "xmas": "christmas",
