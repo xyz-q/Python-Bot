@@ -262,7 +262,7 @@ class Economy(commands.Cog):
             await ctx.send(f"An error occurred: {str(e)}")
 
     @commands.command()
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def add(self, ctx, *, args=None):
         """Add currency to a user's balance (Admin only)"""
         try:
@@ -343,7 +343,7 @@ class Economy(commands.Cog):
             await ctx.send(f"An error occurred: {str(e)}")
 
     @commands.command()
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def remove(self, ctx, *, args=None):
         """Remove currency from a user's balance (Admin only)"""
         try:
