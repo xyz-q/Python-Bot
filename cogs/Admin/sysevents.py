@@ -123,18 +123,18 @@ class SystemEvents(commands.Cog):
                     return
 
                 # Role check
-                required_role = discord.utils.get(message.guild.roles, name='.trusted')
-                if required_role not in message.author.roles:
-                    try:
-                        warning = await message.channel.send("❌ You don't have permission to use this command!")
-                        await asyncio.sleep(7)
-                        await message.delete()
-                        await warning.delete()
-                    except Exception as e:
-                        print(f"\033[91mError handling permission denied: {str(e)}\033[0m")
-                    return
+                #required_role = discord.utils.get(message.guild.roles, name='.trusted')
+                #if required_role not in message.author.roles:
+                #    try:
+                #        warning = await message.channel.send("❌ You don't have permission to use this command!")
+                #        await asyncio.sleep(7)
+                #        await message.delete()
+                #        await warning.delete()
+                #    except Exception as e:
+                #        print(f"\033[91mError handling permission denied: {str(e)}\033[0m")
+                #    return
 
-            await self.bot.process_commands(message)
+         #   await self.bot.process_commands(message)
 
         except Exception as e:
             print(f"\033[91mError in on_message: {str(e)}\033[0m")

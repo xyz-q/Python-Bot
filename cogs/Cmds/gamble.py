@@ -40,12 +40,15 @@ class PaginationView(discord.ui.View):
 
 
 class Economy(commands.Cog):
+    MIN_TRANSACTION_AMOUNT = 50_000_000  # 50M minimum
+    MAX_TRANSACTION_AMOUNT = 5_000_000_000  # 5B maximum
     def __init__(self, bot):
         self.bot = bot
         self.currency = {}
         self.load_currency()
         self.balances = {}
         self.admin_id = 110927272210354176
+        
 
     def is_house_name(self, name: str) -> bool:
         """Check if a name contains 'house' (case-insensitive)"""
@@ -584,19 +587,24 @@ class Economy(commands.Cog):
 
     @commands.command()
     async def deposit(self, ctx, amount: str = None, *, rsn: str = None):
-        """Request a deposit with amount and RSN"""
         try:
             if amount is None or rsn is None:
                 await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,deposit <amount> <rsn>`\nExample: `,deposit 100M Zezima`")
                 return
 
-            # Try to parse the amount to validate it
+            # Parse and validate amount
             try:
-                # Assuming you have the parse_amount function
                 parsed_amount = self.parse_amount(amount)
+                # Add minimum and maximum limit checks
+                if parsed_amount < self.MIN_TRANSACTION_AMOUNT:
+                    await ctx.send(f"❌ Minimum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
+                    return
+                if parsed_amount > self.MAX_TRANSACTION_AMOUNT:
+                    await ctx.send(f"❌ Maximum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_TRANSACTION_AMOUNT)}!")
+                    return
                 formatted_amount = self.format_amount(parsed_amount)
             except ValueError:
-                await ctx.send("❌ Invalid amount! Use numbers with K, M, B, or T (e.g., 1.5K, 2M, 3B, 1T)")
+                await ctx.send("❌ Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
                 return
 
             # Get admin user
@@ -659,19 +667,24 @@ class Economy(commands.Cog):
 
     @commands.command()
     async def withdraw(self, ctx, amount: str = None, *, rsn: str = None):
-        """Request a withdrawal with amount and RSN"""
         try:
             if amount is None or rsn is None:
                 await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,withdraw <amount> <rsn>`\nExample: `,withdraw 100M Zezima`")
                 return
 
-            # Try to parse the amount to validate it
+            # Parse and validate amount
             try:
-                # Assuming you have the parse_amount function
                 parsed_amount = self.parse_amount(amount)
+                # Add minimum and maximum limit checks
+                if parsed_amount < self.MIN_TRANSACTION_AMOUNT:
+                    await ctx.send(f"❌ Minimum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
+                    return
+                if parsed_amount > self.MAX_TRANSACTION_AMOUNT:
+                    await ctx.send(f"❌ Maximum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_TRANSACTION_AMOUNT)}!")
+                    return
                 formatted_amount = self.format_amount(parsed_amount)
             except ValueError:
-                await ctx.send("❌ Invalid amount! Use numbers with K, M, B, or T (e.g., 1.5K, 2M, 3B, 1T)")
+                await ctx.send("❌ Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
                 return
 
             # Check if user has enough balance
@@ -940,12 +953,12 @@ class Economy(commands.Cog):
                 return
             # Slot machine symbols with weights and multipliers
             symbols = {
-                "💎": {"weight": 1, "multiplier": 50, "name": "Diamond"},    
+                "💎": {"weight": 1, "multiplier": 50, "name": "Diamond"},    #/
                 "🎰": {"weight": 2, "multiplier": 25, "name": "Jackpot"},    
                 "7️⃣": {"weight": 3, "multiplier": 10, "name": "Seven"},    
                 "🍀": {"weight": 4, "multiplier": 5, "name": "Clover"},     
                 "⭐": {"weight": 5, "multiplier": 3, "name": "Star"},     
-                "🎲": {"weight": 6, "multiplier": 2, "name": "Dice"}
+                "🎲": {"weight": 6 , "multiplier": 2, "name": "Dice"}
             }
 
             # Create weighted symbol list
@@ -963,7 +976,7 @@ class Economy(commands.Cog):
                 value="| ❓ | ❓ | ❓ |"
             )
             embed.set_footer(
-                text=f"Bet: {self.format_amount(bet)} GP"
+                text=f"New Balance - {self.format_amount(await self.get_balance(user_id))} GP"
             )
             
             msg = await ctx.send(embed=embed)
@@ -997,26 +1010,33 @@ class Economy(commands.Cog):
                 await msg.edit(embed=embed)
                 await asyncio.sleep(0.5) 
             # Calculate winnings
-            unique_symbols = len(set(final_symbols))
-            if unique_symbols == 1:  # All three match
-                symbol = final_symbols[0]
+            symbol_counts = {}
+            for symbol in final_symbols:
+                symbol_counts[symbol] = symbol_counts.get(symbol, 0) + 1
+            
+            max_matches = max(symbol_counts.values())
+            
+            if max_matches == 3:  # Three of a kind
+                symbol = max(symbol_counts, key=symbol_counts.get)
                 multiplier = symbols[symbol]["multiplier"]
                 gross_win = bet * multiplier
                 tax_amount = int(gross_win * 0.05)  # 5% tax
                 winnings = gross_win - tax_amount
                 result = f"🎉 JACKPOT! Triple {symbols[symbol]['name']}! 🎉"
-            elif unique_symbols == 2:  # Two match
-                winnings = bet * 2
-                tax_amount = int(winnings * 0.05)  # 5% tax
-                winnings -= tax_amount
-                result = "🎈 Two of a kind! 🎈"
+            elif max_matches == 2:  # Two of a kind
+                matching_symbol = [s for s, count in symbol_counts.items() if count == 2][0]
+                # Get the multiplier for the matching symbol and divide by 2 (minimum 2x)
+                multiplier = max(2, symbols[matching_symbol]["multiplier"] // 2)
+                gross_win = bet * multiplier
+                tax_amount = int(gross_win * 0.05)  # 5% tax
+                winnings = gross_win - tax_amount
+                result = f"🎈 Double {symbols[matching_symbol]['name']}! 🎈"
             else:  # No matches
                 winnings = 0
                 tax_amount = 0
                 result = "No match!"
-                    
-            # Update balances
 
+            # Update balances
             if winnings > 0:
                 house_id = str(self.bot.user.id)
                 if house_id not in self.currency:
@@ -1027,7 +1047,7 @@ class Economy(commands.Cog):
                     await ctx.send("The house doesn't have enough balance to pay out! Try a smaller bet.")
                     return
 
-                # If house can afford it, proceed with the original code
+                # If house can afford it, proceed with the payment
                 self.currency[user_id] += winnings
                 self.currency[house_id] += tax_amount  # House gets tax
                 self.currency[house_id] -= winnings    # House pays the winnings
@@ -1038,59 +1058,30 @@ class Economy(commands.Cog):
                     self.currency[house_id] = 0
                 self.currency[house_id] += bet
 
-
-
-            # Save changes
-            self.save_currency()
-            
-            # Get new balance
-            new_balance = await self.get_balance(user_id)
-            
-            # Final embed
-            final_embed = discord.Embed(
-                title="🎰 SLOT MACHINE 🎰", 
-                color=discord.Color.green() if winnings > 0 else discord.Color.red()
+            # Update the embed with results
+            embed.set_field_at(
+                0,
+                name=result,
+                value=f"| {' | '.join(final_symbols)} |"
             )
             
-            final_embed.add_field(
-                name=result, 
-                value=f"| {' | '.join(final_symbols)} |",
-                inline=False
-            )
-            
+            # Add fields for bet and winnings
             if winnings > 0:
-                win_text = f"+{self.format_amount(winnings)} GP!"
-                if tax_amount > 0:
-                    win_text += f"\n-5% House Tax: -{self.format_amount(tax_amount)} GP"
-                final_embed.add_field(
-                    name="You Won!", 
-                    value=win_text,
+                embed.add_field(
+                    name="Winnings",
+                    value=f"<:goldpoints:1319902464115343473> +{self.format_amount(winnings)} (After 5% tax)",
                     inline=False
                 )
             else:
-                final_embed.add_field(
-                    name="You Lost!", 
-                    value=f"-{self.format_amount(bet)} GP", 
+                embed.add_field(
+                    name="Loss",
+                    value=f"<:goldpoints:1319902464115343473> -{self.format_amount(bet)}",
                     inline=False
                 )
-                
-            final_embed.add_field(
-                name="New Balance", 
-                value=f"<:goldpoints:1319902464115343473> {self.format_amount(new_balance)}", 
-                inline=False
-            )
-            
-            await msg.edit(embed=final_embed)
-            
-            # Flashy effects for big wins
-            if winnings >= bet * 10:  # For really big wins
-                for _ in range(3):
-                    final_embed.color = discord.Color.gold()
-                    await msg.edit(embed=final_embed)
-                    await asyncio.sleep(0.3)
-                    final_embed.color = discord.Color.green()
-                    await msg.edit(embed=final_embed)
-                    await asyncio.sleep(0.3)
+
+            # Save changes and update message
+            self.save_currency()
+            await msg.edit(embed=embed)
 
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
