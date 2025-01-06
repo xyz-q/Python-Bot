@@ -806,7 +806,7 @@ class Economy(commands.Cog):
             )
             
             challenge_embed.add_field(
-                name="House Tax (5%)",
+                name="House Tax (-5%)",
                 value=f"<:goldpoints:1319902464115343473> {self.format_amount(house_tax)}",
                 inline=False
             )
@@ -890,13 +890,13 @@ class Economy(commands.Cog):
             
             result_embed.add_field(
                 name="Winner",
-                value=f"{winner.mention} (+<:goldpoints:1319902464115343473> {self.format_amount(win_amount)})",
+                value=f"{winner.mention} (+{self.format_amount(win_amount)})",
                 inline=False
             )
             
             result_embed.add_field(
                 name="Loser",
-                value=f"{loser.mention} (-<:goldpoints:1319902464115343473> {self.format_amount(bet_amount)})",
+                value=f"{loser.mention} (-{self.format_amount(bet_amount)})",
                 inline=False
             )
             
@@ -1013,7 +1013,7 @@ class Economy(commands.Cog):
             else:  # No matches
                 winnings = 0
                 tax_amount = 0
-                result = "😢 No match!"
+                result = "No match!"
                     
             # Update balances
 
@@ -1059,9 +1059,9 @@ class Economy(commands.Cog):
             )
             
             if winnings > 0:
-                win_text = f"+<:goldpoints:1319902464115343473> {self.format_amount(winnings)}"
+                win_text = f"+{self.format_amount(winnings)} GP!"
                 if tax_amount > 0:
-                    win_text += f"\nHouse Tax: <:goldpoints:1319902464115343473> {self.format_amount(tax_amount)} (5%)"
+                    win_text += f"\n-5% House Tax: -{self.format_amount(tax_amount)} GP"
                 final_embed.add_field(
                     name="You Won!", 
                     value=win_text,
@@ -1070,7 +1070,7 @@ class Economy(commands.Cog):
             else:
                 final_embed.add_field(
                     name="You Lost!", 
-                    value=f"-<:goldpoints:1319902464115343473> {self.format_amount(bet)}", 
+                    value=f"-{self.format_amount(bet)} GP", 
                     inline=False
                 )
                 
