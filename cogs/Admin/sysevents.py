@@ -123,7 +123,7 @@ class SystemEvents(commands.Cog):
                     return
 
                 # Role check
-                required_role = discord.utils.get(message.guild.roles, name='admin-commands')
+                required_role = discord.utils.get(message.guild.roles, name='.trusted')
                 if required_role not in message.author.roles:
                     try:
                         warning = await message.channel.send("❌ You don't have permission to use this command!")
