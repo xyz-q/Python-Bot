@@ -121,15 +121,19 @@ class Economy(commands.Cog):
         return int(float(amount_str))
 
     def format_amount(self, amount):
-        if amount >= 1000000000000:  # Trillion
-            return f"{amount / 1000000000000:.1f}T"
-        elif amount >= 1000000000:  # Billion
-            return f"{amount / 1000000000:.1f}B"
-        elif amount >= 1000000:  # Million
-            return f"{amount / 1000000:.1f}M"
-        elif amount >= 1000:  # Thousand
-            return f"{amount / 1000:.1f}K"
-        return str(amount)
+        if amount >= 10000000000:  # 10B+
+            billions = amount / 1000000000
+            return f"{int(billions):,}B"
+        elif amount >= 1000000:  # Millions
+            millions = amount / 1000000
+            return f"{int(millions):,}M"
+        elif amount >= 1000:  # Thousands
+            thousands = amount / 1000
+            return f"{int(thousands):,}K"
+        return f"{int(amount):,}"
+
+
+
 
     class ConfirmView(View):
         def __init__(self, timeout=15):
@@ -165,6 +169,7 @@ class Economy(commands.Cog):
 
     @commands.command(aliases=['balances', 'bals'])
     async def balancelist(self, ctx):
+        await ctx.message.delete()
         if not self.currency:
             await ctx.send("No balances found!")
             return
@@ -230,7 +235,14 @@ class Economy(commands.Cog):
         view = PaginationView(embeds)
         message = await ctx.send(embed=embeds[0], view=view)
         view.message = message  # Store message reference for timeout handling
-
+    # Wait 20 seconds then delete the message
+        await asyncio.sleep(20)
+        try:
+            await message.delete()
+        except discord.NotFound:
+            pass  # Message was already deleted
+        except discord.Forbidden:
+            pass 
     
 
     @commands.command(aliases=['bal'])
@@ -732,25 +744,18 @@ class Economy(commands.Cog):
             await ctx.send(f"❌ An error occurred: {str(e)}")
     
 
-    @commands.command()
-    async def flip(self, ctx, choice: str = None, bet: str = None):
-        """Flip a coin and bet on the outcome"""
+    @commands.command(name="pvpflip", aliases=["flip", "challenge", "cf"])
+    async def pvpflip(self, ctx, opponent: discord.Member = None, bet: str = None):
+        """Challenge another player to a coin flip"""
         try:
-            if choice is None or bet is None:
-                await ctx.send("Please specify your choice (heads/tails) and bet amount! Example: ,flip heads 1000")
+            if opponent is None or bet is None:
+                await ctx.send("Please specify your opponent and bet amount! Example: ,challenge @player 1000")
                 return
 
-            # Validate choice
-            choice = choice.lower()
-            if choice not in ['heads', 'tails', 'h', 't']:
-                await ctx.send("Invalid choice! Please choose 'heads' or 'tails'")
+            # Can't challenge yourself
+            if opponent.id == ctx.author.id:
+                await ctx.send("You cannot challenge yourself!")
                 return
-
-            # Convert short forms to full
-            if choice == 'h':
-                choice = 'heads'
-            elif choice == 't':
-                choice = 'tails'
 
             # Parse bet amount
             try:
@@ -763,134 +768,150 @@ class Economy(commands.Cog):
                 await ctx.send("Bet amount must be positive!")
                 return
 
-            # Calculate tax amount (5% of bet)
-            tax_amount = int(bet_amount * 0.05)  # 5% tax
-            win_amount = bet_amount - tax_amount  # Winning amount after tax
+            # Calculate house tax (5%)
+            house_tax = int(bet_amount * 0.05)
+            win_amount = bet_amount - house_tax
 
-            # Check user's balance
-            user_id = str(ctx.author.id)
-            user_balance = await self.get_balance(user_id)
+            # Check challenger's balance
+            challenger_id = str(ctx.author.id)
+            challenger_balance = await self.get_balance(challenger_id)
 
-            if user_balance < bet_amount:
-                await ctx.send(f"You don't have enough balance! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(user_balance)}")
+            # Check opponent's balance
+            opponent_id = str(opponent.id)
+            opponent_balance = await self.get_balance(opponent_id)
+
+            # House ID (replace with your actual house account ID)
+            house_id = "HOUSE_ACCOUNT_ID"
+
+            # Verify both players have enough balance
+            if challenger_balance < bet_amount:
+                await ctx.send(f"You don't have enough balance! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(challenger_balance)}")
                 return
 
-            # Create confirmation embed
-            confirm_embed = discord.Embed(
-                title="🎲 Confirm Coin Flip",
+            if opponent_balance < bet_amount:
+                await ctx.send(f"{opponent.name} doesn't have enough balance! Their balance: <:goldpoints:1319902464115343473> {self.format_amount(opponent_balance)}")
+                return
+
+            # Create challenge embed with tax info
+            challenge_embed = discord.Embed(
+                title="🎲 PvP Coin Flip Challenge",
+                description=f"{ctx.author.mention} has challenged {opponent.mention} to a coin flip!",
                 color=discord.Color.gold()
             )
             
-            confirm_embed.add_field(
-                name="Your Bet",
-                value=f"**Choice:** {choice.upper()}\n**Amount:** <:goldpoints:1319902464115343473> {self.format_amount(bet_amount)}",
+            challenge_embed.add_field(
+                name="Bet Amount",
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(bet_amount)}",
                 inline=False
             )
             
-            confirm_embed.add_field(
-                name="Potential Outcome",
-                value=f"**Win:** +<:goldpoints:1319902464115343473> {self.format_amount(win_amount)} (5% house tax: {self.format_amount(tax_amount)})\n"
-                    f"**Lose:** -<:goldpoints:1319902464115343473> {self.format_amount(bet_amount)}",
+            challenge_embed.add_field(
+                name="House Tax (5%)",
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(house_tax)}",
                 inline=False
             )
             
-            confirm_embed.add_field(
-                name="Your Balance",
-                value=f"Current: <:goldpoints:1319902464115343473> {self.format_amount(user_balance)}\n"
-                    f"If Win: <:goldpoints:1319902464115343473> {self.format_amount(user_balance + win_amount)}\n"
-                    f"If Lose: <:goldpoints:1319902464115343473> {self.format_amount(user_balance - bet_amount)}",
+            challenge_embed.add_field(
+                name="Winner Gets",
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(win_amount)}",
                 inline=False
             )
 
-            # Create confirmation view
-            view = self.ConfirmView()
-            confirm_msg = await ctx.send(embed=confirm_embed, view=view)
+            # Create accept/decline buttons
+            class ChallengeView(discord.ui.View):
+                def __init__(self):
+                    super().__init__(timeout=30.0)
+                    self.value = None
+                    self.choice = None
 
+                @discord.ui.button(label="Accept (Heads)", style=discord.ButtonStyle.green)
+                async def heads(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id == opponent.id:
+                        self.value = True
+                        self.choice = 'heads'
+                        self.stop()
+
+                @discord.ui.button(label="Accept (Tails)", style=discord.ButtonStyle.green)
+                async def tails(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id == opponent.id:
+                        self.value = True
+                        self.choice = 'tails'
+                        self.stop()
+
+                @discord.ui.button(label="Decline", style=discord.ButtonStyle.red)
+                async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id == opponent.id:
+                        self.value = False
+                        self.stop()
+
+            # Send challenge and wait for response
+            view = ChallengeView()
+            challenge_msg = await ctx.send(embed=challenge_embed, view=view)
+
+            # Wait for opponent's response
             await view.wait()
-            
-            if view.value:
-                # Use secrets for better randomization
-                import secrets
-                result = 'heads' if secrets.randbelow(2) == 0 else 'tails'
-                
-                # Determine if user won
-                won = choice == result
-                
-                # Calculate winnings/losses and update balances
-                if won:
-                    # User wins bet amount minus tax
-                    self.currency[user_id] += win_amount
-                    
-                    # House gets the tax
-                    house_id = str(self.bot.user.id)
-                    if house_id not in self.currency:
-                        self.currency[house_id] = 0
-                    self.currency[house_id] += tax_amount
-                else:
-                    # User loses full bet amount
-                    self.currency[user_id] -= bet_amount
-                    
-                    # House gets the full loss
-                    house_id = str(self.bot.user.id)
-                    if house_id not in self.currency:
-                        self.currency[house_id] = 0
-                    self.currency[house_id] += bet_amount
 
-                # Save changes
-                self.save_currency()
-                
-                # Get new balance
-                new_balance = await self.get_balance(user_id)
-                
-                # Create result embed
-                result_embed = discord.Embed(
-                    title="🎲 Coin Flip Result",
-                    color=discord.Color.green() if won else discord.Color.red()
-                )
-                
-                result_embed.add_field(
-                    name="The Coin Landed On",
-                    value=f"**{result.upper()}**",
-                    inline=False
-                )
-                
-                result_embed.add_field(
-                    name="Your Choice",
-                    value=f"**{choice.upper()}**",
-                    inline=False
-                )
-                
-                if won:
-                    result_embed.add_field(
-                        name="You Won!",
-                        value=f"+<:goldpoints:1319902464115343473> {self.format_amount(win_amount)}\n"
-                            f"House Tax: <:goldpoints:1319902464115343473> {self.format_amount(tax_amount)} (5%)",
-                        inline=False
-                    )
-                else:
-                    result_embed.add_field(
-                        name="You Lost!",
-                        value=f"-<:goldpoints:1319902464115343473> {self.format_amount(bet_amount)}",
-                        inline=False
-                    )
-                    
-                result_embed.add_field(
-                    name="New Balance",
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(new_balance)}",
-                    inline=False
-                )
-                
-                await confirm_msg.edit(content=None, embed=result_embed, view=None)
-            else:
-                cancel_embed = discord.Embed(
-                    title="Coin Flip Cancelled",
-                    description="The bet has been cancelled.",
-                    color=discord.Color.grey()
-                )
-                await confirm_msg.edit(content=None, embed=cancel_embed, view=None)
+            if view.value is None:
+                await challenge_msg.edit(content="Challenge timed out!", embed=None, view=None)
+                return
+            elif not view.value:
+                await challenge_msg.edit(content="Challenge declined!", embed=None, view=None)
+                return
+
+            # Determine result
+            import secrets
+            result = 'heads' if secrets.randbelow(2) == 0 else 'tails'
+            
+            # Determine winner
+            winner_id = challenger_id if result != view.choice else opponent_id
+            loser_id = opponent_id if result != view.choice else challenger_id
+            winner = ctx.author if winner_id == challenger_id else opponent
+            loser = opponent if winner_id == challenger_id else ctx.author
+
+            # Update balances with house tax
+            self.currency[winner_id] = self.currency.get(winner_id, 0) + win_amount
+            self.currency[loser_id] = self.currency.get(loser_id, 0) - bet_amount
+            self.currency[house_id] = self.currency.get(house_id, 0) + house_tax
+
+            # Save changes
+            self.save_currency()
+
+            # Create result embed
+            result_embed = discord.Embed(
+                title="🎲 PvP Coin Flip Result",
+                color=discord.Color.green()
+            )
+            
+            result_embed.add_field(
+                name="The Coin Landed On",
+                value=f"**{result.upper()}**",
+                inline=False
+            )
+            
+            result_embed.add_field(
+                name="Winner",
+                value=f"{winner.mention} (+<:goldpoints:1319902464115343473> {self.format_amount(win_amount)})",
+                inline=False
+            )
+            
+            result_embed.add_field(
+                name="Loser",
+                value=f"{loser.mention} (-<:goldpoints:1319902464115343473> {self.format_amount(bet_amount)})",
+                inline=False
+            )
+            
+            result_embed.add_field(
+                name="House Tax",
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(house_tax)}",
+                inline=False
+            )
+
+            await challenge_msg.edit(content=None, embed=result_embed, view=None)
 
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
+
+
 
 
     @commands.command(name="gamble", aliases=["slot", "slots"])
@@ -899,6 +920,7 @@ class Economy(commands.Cog):
             # Parse bet amount
             bet = self.parse_amount(amount)
             user_id = str(ctx.author.id)
+            house_id = str(self.bot.user.id)
             user_balance = await self.get_balance(user_id)
             
             if bet <= 0:
@@ -908,7 +930,14 @@ class Economy(commands.Cog):
             if bet > user_balance:
                 await ctx.send(f"You don't have enough coins! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(user_balance)}")
                 return
-
+            # Check if house can afford maximum possible payout (50x for diamonds)
+            max_possible_win = bet * 50  # Maximum multiplier is 50x
+            if house_id not in self.currency:
+                self.currency[house_id] = 0
+                
+            if self.currency[house_id] < max_possible_win:
+                await ctx.send("The house doesn't have enough balance to cover potential winnings! Try a smaller bet.")
+                return
             # Slot machine symbols with weights and multipliers
             symbols = {
                 "💎": {"weight": 1, "multiplier": 50, "name": "Diamond"},    
@@ -941,19 +970,32 @@ class Economy(commands.Cog):
             
             # Generate final results
             final_symbols = [random.choice(weighted_symbols) for _ in range(3)]
-            
-            # Optimized animation sequence
-            await asyncio.sleep(0.5)
-            embed.set_field_at(0, name="Spinning...", value=f"| {final_symbols[0]} | ❓ | ❓ |")
-            await msg.edit(embed=embed)
-            await asyncio.sleep(0.5)
-            embed.set_field_at(0, name="Spinning...", value=f"| {final_symbols[0]} | {final_symbols[1]} | ❓ |")
-            await msg.edit(embed=embed)
-            await asyncio.sleep(0.5)
-            embed.set_field_at(0, name="Results", value=f"| {' | '.join(final_symbols)} |")
-            await msg.edit(embed=embed)
-            await asyncio.sleep(0.5)
-            
+
+            # Spinning animation for each reel
+            for reel in range(3):  # For each reel
+                for spin in range(2):  # Spin 3 times
+                    # Generate random symbols for spinning effect
+                    temp_symbols = [random.choice(weighted_symbols) if i == reel else 
+                                (final_symbols[i] if i < reel else '❓') 
+                                for i in range(3)]
+                    
+                    embed.set_field_at(
+                        0, 
+                        name="Spinning...", 
+                        value=f"| {' | '.join(temp_symbols)} |"
+                    )
+                    await msg.edit(embed=embed)
+                    await asyncio.sleep(0.5)  # Shorter delay for smoother animation
+                
+                # Show the final symbol for this reel
+                temp_symbols = [final_symbols[i] if i <= reel else '❓' for i in range(3)]
+                embed.set_field_at(
+                    0, 
+                    name="Spinning..." if reel < 2 else "Results", 
+                    value=f"| {' | '.join(temp_symbols)} |"
+                )
+                await msg.edit(embed=embed)
+                await asyncio.sleep(0.5) 
             # Calculate winnings
             unique_symbols = len(set(final_symbols))
             if unique_symbols == 1:  # All three match
@@ -974,21 +1016,29 @@ class Economy(commands.Cog):
                 result = "😢 No match!"
                     
             # Update balances
+
             if winnings > 0:
-                self.currency[user_id] += winnings
-                # House gets the tax
                 house_id = str(self.bot.user.id)
                 if house_id not in self.currency:
                     self.currency[house_id] = 0
-                self.currency[house_id] += tax_amount
+                    
+                # Check if house can afford to pay
+                if self.currency[house_id] < winnings:
+                    await ctx.send("The house doesn't have enough balance to pay out! Try a smaller bet.")
+                    return
+
+                # If house can afford it, proceed with the original code
+                self.currency[user_id] += winnings
+                self.currency[house_id] += tax_amount  # House gets tax
+                self.currency[house_id] -= winnings    # House pays the winnings
             else:
-                # Player loses bet
                 self.currency[user_id] -= bet
-                # House gets the loss
                 house_id = str(self.bot.user.id)
                 if house_id not in self.currency:
                     self.currency[house_id] = 0
                 self.currency[house_id] += bet
+
+
 
             # Save changes
             self.save_currency()
