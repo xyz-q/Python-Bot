@@ -145,7 +145,7 @@ class TravellingMerchant(commands.Cog):
                     )
                     embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
                     embed.set_footer(
-                        text=f"Use ,merch to get daily notifications! | Resets in {int(hours)}h {int(minutes)}m"
+                        text=f"Use ,merch to get daily notifications! • Resets in {int(hours)}h {int(minutes)}m"
                     )
 
                     

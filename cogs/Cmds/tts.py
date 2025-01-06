@@ -7,66 +7,85 @@ import asyncio
 class TextToSpeech(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.voice_clients = {}
+        self.tts_enabled_users = set()
 
-    @commands.command(aliases=['t'])
-    async def tts(self, ctx, *, text):
-        """Converts text to speech and plays it in the voice channel"""
-        # Store the original message for later deletion
-        original_message = ctx.message
+    @commands.command(name="tts", aliases=['t'])
+    @commands.is_owner()
+    async def toggletts(self, ctx):
+        """Toggles TTS mode for the bot owner"""
+        if ctx.author.id in self.tts_enabled_users:
+            self.tts_enabled_users.remove(ctx.author.id)
+            await ctx.send("TTS mode disabled", delete_after=3)
+        else:
+            self.tts_enabled_users.add(ctx.author.id)
+            await ctx.send("TTS mode enabled", delete_after=3)
         
-        if not ctx.voice_client:
-            if not ctx.author.voice:
-                await ctx.send("You need to be in a voice channel first!")
-                return
-            await ctx.author.voice.channel.connect()
+        try:
+            await ctx.message.delete()
+        except discord.errors.HTTPException:
+            pass
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        # Skip if message is from a bot or is a command
+        if message.author.bot or message.content.startswith(','):
+            return
+
+        # Only process messages from users with TTS enabled
+        if message.author.id not in self.tts_enabled_users:
+            return
+
+        # Check if user is in a voice channel
+        if not message.author.voice:
+            return
+
+        voice_channel = message.author.voice.channel
+        voice_client = message.guild.voice_client
 
         try:
-            # Create TTS file
-            tts = gTTS(text=text, lang='en')
-            temp_file = f'tts_{ctx.message.id}.mp3'
+            # Connect to voice if not already connected
+            if not voice_client:
+                voice_client = await voice_channel.connect()
+            elif voice_client.channel != voice_channel:
+                await voice_client.move_to(voice_channel)
+
+            # Create and save TTS file
+            tts = gTTS(text=message.content, lang='en')
+            temp_file = f'tts_{message.id}.mp3'
             tts.save(temp_file)
 
-            # Play the audio
-            if ctx.voice_client.is_playing():
-                ctx.voice_client.stop()
+            # Stop current audio if playing
+            if voice_client.is_playing():
+                voice_client.stop()
 
+            # Play the audio
             def after_playing(error):
                 if error:
                     print(f'Error in playback: {error}')
-                # Use create_task to properly run the cleanup coroutine
-                asyncio.run_coroutine_threadsafe(self.cleanup_file(temp_file, original_message), self.bot.loop)
+                # Schedule cleanup
+                asyncio.run_coroutine_threadsafe(
+                    self.cleanup(temp_file, message), 
+                    self.bot.loop
+                )
 
-            audio_source = discord.FFmpegPCMAudio(temp_file)
-            ctx.voice_client.play(audio_source, after=after_playing)
+            voice_client.play(
+                discord.FFmpegPCMAudio(temp_file),
+                after=after_playing
+            )
 
         except Exception as e:
-            await ctx.send(f"Error creating TTS: {str(e)}")
+            print(f"Error in TTS: {e}")
             if os.path.exists(temp_file):
                 os.remove(temp_file)
-            # Delete the command message even if there's an error
-            try:
-                await original_message.delete()
-            except discord.errors.HTTPException:
-                pass
 
-    async def cleanup_file(self, file_path, message):
-        """Cleanup temporary files and remove the command message"""
-        await asyncio.sleep(1)  # Wait a bit to ensure the file is no longer in use
+    async def cleanup(self, file_path, message):
+        await asyncio.sleep(1)
         try:
             if os.path.exists(file_path):
                 os.remove(file_path)
-                print(f"Deleted file: {file_path}")
-            
-            # Delete the command message
-            try:
-                await message.delete()
-                print(f"Deleted message: {message.content}")
-            except discord.errors.HTTPException as e:
-                print(f"Error deleting message: {e}")
-                
+            await message.delete()
         except Exception as e:
-            print(f"Error in cleanup: {e}")
+            print(f"Cleanup error: {e}")
 
 async def setup(bot):
     await bot.add_cog(TextToSpeech(bot))

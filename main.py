@@ -48,8 +48,7 @@ class Client(commands.Bot):
         if message.author.bot:
             return  
     
-        if message.content.startswith(','):
-            print(f"{message.author} used command: {message.content}")
+
     
         if message.channel.name != 'admin-commands':
             return
