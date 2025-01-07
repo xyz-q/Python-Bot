@@ -1427,11 +1427,9 @@ class Economy(commands.Cog):
                 )
             else:
                 
-                self.currency[user_id] -= amount
-                self.currency[house_id] += amount  # Add to house balance
                 final_embed.add_field(
                     name="Result", 
-                    value="Tie goes to the banker! 🔄", 
+                    value="Tie! It's a push.", 
                     inline=False
                 )
 
