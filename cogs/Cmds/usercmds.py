@@ -116,5 +116,28 @@ class UserCommands(commands.Cog):
                 user = message.guild.get_member(int(user_id))
                 await message.channel.send(f"{user.mention} is currently AFK. Reason: {reason}")
 
+
+    @commands.command(name='nickname', aliases=['nick'])
+    @commands.is_owner()
+    async def change_nickname(self, ctx, member: discord.Member, *, new_nickname=None):
+        try:
+            # Store old nickname for confirmation message
+            old_nickname = member.display_name
+            
+            # Change the nickname
+            await member.edit(nick=new_nickname)
+            
+            if new_nickname:
+                await ctx.send(f"Changed {old_nickname}'s nickname to {new_nickname}")
+            else:
+                await ctx.send(f"Reset {old_nickname}'s nickname")
+                
+        except discord.Forbidden:
+            await ctx.send("I don't have permission to change that user's nickname!")
+        except discord.HTTPException:
+            await ctx.send("Failed to change nickname. Make sure the nickname is not too long.")
+
+
+
 async def setup(bot):
     await bot.add_cog(UserCommands(bot))

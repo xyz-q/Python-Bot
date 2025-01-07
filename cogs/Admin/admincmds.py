@@ -155,7 +155,7 @@ class AdminCommands(commands.Cog):
             except discord.HTTPException as e:
                 print(f"Failed to update bot's nickname in guild {guild.name}: {e}")
     @commands.command()
-    @commands.has_permissions(view_audit_log=True)
+    @commands.is_owner()
     async def audit(self, ctx, limit: int = 10):
         try:
             # Convert audit logs to a list using list comprehension
