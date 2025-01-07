@@ -50,5 +50,33 @@ class EmojiCommands(commands.Cog):
         else:
             await ctx.send(f'Emoji `{emoji_name}` not found.')
 
+    @commands.command()
+    async def emojis(self, ctx):
+        emoji_list = []
+        # Sort emojis by ID (higher ID = more recent)
+        sorted_emojis = sorted(ctx.guild.emojis, key=lambda x: x.id, reverse=True)
+        
+        for emoji in sorted_emojis:
+            if emoji.animated:
+                raw_format = f"`<a:{emoji.name}:{emoji.id}>`"
+            else:
+                raw_format = f"`<:{emoji.name}:{emoji.id}>`"
+            emoji_format = f"{emoji} - {raw_format}"
+            emoji_list.append(emoji_format)
+        
+        if not emoji_list:
+            await ctx.send("This server has no custom emojis!")
+            return
+
+        # Split into chunks if the message is too long
+        chunks = [emoji_list[i:i + 10] for i in range(0, len(emoji_list), 10)]
+        
+        for chunk in chunks:
+            await ctx.send('\n'.join(chunk))
+
+
+
+
+
 async def setup(bot):
     await bot.add_cog(EmojiCommands(bot))
