@@ -10,3 +10,4 @@ cogs/Cmds/__pycache__/list.cpython-312.pyc
 __pycache__/merchant_stock.cpython-312.pyc
 merchant_stock.py
 subscribed_channels.json
+*.json
