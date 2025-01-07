@@ -1037,7 +1037,7 @@ class Economy(commands.Cog):
             # Parse bet amount
             bet = self.parse_amount(amount)
             user_id = str(ctx.author.id)
-            house_id = 1233966655923552370
+            house_id = str(self.bot.user.id)
             user_balance = await self.get_balance(user_id)
             if house_id not in self.currency:
                 self.currency[house_id] = 0   
@@ -1300,7 +1300,7 @@ class Economy(commands.Cog):
             if amount <= 0:
                 await ctx.send("Please enter a valid bet amount!")
                 return
-            house_id = 1233966655923552370
+            house_id = str(self.bot.user.id)
             if house_id not in self.currency:
                 self.currency[house_id] = 0      
   
