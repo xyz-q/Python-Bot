@@ -3,9 +3,10 @@ alerts.json
 mocked_users.json
 previous_status.txt
 auto_delete.json
-*.json
+
 merchant_stock.py
 cogs/Cmds/__pycache__/deepseamerch.cpython-312.pyc
 cogs/Cmds/__pycache__/list.cpython-312.pyc
 __pycache__/merchant_stock.cpython-312.pyc
 merchant_stock.py
+subscribed_channels.json
