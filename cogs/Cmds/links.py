@@ -18,7 +18,7 @@ class LinksCog(commands.Cog):
 
     def create_links_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="Useful Links",
+            title="Useful Links <:rosa:1323457812755644498>",
             description="Click the buttons below to open the corresponding link.",
             color=discord.Color.dark_red()
         )

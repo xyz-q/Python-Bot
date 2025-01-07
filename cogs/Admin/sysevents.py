@@ -71,9 +71,8 @@ class SystemEvents(commands.Cog):
             else:
                 # Handle other types of errors
                 try:
-                    warning = await ctx.send(f"⚠️ An error occurred: {str(error)}")
-                    await asyncio.sleep(7)
-                    await warning.delete()
+                    warning = print(f"⚠️ An error occurred: {str(error)}")
+
                 except Exception as e:
                     print(f"\033[91mError sending error message: {str(e)}\033[0m")
 
