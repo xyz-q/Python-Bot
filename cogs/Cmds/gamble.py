@@ -101,7 +101,14 @@ class Economy(commands.Cog):
         self.load_currency()
         self.balances = {}
         self.admin_id = 110927272210354176
-        
+        self.symbols = {
+        "💎": {"weight": 1, "multiplier": 50, "name": "Diamond"},     # 1%
+        "🎰": {"weight": 2, "multiplier": 15, "name": "Jackpot"},    # 2%
+        "7️⃣": {"weight": 7, "multiplier": 7, "name": "Seven"},       # 7%
+        "🍀": {"weight": 15, "multiplier": 3, "name": "Clover"},     # 15%
+        "⭐": {"weight": 35, "multiplier": 1.5, "name": "Star"},      # 35%
+        "🎲": {"weight": 40, "multiplier": 0.8, "name": "Dice"}      # 40%
+    }
 
     def is_house_name(self, name: str) -> bool:
         """Check if a name contains 'house' (case-insensitive)"""
@@ -849,7 +856,7 @@ class Economy(commands.Cog):
             opponent_balance = await self.get_balance(opponent_id)
 
             # House ID (replace with your actual house account ID)
-            house_id = "HOUSE_ACCOUNT_ID"
+            house_id = "1233966655923552370"
 
             # Verify both players have enough balance
             if challenger_balance < bet_amount:
@@ -982,13 +989,64 @@ class Economy(commands.Cog):
 
     @commands.command(name="gamble", aliases=["slot", "slots"])
     @transaction_limit()
-    async def gamble(self, ctx, amount: str):
+    async def gamble(self, ctx, amount: str = None):  # Make amount optional by setting default to None
+        if amount is None:
+            # Create help embed
+            help_embed = discord.Embed(
+                title="🎰 Slot Machine Guide 🎰",
+                description="Bet your coins for a chance to win big!\nUse: `,slots <amount>`",
+                color=discord.Color.gold()
+            )
+
+            # Add symbol information
+            symbols_info = ""
+            for symbol, data in self.symbols.items():
+                multiplier = data["multiplier"]
+                chance = data["weight"]
+                symbols_info += f"{symbol} **{data['name']}** - {multiplier}x multiplier\n"
+
+            help_embed.add_field(
+                name="Symbols & Multipliers",
+                value=symbols_info,
+                inline=False
+            )
+
+            # Add winning combinations info
+            help_embed.add_field(
+                name="Winning Combinations",
+                value=(
+                    "**Three of a kind:** Full multiplier payout\n"
+                    "**Two of a kind:** 40% of symbol multiplier\n"
+                    "**No matches:** Loss of bet\n"
+                    "\n*Note: A 5% tax is applied to all winnings*"
+                ),
+                inline=False
+            )
+
+            # Add example
+            help_embed.add_field(
+                name="Example",
+                value=",gamble 5M - Bets 5,000,000 coins",
+                inline=False
+            )
+
+            await ctx.send(embed=help_embed)
+            return
+
         try:
             # Parse bet amount
             bet = self.parse_amount(amount)
             user_id = str(ctx.author.id)
             house_id = str(self.bot.user.id)
             user_balance = await self.get_balance(user_id)
+            if house_id not in self.currency:
+                self.currency[house_id] = 0   
+
+
+            max_possible_win = bet * 50  # Assuming 50x is your highest multiplier
+            if self.currency[house_id] < max_possible_win:
+                await ctx.send("The house doesn't have enough balance to cover potential winnings! Please try a smaller bet.")
+                return                     
             
             if bet <= 0:
                 await ctx.send("You must bet at least 1 coin!")
@@ -1021,21 +1079,53 @@ class Economy(commands.Cog):
 
             # Generate final results with near-miss logic
             async def generate_results():
-                # Only 5% chance to even attempt a match
-                if random.random() < 0.15:  # 5% chance for potential match
-                    if random.random() < 0.15:  # 15% of that 5% (0.75% total) for three of a kind
-                        symbol = random.choice(weighted_symbols)
+                # Create symbol list and weights first
+                symbol_list = list(symbols.keys())
+                total_weight = sum(data["weight"] for data in symbols.values())
+                weights = [data["weight"]/total_weight for data in symbols.values()]
+                
+                # Reduce match chance from 5% to 2%
+                if random.random() < 0.02:  # 2% chance to attempt a match
+                    if random.random() < 0.15:  # 0.3% chance for three of a kind
+                        # Use weighted choice for the symbol, but make high-value symbols even rarer for matches
+                        adjusted_weights = []
+                        for symbol, data in symbols.items():
+                            # Reduce probability of high-multiplier symbols matching
+                            weight = data["weight"] / (data["multiplier"] ** 0.5)
+                            adjusted_weights.append(weight)
+                        
+                        # Normalize adjusted weights
+                        total_adjusted = sum(adjusted_weights)
+                        adjusted_weights = [w/total_adjusted for w in adjusted_weights]
+                        
+                        symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
                         return [symbol, symbol, symbol]
-                    else:  # Rest of the 5% (4.25% total) for two of a kind
-                        symbol = random.choice(weighted_symbols)
-                        third = random.choice([s for s in weighted_symbols if s != symbol])
-                        return [symbol, symbol, third]
-                else:  # 95% chance for completely random results
-                    results = []
-                    for _ in range(3):
-                        random.shuffle(weighted_symbols)
-                        results.append(random.choice(weighted_symbols))
-                    return results
+                    else:  # 1.7% chance for two of a kind
+                        # Similar adjustment for two of a kind
+                        adjusted_weights = []
+                        for symbol, data in symbols.items():
+                            weight = data["weight"] / (data["multiplier"] ** 0.5)
+                            adjusted_weights.append(weight)
+                        
+                        total_adjusted = sum(adjusted_weights)
+                        adjusted_weights = [w/total_adjusted for w in adjusted_weights]
+                        
+                        symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
+                        
+                        # Get remaining symbols with their original weights
+                        remaining_symbols = [s for s in symbol_list if s != symbol]
+                        remaining_weights = [symbols[s]["weight"] for s in remaining_symbols]
+                        total_remaining = sum(remaining_weights)
+                        remaining_weights = [w/total_remaining for w in remaining_weights]
+                        
+                        third = random.choices(remaining_symbols, weights=remaining_weights, k=1)[0]
+                        result = [symbol, symbol, symbol]
+                        position = random.randint(0, 2)
+                        result[position] = third
+                        return result
+                else:  # 98% chance for random results
+                    return random.choices(symbol_list, weights=weights, k=3)
+            
 
             final_symbols = await generate_results()
 
@@ -1191,9 +1281,7 @@ class Economy(commands.Cog):
         # If bet_amount is provided, continue with the existing game logic
         try:
             # Your existing game code here...
-            house_id = str(self.bot.user.id)
-            if house_id not in self.currency:
-                self.currency[house_id] = 0           
+                     
             # Flowers with their values and weights (odds)
             flowers = {
                 "<:rainbow:1326018658648195103>": {"value": 0, "weight": 12},    
@@ -1212,6 +1300,16 @@ class Economy(commands.Cog):
             if amount <= 0:
                 await ctx.send("Please enter a valid bet amount!")
                 return
+            house_id = str(self.bot.user.id)
+            if house_id not in self.currency:
+                self.currency[house_id] = 0      
+  
+
+
+            max_possible_win = amount * 50  # Assuming 50x is your highest multiplier
+            if self.currency[house_id] < max_possible_win:
+                await ctx.send("The house doesn't have enough balance to cover potential winnings! Please try a smaller bet.")
+                return             
 
             # Check if user has enough balance
             user_id = str(ctx.author.id)
