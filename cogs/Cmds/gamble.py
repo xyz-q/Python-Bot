@@ -572,7 +572,7 @@ class Economy(commands.Cog):
                 try:
                     recipient = await commands.MemberConverter().convert(ctx, recipient_arg)
                 except:
-                    await ctx.send("Invalid recipient! Please mention a valid user or type 'house'.")
+                    await ctx.send("Invalid recipient! ,transfer <user> <amount>")
                     return
 
             # Validate recipient
