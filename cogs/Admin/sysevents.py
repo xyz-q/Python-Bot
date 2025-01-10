@@ -107,7 +107,7 @@ class SystemEvents(commands.Cog):
 
             # Command channel restriction
             if message.content.startswith(','):
-                if message.content.startswith((',pc', ',help', ',invite')):
+                if message.content.startswith((',pc', ',help', ',invite' )):
                     await self.bot.process_commands(message)
                     return
 

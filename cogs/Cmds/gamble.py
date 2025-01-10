@@ -118,12 +118,12 @@ class Economy(commands.Cog):
         total_weight = sum(data["weight"] for data in self.symbols.values())
         weights = [data["weight"]/total_weight for data in self.symbols.values()]
         
-        if random.random() < 0.01:  # 1% chance to attempt a match
-            if random.random() < 0.10:  # 0.1% chance for three of a kind
-                # Adjust weights for high-value symbols
+        # Reduced probability for matches
+        if random.random() < 0.002:  # 0.2% chance
+            if random.random() < 0.15:  # 0.03% overall chance for three of a kind
                 adjusted_weights = []
                 for symbol, data in self.symbols.items():
-                    weight = data["weight"] / (data["multiplier"] ** 2)
+                    weight = data["weight"] / (data["multiplier"] ** 3)
                     adjusted_weights.append(weight)
                 
                 total_adjusted = sum(adjusted_weights)
@@ -131,10 +131,10 @@ class Economy(commands.Cog):
                 
                 symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
                 return [symbol, symbol, symbol]
-            else:  # 0.9% chance for two of a kind
+            else:  # 0.17% overall chance for two of a kind
                 adjusted_weights = []
                 for symbol, data in self.symbols.items():
-                    weight = data["weight"] / (data["multiplier"] ** 1.5)
+                    weight = data["weight"] / (data["multiplier"] ** 2)
                     adjusted_weights.append(weight)
                 
                 total_adjusted = sum(adjusted_weights)
@@ -148,10 +148,11 @@ class Economy(commands.Cog):
                 
                 third = random.choices(remaining_symbols, weights=remaining_weights, k=1)[0]
                 result = [symbol, symbol, third]
-                random.shuffle(result)  # Randomize position of non-matching symbol
+                random.shuffle(result)
                 return result
-        else:  # 99% chance for random results
+        else:  # 99.8% chance for random results
             return random.choices(symbol_list, weights=weights, k=3)
+
 
     def is_house_name(self, name: str) -> bool:
         """Check if a name contains 'house' (case-insensitive)"""
@@ -1123,7 +1124,7 @@ class Economy(commands.Cog):
                 "7️⃣": {"weight": 7, "multiplier": 7, "name": "Seven"},       # 7%
                 "🍀": {"weight": 15, "multiplier": 3, "name": "Clover"},     # 15%
                 "⭐": {"weight": 35, "multiplier": 1.5, "name": "Star"},      # 35%
-                "🎲": {"weight": 40, "multiplier": 0.8, "name": "Dice"}      # 40%
+                "🎲": {"weight": 40, "multiplier": 0.50, "name": "Dice"}      # 40%
             }
 
             # Create weighted symbol list
@@ -1138,74 +1139,60 @@ class Economy(commands.Cog):
             msg = await ctx.send(embed=embed)
 
             # Generate final results with near-miss logic
-            async def generate_results():
-                # Create symbol list and weights first
-                symbol_list = list(symbols.keys())
-                total_weight = sum(data["weight"] for data in symbols.values())
-                weights = [data["weight"]/total_weight for data in symbols.values()]
-                
-                # Reduce match chance from 5% to 2%
-                if random.random() < 0.05:  # 2% chance to attempt a match
-                    if random.random() < 0.15:  # 0.3% chance for three of a kind
-                        # Use weighted choice for the symbol, but make high-value symbols even rarer for matches
-                        adjusted_weights = []
-                        for symbol, data in symbols.items():
-                            # Reduce probability of high-multiplier symbols matching
-                            weight = data["weight"] / (data["multiplier"] ** 0.5)
-                            adjusted_weights.append(weight)
-                        
-                        # Normalize adjusted weights
-                        total_adjusted = sum(adjusted_weights)
-                        adjusted_weights = [w/total_adjusted for w in adjusted_weights]
-                        
-                        symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
-                        return [symbol, symbol, symbol]
-                    else:  # 1.7% chance for two of a kind
-                        # Similar adjustment for two of a kind
-                        adjusted_weights = []
-                        for symbol, data in symbols.items():
-                            weight = data["weight"] / (data["multiplier"] ** 0.5)
-                            adjusted_weights.append(weight)
-                        
-                        total_adjusted = sum(adjusted_weights)
-                        adjusted_weights = [w/total_adjusted for w in adjusted_weights]
-                        
-                        symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
-                        
-                        # Get remaining symbols with their original weights
-                        remaining_symbols = [s for s in symbol_list if s != symbol]
-                        remaining_weights = [symbols[s]["weight"] for s in remaining_symbols]
-                        total_remaining = sum(remaining_weights)
-                        remaining_weights = [w/total_remaining for w in remaining_weights]
-                        
-                        third = random.choices(remaining_symbols, weights=remaining_weights, k=1)[0]
-                        result = [symbol, symbol, symbol]
-                        position = random.randint(0, 2)
-                        result[position] = third
-                        return result
-                else:  # 98% chance for random results
-                    return random.choices(symbol_list, weights=weights, k=3)
+
             
 
-            final_symbols = await generate_results()
+            final_symbols = await self.generate_results()
 
             # Spinning animation
-            for reel in range(3):
-                for _ in range(2):  # Two fake spins per reel
-                    temp_symbols = [
-                        random.choice(weighted_symbols) if i == reel 
-                        else (final_symbols[i] if i < reel else '❓') 
-                        for i in range(3)
-                    ]
-                    embed.set_field_at(0, name="Spinning...", 
-                                    value=f"| {' | '.join(temp_symbols)} |")
+            for position in range(3):
+                spins = random.randint(2, 4)  # Random number of spins for this reel
+                last_symbol = None  # Track the last symbol shown
+                
+                for _ in range(spins):
+                    temp_symbols = list(final_symbols)  # Create a copy of final symbols
+                    
+                    # Keep spinning current and future reels
+                    for i in range(position, 3):
+                        # For the current position, ensure we don't get the same symbol twice
+                        if i == position:
+                            new_symbol = random.choice(weighted_symbols)
+                            while new_symbol == last_symbol:  # Keep trying if we got the same symbol
+                                new_symbol = random.choice(weighted_symbols)
+                            temp_symbols[i] = new_symbol
+                            last_symbol = new_symbol
+                        else:
+                            temp_symbols[i] = random.choice(weighted_symbols)
+                    
+                    embed.set_field_at(
+                        0, 
+                        name="Spinning...", 
+                        value=f"| {' | '.join(temp_symbols)} |"
+                    )
                     await msg.edit(embed=embed)
                     await asyncio.sleep(0.5)
-
+                
                 # Show final symbol for this reel
-                temp_symbols = [final_symbols[i] if i <= reel else '❓' for i in range(3)]
-                embed.set_field_at(0, name="Spinning..." if reel < 2 else "Results", 
-                                value=f"| {' | '.join(temp_symbols)} |")
+                temp_symbols = list(final_symbols)
+                for i in range(position + 1, 3):
+                    temp_symbols[i] = '❓'
+                embed.set_field_at(
+                    0, 
+                    name="Spinning..." if position < 2 else "Results", 
+                    value=f"| {' | '.join(temp_symbols)} |"
+                )
+                await msg.edit(embed=embed)
+                await asyncio.sleep(0.5)
+                
+                # Show final symbol for this reel
+                temp_symbols = list(final_symbols)
+                for i in range(position + 1, 3):
+                    temp_symbols[i] = '❓'
+                embed.set_field_at(
+                    0, 
+                    name="Spinning..." if position < 2 else "Results", 
+                    value=f"| {' | '.join(temp_symbols)} |"
+                )
                 await msg.edit(embed=embed)
                 await asyncio.sleep(0.5)
 
@@ -1274,7 +1261,7 @@ class Economy(commands.Cog):
             result_embed.add_field(
                 name="Outcome",
                 value=f"Bet: {self.format_amount(bet)}\n"
-                    f"Win: {self.format_amount(winnings)}\n"
+                    f"Win: +{self.format_amount(winnings)}\n"
                     f"Tax: {self.format_amount(tax_amount)}",
                 inline=False
             )
@@ -1430,6 +1417,7 @@ class Economy(commands.Cog):
                 value=f"{''.join(banker_flowers)}", 
                 inline=False
             )
+            
             game_message = await ctx.send(embed=game_embed)
 
             # Player's first two cards
@@ -1469,6 +1457,7 @@ class Economy(commands.Cog):
                     value=f"{''.join(banker_flowers)}", 
                     inline=False
                 )
+
                 await game_message.edit(embed=game_embed)
                 await asyncio.sleep(1)
 
@@ -1612,6 +1601,10 @@ class Economy(commands.Cog):
                     value="Double 9s! Banker wins! <a:xdd:1221066292631568456>", 
                     inline=False
                 )
+                final_embed.set_footer(
+                    text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} GP"
+                )
+                                
                 self.currency[user_id] -= amount
                 self.currency[house_id] += amount  # Add to house balance
             elif player_total > banker_total:
@@ -1628,6 +1621,10 @@ class Economy(commands.Cog):
                     value=f"You win! <a:MUGA:1178140574570790954>\nWinnings: {self.format_amount(net_winnings)} (After 5% tax)", 
                     inline=False
                 )
+                final_embed.set_footer(
+                    text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} GP"
+                )
+                                
             elif banker_total > player_total:
                 # Banker wins
                 self.currency[user_id] -= amount
@@ -1637,6 +1634,9 @@ class Economy(commands.Cog):
                     value="Banker wins! <a:xdd:1221066292631568456>", 
                     inline=False
                 )
+                final_embed.set_footer(
+                    text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} GP"
+                )                
             else:
                 
                 final_embed.add_field(

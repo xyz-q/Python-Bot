@@ -3,6 +3,8 @@ import discord
 from discord.ext import commands
 import yt_dlp as youtube_dl
 from concurrent.futures import ThreadPoolExecutor 
+import yt_dlp
+
 
 youtube_dl.utils.bug_reports_message = lambda: ''
 
@@ -164,12 +166,11 @@ class YouTubeCommands(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred while playing the next song: {str(e)}")
 
-
-
     @commands.command()
     async def play(self, ctx, *, query):
-        global queue, current_playing_url
+        global queue, current_playing_url, is_playing
 
+        # Check if user is in voice channel
         author = ctx.message.author
         voice_channel = author.voice.channel if author.voice else None
 
@@ -179,48 +180,144 @@ class YouTubeCommands(commands.Cog):
 
         voice_client = ctx.guild.voice_client
 
-        if voice_client and voice_client.is_connected():
-            await voice_client.move_to(voice_channel)
-        else:
-            voice_client = await voice_channel.connect()
-
-        info = await self.download_info(query, self.ytdl_format_options)
-        if info is None:
-            await ctx.send(f'No video found for query: {query}')
+        # Connect to voice channel
+        try:
+            if voice_client and voice_client.is_connected():
+                await voice_client.move_to(voice_channel)
+            else:
+                voice_client = await voice_channel.connect()
+        except Exception as e:
+            await ctx.send(f"Couldn't connect to voice channel: {str(e)}")
             return
 
-        if 'entries' in info:
-            video = info['entries'][0]
-            title = video['title']
+        # Special options for playlist extraction
+        playlist_options = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'extract_flat': False,  # Changed to False to get full info
+            'noplaylist': False,
+            'nocheckcertificate': True,
+            'ignoreerrors': True,
+            'quiet': True,
+            'no_warnings': True,
+            'default_search': 'auto',
+            'source_address': '0.0.0.0',
+            'extract_flat': 'in_playlist',
+            'playliststart': 1,
+            'playlistend': None,
+            'playlist_items': None,
+            'dump_single_json': True,
+            'force_generic_extractor': False
+        }
 
-            download_msg = await ctx.send(f'Downloading: {title}')
-            await asyncio.sleep(4)
+        try:
+            await ctx.send("Fetching playlist information... This might take a moment.")
+            
+            # Create a new YTDL instance with playlist options
+            ydl = yt_dlp.YoutubeDL(playlist_options)
+            
+            # Extract playlist info
+            with ydl:
+                result = await self.bot.loop.run_in_executor(
+                    None, lambda: ydl.extract_info(query, download=False)
+                )
 
-            if voice_client.is_playing() or is_playing:
-                queue.append(query)
-                await ctx.send(f'Added to queue: {title}')
-                await download_msg.delete()
-            else:
-                await download_msg.delete()
-                play_message = await ctx.send(f'Now playing: {title}')
+            if not result:
+                await ctx.send("Could not fetch playlist information.")
+                return
+
+            if 'entries' in result:
+                entries = list(result['entries'])
+                playlist_title = result.get('title', 'Unknown Playlist')
                 
-                fresh_url = await self.get_fresh_url(query)
-                current_playing_url = fresh_url if fresh_url else video['url']
-                
-                try:
-                    voice_client.play(
-                        discord.FFmpegPCMAudio(
-                            current_playing_url,
-                            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
-                        ),
-                        after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
-                    )
-                except Exception as e:
-                    await ctx.send(f"An error occurred while playing: {str(e)}")
+                if not entries:
+                    await ctx.send("No videos found in playlist.")
                     return
 
-                controls = MusicControls(ctx, voice_client)
-                await play_message.edit(view=controls)
+                await ctx.send(f'Processing playlist: {playlist_title} ({len(entries)} tracks)')
+
+                # Process each video in the playlist
+                for i, entry in enumerate(entries):
+                    if entry is None:
+                        continue
+
+                    title = entry.get('title', 'Unknown Title')
+                    video_url = entry.get('url', entry.get('webpage_url'))
+                    
+                    if i == 0 and not (voice_client.is_playing() or is_playing):
+                        # Play first song immediately
+                        download_msg = await ctx.send(f'Downloading: {title}')
+                        await asyncio.sleep(2)
+                        await download_msg.delete()
+                        
+                        play_message = await ctx.send(f'Now playing: {title}')
+                        
+                        try:
+                            fresh_url = await self.get_fresh_url(video_url)
+                            current_playing_url = fresh_url if fresh_url else video_url
+
+                            is_playing = True
+                            voice_client.play(
+                                discord.FFmpegPCMAudio(
+                                    current_playing_url,
+                                    before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                                ),
+                                after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
+                            )
+                            
+                            controls = MusicControls(ctx, voice_client)
+                            await play_message.edit(view=controls)
+                        except Exception as e:
+                            is_playing = False
+                            await ctx.send(f"Error playing {title}: {str(e)}")
+                    else:
+                        # Add other songs to queue
+                        queue.append(video_url)
+                        print(f'Added to queue: {title}')
+                        
+
+            else:
+                # Handle single video
+                title = result.get('title', 'Unknown Title')
+                download_msg = await ctx.send(f'Downloading: {title}')
+                await asyncio.sleep(2)
+
+                if voice_client.is_playing() or is_playing:
+                    queue.append(query)
+                    await ctx.send(f'Added to queue: {title}')
+                    await download_msg.delete()
+                else:
+                    await download_msg.delete()
+                    play_message = await ctx.send(f'Now playing: {title}')
+                    
+                    try:
+                        fresh_url = await self.get_fresh_url(query)
+                        current_playing_url = fresh_url if fresh_url else result.get('url')
+                        
+                        is_playing = True
+                        voice_client.play(
+                            discord.FFmpegPCMAudio(
+                                current_playing_url,
+                                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                            ),
+                            after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
+                        )
+                        
+                        controls = MusicControls(ctx, voice_client)
+                        await play_message.edit(view=controls)
+                    except Exception as e:
+                        is_playing = False
+                        await ctx.send(f"An error occurred while playing: {str(e)}")
+                        return
+
+        except Exception as e:
+            await ctx.send(f"An error occurred: {str(e)}")
+            print(f"Error details: {str(e)}")
+            return
 
     @commands.command()
     async def q(self, ctx):
