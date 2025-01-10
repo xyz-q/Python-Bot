@@ -11,3 +11,4 @@ __pycache__/merchant_stock.cpython-312.pyc
 merchant_stock.py
 subscribed_channels.json
 *.json
+currency.json
