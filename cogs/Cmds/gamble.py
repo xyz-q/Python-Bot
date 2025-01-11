@@ -49,14 +49,14 @@ def transaction_limit():
 
             # Check limits
             MIN_LIMIT = 5_000_000  # 5M
-            MAX_LIMIT = 5_000_000_000  # 5B
+            MAX_LIMIT = 100_000_000  # 5B
 
             if amount < MIN_LIMIT:
                 await ctx.send(f"❌ Amount too low! Minimum amount is 5M")
                 return False
             
             if amount > MAX_LIMIT:
-                await ctx.send(f"❌ Amount too high! Maximum amount is 5B")
+                await ctx.send(f"❌ Amount too high! Maximum amount is 100M")
                 return False
 
             return True
@@ -94,12 +94,14 @@ class PaginationView(discord.ui.View):
 
 class Economy(commands.Cog):
     MIN_TRANSACTION_AMOUNT = 50_000_000  # 50M minimum
-    MAX_TRANSACTION_AMOUNT = 5_000_000_000  # 5B maximum
+    MAX_TRANSACTION_AMOUNT = 1_000_000_000  # 5B maximum
     def __init__(self, bot):
         self.bot = bot
         self.currency = {}
         self.load_currency()
         self.balances = {}
+        self.stats = {}
+        self.load_stats()  
         self.admin_id = 110927272210354176
         self.symbols = {
         "💎": {"weight": 1, "multiplier": 50, "name": "Diamond"},     # 1%
@@ -111,7 +113,125 @@ class Economy(commands.Cog):
 
     }
 
+    def load_stats(self):
+        try:
+            with open('gambling_stats.json', 'r') as f:
+                self.stats = json.load(f)
+        except FileNotFoundError:
+            self.stats = {}
 
+    def save_stats(self):
+        with open('gambling_stats.json', 'w') as f:
+            json.dump(self.stats, f, indent=4)
+
+    def initialize_user_stats(self, user_id):
+        if str(user_id) not in self.stats:
+            self.stats[str(user_id)] = {
+                "total_wagered": 0,
+                "total_won": 0,
+                "total_lost": 0,
+                "biggest_win": 0,
+                "games_played": 0
+            }
+
+    def update_stats(self, user_id, amount_wagered, amount_won):
+        user_id = str(user_id)
+        self.initialize_user_stats(user_id)
+        
+        # Convert amounts to integers
+        try:
+            amount_wagered = int(amount_wagered)
+            amount_won = int(amount_won)
+        except ValueError:
+            amount_wagered = self.parse_amount(str(amount_wagered))
+            amount_won = self.parse_amount(str(amount_won))
+
+        # Update total wagered and games played
+        self.stats[user_id]["total_wagered"] += amount_wagered
+        self.stats[user_id]["games_played"] += 1
+        
+        # Calculate actual profit/loss from this game
+        if amount_won > amount_wagered:  # Won
+            profit = amount_won - amount_wagered
+            self.stats[user_id]["total_won"] += profit
+            if profit > self.stats[user_id]["biggest_win"]:
+                self.stats[user_id]["biggest_win"] = profit
+        else:  # Lost
+            loss = amount_wagered
+            self.stats[user_id]["total_lost"] += loss
+
+        self.save_stats()
+
+    @commands.command(name="resetstats")
+    async def reset_stats(self, ctx, user: discord.Member = None):
+        if user and not ctx.author.guild_permissions.administrator:
+            await ctx.send("Only administrators can reset other users' stats!")
+            return
+            
+        target_user = user or ctx.author
+        user_id = str(target_user.id)
+        
+        # Reset the stats for the user
+        self.stats[user_id] = {
+            "total_wagered": 0,
+            "total_won": 0,
+            "total_lost": 0,
+            "biggest_win": 0,
+            "games_played": 0
+        }
+        
+        self.save_stats()
+        
+        await ctx.send(f"📊 Statistics have been reset for {target_user.name}!")
+
+    @commands.command(name="stats")
+    async def show_stats(self, ctx, user: discord.Member = None):
+        user = user or ctx.author
+        user_id = str(user.id)
+        
+        if user_id not in self.stats:
+            await ctx.send("No gambling statistics found for this user.")
+            return
+
+        stats = self.stats[user_id]
+        net_profit = stats["total_won"] - stats["total_lost"]
+        
+        embed = discord.Embed(title=f"Gambling Statistics for {user.name}", color=discord.Color.blue())
+        embed.add_field(name="Total Wagered", value=f"${stats['total_wagered']:,}", inline=False)
+        embed.add_field(name="Total Won", value=f"${stats['total_won']:,}", inline=True)
+        embed.add_field(name="Total Lost", value=f"${stats['total_lost']:,}", inline=True)
+        embed.add_field(name="Net Profit/Loss", value=f"${net_profit:,}", inline=False)
+        embed.add_field(name="Biggest Win", value=f"${stats['biggest_win']:,}", inline=True)
+        embed.add_field(name="Games Played", value=stats['games_played'], inline=True)
+        
+        if stats['total_wagered'] > 0:
+            win_rate = (stats['total_won'] / stats['total_wagered']) * 100
+            embed.add_field(name="Return Rate", value=f"{win_rate:.2f}%", inline=True)
+
+        await ctx.send(embed=embed)
+
+
+
+    @commands.command(name="housestats")
+    @commands.has_permissions(administrator=True)
+    async def house_stats(self, ctx):
+        total_wagered = sum(user["total_wagered"] for user in self.stats.values())
+        total_won = sum(user["total_won"] for user in self.stats.values())
+        total_lost = sum(user["total_lost"] for user in self.stats.values())
+        total_games = sum(user["games_played"] for user in self.stats.values())
+        
+        house_profit = total_lost - total_won
+        
+        embed = discord.Embed(title="House Statistics", color=discord.Color.gold())
+        embed.add_field(name="Total Wagered", value=f"${total_wagered:,}", inline=False)
+        embed.add_field(name="House Profit", value=f"${house_profit:,}", inline=False)
+        embed.add_field(name="Total Games Played", value=total_games, inline=False)
+        
+        if total_wagered > 0:
+            house_edge = (house_profit / total_wagered) * 100
+            embed.add_field(name="House Edge", value=f"{house_edge:.2f}%", inline=False)
+        
+        await ctx.send(embed=embed)        
 # Add this method to your Economy class
     async def generate_results(self):
         symbol_list = list(self.symbols.keys())
@@ -216,16 +336,26 @@ class Economy(commands.Cog):
         self.save_data()
         return self.balances[user_id]
 
-    def parse_amount(self, amount_str):
-        amount_str = amount_str.upper()
-        multipliers = {'K': 1000, 'M': 1000000, 'B': 1000000000, 'T': 1000000000000}
+    def parse_amount(self, amount):
+        """Convert string amounts like '5k', '1m', etc. to integers"""
+        if isinstance(amount, (int, float)):
+            return int(amount)
+            
+        amount = str(amount).lower().strip()
+        multipliers = {
+            'k': 1000,
+            'm': 1000000,
+            'b': 1000000000,
+            't': 1000000000000
+        }
         
-        if any(suffix in amount_str for suffix in multipliers.keys()):
-            suffix = amount_str[-1]
-            if suffix in multipliers:
-                number = float(amount_str[:-1])
-                return int(number * multipliers[suffix])
-        return int(float(amount_str))
+        try:
+            if amount[-1] in multipliers:
+                number = float(amount[:-1])
+                return int(number * multipliers[amount[-1]])
+            return int(float(amount))
+        except (ValueError, IndexError):
+            return 0
 
     def format_amount(self, amount):
         if amount >= 10000000000:  # 10B+
@@ -285,8 +415,10 @@ class Economy(commands.Cog):
         # Filter out the house account and convert user IDs to int for sorting
         user_balances = []
         house_balance = 0
+        total_money = 0  # Initialize total money counter
         
         for user_id, balance in self.currency.items():
+            total_money += balance  # Add each balance to total
             if user_id == "1233966655923552370":
                 house_balance = balance
             else:
@@ -336,21 +468,23 @@ class Economy(commands.Cog):
                 description=page,
                 color=discord.Color.gold()
             )
-            embed.set_footer(text=f"Page {i}/{len(pages)}")
+            # Add both page number and total money to footer
+            embed.set_footer(text=f"Page {i}/{len(pages)} • Total Money: {self.format_amount(total_money)} <:goldpoints:1319902464115343473>")
             embeds.append(embed)
 
         # Send the first embed with pagination
         view = PaginationView(embeds)
         message = await ctx.send(embed=embeds[0], view=view)
         view.message = message  # Store message reference for timeout handling
-    # Wait 20 seconds then delete the message
+        
+        # Wait 20 seconds then delete the message
         await asyncio.sleep(20)
         try:
             await message.delete()
         except discord.NotFound:
             pass  # Message was already deleted
         except discord.Forbidden:
-            pass 
+            pass
     
 
     @commands.command(aliases=['bal'])
@@ -911,6 +1045,9 @@ class Economy(commands.Cog):
                 await ctx.send(f"{opponent.name} doesn't have enough balance! Their balance: <:goldpoints:1319902464115343473> {self.format_amount(opponent_balance)}")
                 return
 
+            house_tax = int(bet_amount * 0.05)  # 5% house tax
+            win_amount = bet_amount * 2 - house_tax
+
             # Create challenge embed with tax info
             challenge_embed = discord.Embed(
                 title="🎲 PvP Coin Flip Challenge",
@@ -986,11 +1123,14 @@ class Economy(commands.Cog):
             loser_id = opponent_id if result != view.choice else challenger_id
             winner = ctx.author if winner_id == challenger_id else opponent
             loser = opponent if winner_id == challenger_id else ctx.author
+            self.update_stats(winner_id, bet_amount, win_amount)  # Winner gets win_amount as profit
+            self.update_stats(loser_id, bet_amount, 0)  # Loser gets 0 winnings
 
             # Update balances with house tax
             self.currency[winner_id] = self.currency.get(winner_id, 0) + win_amount
             self.currency[loser_id] = self.currency.get(loser_id, 0) - bet_amount
             self.currency[house_id] = self.currency.get(house_id, 0) + house_tax
+ 
 
             # Save changes
             self.save_currency()
@@ -1033,7 +1173,9 @@ class Economy(commands.Cog):
 
     @commands.command(name="gamble", aliases=["slot", "slots"])
     @transaction_limit()
-    async def gamble(self, ctx, amount: str = None):  # Make amount optional by setting default to None
+    async def gamble(self, ctx, amount: str = None): 
+        user_id = ctx.author.id
+        initial_amount = amount         # Make amount optional by setting default to None
         if amount is None:
             # Create help embed
             help_embed = discord.Embed(
@@ -1204,6 +1346,7 @@ class Economy(commands.Cog):
             max_matches = max(symbol_counts.values())
 
             # Calculate winnings based on matches
+# For three of a kind wins:
             if max_matches == 3:  # Three of a kind (rare, ~0.75% chance)
                 symbol = max(symbol_counts, key=symbol_counts.get)
                 multiplier = symbols[symbol]["multiplier"]
@@ -1211,6 +1354,9 @@ class Economy(commands.Cog):
                 tax_amount = int(gross_win * 0.05)
                 winnings = gross_win - tax_amount
                 result = f"🎉 JACKPOT! Triple {symbols[symbol]['name']}! 🎉"
+                self.currency[user_id] += winnings
+                self.update_stats(user_id, bet, winnings)
+
             
             elif max_matches == 2:  # Two of a kind (uncommon, ~4.25% chance)
                 matching_symbol = [s for s, count in symbol_counts.items() if count == 2][0]
@@ -1220,12 +1366,16 @@ class Economy(commands.Cog):
                 tax_amount = int(gross_win * 0.05)
                 winnings = gross_win - tax_amount
                 result = f"🎈 Double {symbols[matching_symbol]['name']}! 🎈"
+                self.currency[user_id] += winnings
+                self.update_stats(user_id, bet, winnings)
             
 
             else:
                 winnings = 0
                 tax_amount = 0
                 result = "No match!"
+                self.currency[user_id] -= bet  # Deduct the bet amount on loss
+                self.update_stats(user_id, bet, 0)
 
             # Update balances
             if winnings > 0:
@@ -1272,6 +1422,8 @@ class Economy(commands.Cog):
 
             await msg.edit(embed=result_embed)
 
+           
+
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
 
@@ -1281,6 +1433,8 @@ class Economy(commands.Cog):
     @commands.command(aliases=["flowe", "flowers"])
     @transaction_limit()
     async def flower(self, ctx, bet_amount: str = None):
+        user_id = ctx.author.id
+        initial_amount = self.parse_amount(bet_amount)
         if bet_amount is None:
             # Create an embed for the flower command help/info
             help_embed = discord.Embed(
@@ -1327,7 +1481,7 @@ class Economy(commands.Cog):
 
         # If bet_amount is provided, continue with the existing game logic
         try:
-            # Your existing game code here...
+
                      
             # Flowers with their values and weights (odds)
             flowers = {
@@ -1338,8 +1492,8 @@ class Economy(commands.Cog):
                 "<:yellow:1326018708136792085>": {"value": 4, "weight": 15},   
                 "<:purple:1326018686817009734>": {"value": 3, "weight": 15},    
                 "<:orange:1326018671763521557>": {"value": 6, "weight": 15},    
-                "<:white:1326018610719756340>": {"value": "WIN", "weight": 0.1},  
-                "<:black:1326018632739721327>": {"value": "LOSE", "weight": 0.2}  
+                "<:white:1326018610719756340>": {"value": 69, "weight": 0.1},  
+                "<:black:1326018632739721327>": {"value": 420, "weight": 0.2}  
             }
 
             # Validate bet amount first
@@ -1427,16 +1581,58 @@ class Economy(commands.Cog):
 
             for i in range(2):
                 p_flower, p_value = pick_flower()
-                if p_value == "WIN":
-                    await ctx.send(f"{ctx.author.mention} got White Flower! Instant Win! 💰")
+                player_hand.append(p_value)
+                player_flowers[i] = p_flower
+
+                game_embed.clear_fields()  # Clear existing fields
+                game_embed.add_field(
+                    name="Your Bet", 
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
+                    inline=False
+                )
+                game_embed.add_field(
+                    name="Player's Hand", 
+                    value=f"{''.join(player_flowers)}", 
+                    inline=False
+                )
+                game_embed.add_field(
+                    name="Banker's Hand", 
+                    value=f"{''.join(banker_flowers)}", 
+                    inline=False
+                )
+                await game_message.edit(embed=game_embed)
+                await asyncio.sleep(1)
+
+                def check_special_flowers(hand_values, flowers_display):
+                    for value, flower in zip(hand_values, flowers_display):
+                        if value == 69:  # White Flower
+                            return "win", "**WHITE FLOWER!** Instant Win! 💰", discord.Color.green()
+                        elif value == 420:  # Black Flower
+                            return "loss", "**BLACK FLOWER!** House Wins! 💀", discord.Color.red()
+                    return None, None, None
+
+                # Check player's hand for special flowers
+                result, message, color = check_special_flowers(player_hand, player_flowers)
+            if result:
+                game_embed.color = color
+                game_embed.add_field(
+                    name="Result", 
+                    value=message, 
+                    inline=False
+                )
+                await game_message.edit(embed=game_embed)
+                
+                if result == "win":
+                    winnings = amount * 1.90
                     self.currency[user_id] += amount
-                    self.save_currency()
-                    return
-                elif p_value == "LOSE":
-                    await ctx.send(f"{ctx.author.mention} got Black Flower! House Wins! 💀")
-                    self.currency[user_id] -= amount
-                    self.save_currency()
-                    return
+                    self.update_stats(user_id, amount, winnings)  # Changed to track actual winnings
+                else:
+                    self.currency[user_id] += amount
+                    self.update_stats(user_id, amount, amount)  # For push/return
+                
+                self.save_currency()
+                return
+
                 
                 player_hand.append(p_value)
                 player_flowers[i] = p_flower  # Replace placeholder with actual flower
@@ -1463,6 +1659,8 @@ class Economy(commands.Cog):
 
             # Check if player needs third card
             player_total = calculate_total(player_hand)
+            player_hand.append(p_value)
+            player_flowers[2] = p_flower           
             if needs_third_card(player_total):
                 game_embed.add_field(
                     name="Status", 
@@ -1472,20 +1670,9 @@ class Economy(commands.Cog):
                 await game_message.edit(embed=game_embed)
                 await asyncio.sleep(1)
 
-                p_flower, p_value = pick_flower()
-                if p_value == "WIN":
-                    await ctx.send(f"{ctx.author.mention} got White Flower! Instant Win! 💰")
-                    self.currency[user_id] += amount
-                    self.save_currency()
-                    return
-                elif p_value == "LOSE":
-                    await ctx.send(f"{ctx.author.mention} got Black Flower! House Wins! 💀")
-                    self.currency[user_id] -= amount
-                    self.save_currency()
-                    return
+
                 
-                player_hand.append(p_value)
-                player_flowers[2] = p_flower
+
                 player_total = calculate_total(player_hand)  # Recalculate total after third card
             # Replace third placeholder
                 
@@ -1573,7 +1760,25 @@ class Economy(commands.Cog):
                 await game_message.edit(embed=game_embed)
                 await asyncio.sleep(1)
 
-
+            result, message, color = check_special_flowers(banker_hand, banker_flowers)
+            if result:
+                game_embed.color = color
+                game_embed.add_field(
+                    name="Result", 
+                    value=message, 
+                    inline=False
+                )
+                await game_message.edit(embed=game_embed)
+                
+                if result == "win":
+                    self.currency[user_id] += amount
+                    winnings = amount * 1.90
+                    self.update_stats(user_id, amount, winnings)
+                else:
+                    self.currency[user_id] += amount  # Player wins
+                
+                self.save_currency()
+                return
 
             # Final result embed
             final_embed = discord.Embed(title="<:seeds:1326024477145956433> Flower Staking Game", color=discord.Color.gold())
@@ -1604,18 +1809,21 @@ class Economy(commands.Cog):
                 final_embed.set_footer(
                     text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} GP"
                 )
-                                
+                                        
                 self.currency[user_id] -= amount
-                self.currency[house_id] += amount  # Add to house balance
+                self.currency[house_id] += amount
+                self.update_stats(user_id, amount, 0)  # Lost everything, so winnings = 0
+
             elif player_total > banker_total:
                 # Player wins
-                winnings = amount * 2  # Double the bet
-                tax_amount = int(winnings * 0.05)  # 5% tax
+                winnings = amount * 2
+                tax_amount = int(winnings * 0.05)
                 net_winnings = winnings - tax_amount
-                
                 self.currency[user_id] += net_winnings
-                self.currency[house_id] -= winnings  # House pays winnings
-                self.currency[house_id] += tax_amount  # House keeps the tax
+                self.update_stats(user_id, amount, net_winnings)  # Track actual net winnings after tax
+                
+                self.currency[house_id] -= winnings
+                self.currency[house_id] += tax_amount
                 final_embed.add_field(
                     name="Result", 
                     value=f"You win! <a:MUGA:1178140574570790954>\nWinnings: {self.format_amount(net_winnings)} (After 5% tax)", 
@@ -1624,11 +1832,13 @@ class Economy(commands.Cog):
                 final_embed.set_footer(
                     text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} GP"
                 )
-                                
+                                        
             elif banker_total > player_total:
                 # Banker wins
                 self.currency[user_id] -= amount
-                self.currency[house_id] += amount  # Add to house balance
+                self.currency[house_id] += amount
+                self.update_stats(user_id, amount, 0)  # Lost everything, so winnings = 0
+                final_amount = await self.get_balance(user_id)
                 final_embed.add_field(
                     name="Result", 
                     value="Banker wins! <a:xdd:1221066292631568456>", 
@@ -1637,15 +1847,19 @@ class Economy(commands.Cog):
                 final_embed.set_footer(
                     text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} GP"
                 )                
+
             else:
-                
+                # Tie
+                self.update_stats(user_id, amount, amount)  # On tie, they get their bet back
                 final_embed.add_field(
                     name="Result", 
                     value="Tie! It's a push. <a:aware:1255561720810831912>", 
                     inline=False
-                )
+    )
 
             # Save the updated currency values
+            final_amount = await self.get_balance(user_id)
+
             self.save_currency()
             await game_message.edit(embed=final_embed)
 
