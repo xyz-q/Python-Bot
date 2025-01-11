@@ -1347,36 +1347,36 @@ class Economy(commands.Cog):
 
             # Calculate winnings based on matches
 # For three of a kind wins:
-            if max_matches == 3:  # Three of a kind (rare, ~0.75% chance)
+            if max_matches == 3:
                 symbol = max(symbol_counts, key=symbol_counts.get)
                 multiplier = symbols[symbol]["multiplier"]
                 gross_win = bet * multiplier
                 tax_amount = int(gross_win * 0.05)
                 winnings = gross_win - tax_amount
                 result = f"🎉 JACKPOT! Triple {symbols[symbol]['name']}! 🎉"
-                self.currency[user_id] += winnings
+                self.currency[user_id] = self.currency[user_id] - bet + winnings  # Subtract bet, add winnings
+                self.currency[house_id] = self.currency[house_id] + bet - winnings  # Update house balance
                 self.update_stats(user_id, bet, winnings)
 
-            
-            elif max_matches == 2:  # Two of a kind (uncommon, ~4.25% chance)
+            elif max_matches == 2:
                 matching_symbol = [s for s, count in symbol_counts.items() if count == 2][0]
                 base_multiplier = symbols[matching_symbol]["multiplier"]
-                multiplier = base_multiplier * 0.4  # 40% of original multiplier
+                multiplier = base_multiplier * 0.4
                 gross_win = int(bet * multiplier)
                 tax_amount = int(gross_win * 0.05)
                 winnings = gross_win - tax_amount
                 result = f"🎈 Double {symbols[matching_symbol]['name']}! 🎈"
-                self.currency[user_id] += winnings
+                self.currency[user_id] = self.currency[user_id] - bet + winnings  # Subtract bet, add winnings
+                self.currency[house_id] = self.currency[house_id] + bet - winnings  # Update house balance
                 self.update_stats(user_id, bet, winnings)
-            
 
             else:
                 winnings = 0
                 tax_amount = 0
                 result = "No match!"
-                self.currency[user_id] -= bet  # Deduct the bet amount on loss
+                self.currency[user_id] -= bet  # Subtract bet on loss
+                self.currency[house_id] += bet  # House gains the bet
                 self.update_stats(user_id, bet, 0)
-
             # Update balances
             if winnings > 0:
                 if house_id not in self.currency:
