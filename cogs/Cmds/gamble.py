@@ -469,7 +469,7 @@ class Economy(commands.Cog):
                 color=discord.Color.gold()
             )
             # Add both page number and total money to footer
-            embed.set_footer(text=f"Page {i}/{len(pages)} • Total Money: {self.format_amount(total_money)} <:goldpoints:1319902464115343473>")
+            embed.set_footer(text=f"Page {i}/{len(pages)} • Total Balance: {self.format_amount(total_money)}")
             embeds.append(embed)
 
         # Send the first embed with pagination
