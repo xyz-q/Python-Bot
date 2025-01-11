@@ -3,11 +3,10 @@ alerts.json
 mocked_users.json
 previous_status.txt
 auto_delete.json
-currency.json
+
 merchant_stock.py
 merchant_stock.py
 subscribed_channels.json
 *.json
 
-currency.json
-currency.json
+
