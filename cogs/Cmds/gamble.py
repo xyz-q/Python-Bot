@@ -233,51 +233,7 @@ class Economy(commands.Cog):
         
         await ctx.send(embed=embed)        
 # Add this method to your Economy class
-    async def generate_results(self):
-        symbol_list = list(self.symbols.keys())
-        total_weight = sum(data["weight"] for data in self.symbols.values())
-        weights = [data["weight"]/total_weight for data in self.symbols.values()]
-        
-        # Increase match probability (e.g., 5% chance instead of 0.2%)
-        if random.random() < 0.05:  
-            # 40% chance for three of a kind within the 5%
-            if random.random() < 0.4:  
-                # Adjust weights to favor lower multiplier symbols for three matches
-                adjusted_weights = []
-                for symbol, data in self.symbols.items():
-                    # Use multiplier directly instead of dividing by it
-                    weight = data["weight"] * (1 / data["multiplier"])  
-                    adjusted_weights.append(weight)
-                
-                total_adjusted = sum(adjusted_weights)
-                adjusted_weights = [w/total_adjusted for w in adjusted_weights]
-                
-                symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
-                return [symbol, symbol, symbol]
-                
-            else:  # 60% chance for two of a kind within the 5%
-                adjusted_weights = []
-                for symbol, data in self.symbols.items():
-                    # Similar adjustment for two matches
-                    weight = data["weight"] * (1 / data["multiplier"])
-                    adjusted_weights.append(weight)
-                
-                total_adjusted = sum(adjusted_weights)
-                adjusted_weights = [w/total_adjusted for w in adjusted_weights]
-                
-                symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
-                remaining_symbols = [s for s in symbol_list if s != symbol]
-                remaining_weights = [self.symbols[s]["weight"] for s in remaining_symbols]
-                total_remaining = sum(remaining_weights)
-                remaining_weights = [w/total_remaining for w in remaining_weights]
-                
-                third = random.choices(remaining_symbols, weights=remaining_weights, k=1)[0]
-                result = [symbol, symbol, third]
-                random.shuffle(result)
-                return result
-                
-        # 95% chance for random results
-        return random.choices(symbol_list, weights=weights, k=3)
+
 
 
 
@@ -1183,7 +1139,7 @@ class Economy(commands.Cog):
     async def gamble(self, ctx, amount: str = None):
         # Define slot machine symbols with weights and multipliers (total weight = 100)
         symbols = {
-            "💎": {"weight": 1, "multiplier": 30, "name": "Diamond"},     # 1%
+            "💎": {"weight": 1, "multiplier": 25, "name": "Diamond"},     # 1%
             "🎰": {"weight": 2, "multiplier": 15, "name": "Jackpot"},    # 2%
             "7️⃣": {"weight": 7, "multiplier": 10, "name": "Seven"},       # 7%
             "🍀": {"weight": 15, "multiplier": 5, "name": "Clover"},     # 15%
@@ -1275,8 +1231,8 @@ class Economy(commands.Cog):
             symbol_list = list(symbols.keys())
             weights = [data["weight"] for data in symbols.values()]
             
-            if random.random() < 0.05:  # 5% chance for guaranteed match
-                if random.random() < 0.4:  # 40% chance for three of a kind
+            if random.random() < 0.15:  # 5% chance for guaranteed match
+                if random.random() < 0.2:  # 40% chance for three of a kind
                     # Weight towards lower multiplier symbols for three matches
                     adjusted_weights = []
                     for symbol, data in symbols.items():
