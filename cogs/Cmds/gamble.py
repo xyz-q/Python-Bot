@@ -2393,6 +2393,78 @@ class Economy(commands.Cog):
 
 
 
+    @commands.command(name="setbalance", aliases=["setbal", "set"])
+    @commands.is_owner() 
+    async def set_balance(self, ctx, member: discord.Member, amount: str):
+        """Set a user's balance to a specific amount"""
+        try:
+            # Parse the amount (supporting k, m, b notation)
+            def parse_amount(amount_str):
+                amount_str = amount_str.lower().strip('$,')
+                if 'k' in amount_str:
+                    return float(amount_str.replace('k', '')) * 1000
+                elif 'm' in amount_str:
+                    return float(amount_str.replace('m', '')) * 1000000
+                elif 'b' in amount_str:
+                    return float(amount_str.replace('b', '')) * 1000000000
+                elif 't' in amount_str:
+                    return float(amount_str.replace('t', '')) * 1000000000000
+                return float(amount_str)
+
+            new_balance = parse_amount(amount)
+            user_id = str(member.id)
+            old_balance = self.currency.get(user_id, 0)
+            
+            # Set the new balance
+            self.currency[user_id] = new_balance
+            self.save_currency()
+
+            # Create embed for response
+            embed = discord.Embed(
+                title="Balance Updated",
+                color=discord.Color.green() if new_balance >= 0 else discord.Color.red()
+            )
+            embed.add_field(
+                name="User", 
+                value=f"{member.mention}", 
+                inline=False
+            )
+            embed.add_field(
+                name="Old Balance", 
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(old_balance)}", 
+                inline=True
+            )
+            embed.add_field(
+                name="New Balance", 
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(new_balance)}", 
+                inline=True
+            )
+
+            await ctx.send(embed=embed)
+            
+            # Log the transaction
+            await self.log_transaction(
+                ctx, 
+                0,  # amount wagered (0 for administrative changes)
+                new_balance - old_balance,  # change in balance
+                new_balance,  # final balance
+                is_house=True  # mark as administrative action
+            )
+
+        except ValueError:
+            await ctx.send("❌ Invalid amount format! Use numbers with optional k, m, or b suffix (e.g., 500k, 1m)")
+        except Exception as e:
+            await ctx.send(f"❌ An error occurred: {str(e)}")
+
+    @set_balance.error
+    async def set_balance_error(self, ctx, error):
+        if isinstance(error, commands.MissingPermissions):
+            await ctx.send("❌ You need administrator permissions to set balances!")
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send("❌ Usage: ,setbalance <@user> <amount>")
+        elif isinstance(error, commands.MemberNotFound):
+            await ctx.send("❌ Could not find that user!")
+
 
 
 async def setup(bot):
