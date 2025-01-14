@@ -1671,11 +1671,11 @@ class Economy(commands.Cog):
             match_symbol = random.choices(symbol_list, weights=weights, k=1)[0]
             
             # For three matching symbols (3% chance)
-            if random.random() < 0.03:
+            if random.random() < 0.07:
                 return [match_symbol] * 3
                 
             # For two matching symbols (7% chance)
-            elif random.random() < 0.07:
+            elif random.random() < 0.14:
                 result = [match_symbol] * 2
                 # Add one different symbol
                 remaining_symbols = [s for s in symbol_list if s != match_symbol]
