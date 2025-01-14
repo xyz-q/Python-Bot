@@ -141,7 +141,7 @@ def confirm_bet():
             print(f"User balance: {balance}")
 
             if amount > balance:
-                await ctx.send("You don't have enough balance!", delete_after=10)
+                await ctx.send(f"You don't have enough coins! Your balance: {self.format_amount(amount)} <:goldpoints:1319902464115343473> ", delete_after=10)
                 return None
 
             # Step 3: If the amount exceeds the threshold, trigger the confirmation
@@ -310,7 +310,7 @@ class BetConfirmation(discord.ui.View):
             item.disabled = True
             
         self.value = False
-        await interaction.response.edit_message(content="Bet cancelled!", view=self)
+        await interaction.response.edit_message(content="Cancelled!", view=self)
         self.stop()        
 
 class PaginationView(discord.ui.View):
