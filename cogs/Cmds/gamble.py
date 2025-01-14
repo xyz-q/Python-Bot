@@ -352,7 +352,7 @@ class Economy(commands.Cog):
         self.admin_id = 110927272210354176
         
 
-        self.CONFIRMATION_THRESHOLD = 25_000_000
+        self.CONFIRMATION_THRESHOLD = 75_000_000
         self.symbols = {
         "<:rosa:1323457812755644498>": {"weight": 1, "multiplier": 50, "name": "Jackpot"},
         "<:diamond:1328609035485970432>": {"weight": 3, "multiplier": 25, "name": "Diamond"}, 
@@ -2339,11 +2339,11 @@ class Economy(commands.Cog):
             else:
                 # Tie
                 self.update_stats(user_id, amount, amount)
-                final_balance = await self.get_balance(user_id)
+                
                 self.currency[user_id] += amount  # Refund the bet on a tie
                 self.currency[house_id] -= amount               
                 await self.log_transaction(ctx, amount, 0, final_balance, is_house=False)  # 0 for tie since no win/loss
-                
+                final_balance = await self.get_balance(user_id)
                 final_embed.add_field(
                     name="Result", 
                     value="Tie! It's a push. <a:aware:1255561720810831912>", 
