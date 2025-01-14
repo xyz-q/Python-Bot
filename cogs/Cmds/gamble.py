@@ -2443,13 +2443,7 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
             
             # Log the transaction
-            await self.log_transaction(
-                ctx, 
-                0,  # amount wagered (0 for administrative changes)
-                new_balance - old_balance,  # change in balance
-                new_balance,  # final balance
-                is_house=True  # mark as administrative action
-            )
+
 
         except ValueError:
             await ctx.send("❌ Invalid amount format! Use numbers with optional k, m, or b suffix (e.g., 500k, 1m)")
