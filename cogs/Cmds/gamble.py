@@ -233,45 +233,8 @@ class Economy(commands.Cog):
         
         await ctx.send(embed=embed)        
 # Add this method to your Economy class
-    async def generate_results(self):
-        symbol_list = list(self.symbols.keys())
-        total_weight = sum(data["weight"] for data in self.symbols.values())
-        weights = [data["weight"]/total_weight for data in self.symbols.values()]
-        
-        # Reduced probability for matches
-        if random.random() < 0.002:  # 0.2% chance
-            if random.random() < 0.15:  # 0.03% overall chance for three of a kind
-                adjusted_weights = []
-                for symbol, data in self.symbols.items():
-                    weight = data["weight"] / (data["multiplier"] ** 3)
-                    adjusted_weights.append(weight)
-                
-                total_adjusted = sum(adjusted_weights)
-                adjusted_weights = [w/total_adjusted for w in adjusted_weights]
-                
-                symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
-                return [symbol, symbol, symbol]
-            else:  # 0.17% overall chance for two of a kind
-                adjusted_weights = []
-                for symbol, data in self.symbols.items():
-                    weight = data["weight"] / (data["multiplier"] ** 2)
-                    adjusted_weights.append(weight)
-                
-                total_adjusted = sum(adjusted_weights)
-                adjusted_weights = [w/total_adjusted for w in adjusted_weights]
-                
-                symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
-                remaining_symbols = [s for s in symbol_list if s != symbol]
-                remaining_weights = [self.symbols[s]["weight"] for s in remaining_symbols]
-                total_remaining = sum(remaining_weights)
-                remaining_weights = [w/total_remaining for w in remaining_weights]
-                
-                third = random.choices(remaining_symbols, weights=remaining_weights, k=1)[0]
-                result = [symbol, symbol, third]
-                random.shuffle(result)
-                return result
-        else:  # 99.8% chance for random results
-            return random.choices(symbol_list, weights=weights, k=3)
+
+
 
 
     def is_house_name(self, name: str) -> bool:
@@ -1173,20 +1136,34 @@ class Economy(commands.Cog):
 
     @commands.command(name="gamble", aliases=["slot", "slots"])
     @transaction_limit()
-    async def gamble(self, ctx, amount: str = None): 
+    async def gamble(self, ctx, amount: str = None):
+        # Define slot machine symbols with weights and multipliers (total weight = 100)
+        symbols = {
+            "💎": {"weight": 1, "multiplier": 25, "name": "Diamond"},     # 1%
+            "🎰": {"weight": 2, "multiplier": 15, "name": "Jackpot"},    # 2%
+            "7️⃣": {"weight": 7, "multiplier": 10, "name": "Seven"},       # 7%
+            "🍀": {"weight": 15, "multiplier": 5, "name": "Clover"},     # 15%
+            "⭐": {"weight": 35, "multiplier": 3, "name": "Star"},      # 35%
+            "🎲": {"weight": 40, "multiplier": 2, "name": "Dice"}      # 40%
+        }
+
+        # Create weighted symbol list
+        weighted_symbols = []
+        for symbol, data in symbols.items():
+            weighted_symbols.extend([symbol] * data["weight"])
+
         user_id = ctx.author.id
-        initial_amount = amount         # Make amount optional by setting default to None
+        initial_amount = amount         
         if amount is None:
-            # Create help embed
+            # Help embed code
             help_embed = discord.Embed(
                 title="🎰 Slot Machine Guide 🎰",
                 description="Bet your coins for a chance to win big!\nUse: `,slots <amount>`",
                 color=discord.Color.gold()
             )
-
             # Add symbol information
             symbols_info = ""
-            for symbol, data in self.symbols.items():
+            for symbol, data in symbols.items():
                 multiplier = data["multiplier"]
                 chance = data["weight"]
                 symbols_info += f"{symbol} **{data['name']}** - {multiplier}x multiplier\n"
@@ -1196,8 +1173,6 @@ class Economy(commands.Cog):
                 value=symbols_info,
                 inline=False
             )
-
-            # Add winning combinations info
             help_embed.add_field(
                 name="Winning Combinations",
                 value=(
@@ -1208,49 +1183,25 @@ class Economy(commands.Cog):
                 ),
                 inline=False
             )
-
-            # Add example
             help_embed.add_field(
                 name="Example",
                 value=",gamble 5M - Bets 5,000,000 coins",
                 inline=False
             )
-
             await ctx.send(embed=help_embed)
             return
 
         try:
-            # Parse bet amount
+            # Parse bet amount and get balances
             bet = self.parse_amount(amount)
             user_id = str(ctx.author.id)
             house_id = str(self.bot.user.id)
             user_balance = await self.get_balance(user_id)
+            
             if house_id not in self.currency:
                 self.currency[house_id] = 0   
 
-
-            # Debug prints
-            print(f"House balance (raw): {self.currency[house_id]}")
-            print(f"Bet amount: {bet}")
-            print(f"Max possible win: {bet * 5}")
-
-            try:
-                house_balance = int(self.currency[house_id])
-                max_possible_win = bet * 5
-                
-                print(f"House balance (converted): {house_balance}")
-                print(f"Comparison: {house_balance} < {max_possible_win}")
-                
-                if house_balance < max_possible_win:
-                    await ctx.send("The house doesn't have enough balance to cover potential winnings! Please try a smaller bet.")
-                    return
-
-            except Exception as e:
-                print(f"Error: {e}")
-                print(f"House balance type: {type(self.currency[house_id])}")
-                print(f"Bet type: {type(bet)}")
-                return
-            
+            # Validate bet and balances
             if bet <= 0:
                 await ctx.send("You must bet at least 1 coin!")
                 return
@@ -1259,74 +1210,82 @@ class Economy(commands.Cog):
                 await ctx.send(f"You don't have enough coins! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(user_balance)}")
                 return
 
-            # Define slot machine symbols with weights and multipliers (total weight = 100)
-            symbols = {
-                "💎": {"weight": 1, "multiplier": 30, "name": "Diamond"},     # 1%
-                "🎰": {"weight": 2, "multiplier": 15, "name": "Jackpot"},    # 2%
-                "7️⃣": {"weight": 7, "multiplier": 7, "name": "Seven"},       # 7%
-                "🍀": {"weight": 15, "multiplier": 3, "name": "Clover"},     # 15%
-                "⭐": {"weight": 35, "multiplier": 1.5, "name": "Star"},      # 35%
-                "🎲": {"weight": 40, "multiplier": 0.50, "name": "Dice"}      # 40%
-            }
+            # Check house balance
+            house_balance = int(self.currency[house_id])
+            max_possible_win = bet * 30  # Maximum possible win (Diamond 30x)
+            if house_balance < max_possible_win:
+                await ctx.send("The house doesn't have enough balance to cover potential winnings! Please try a smaller bet.")
+                return
 
-            # Create weighted symbol list
-            weighted_symbols = []
-            for symbol, data in symbols.items():
-                weighted_symbols.extend([symbol] * data["weight"])
-            
+            # Deduct bet ONCE at the start
+            self.currency[user_id] -= bet
+            self.currency[house_id] += bet
+
             # Create and send initial embed
             embed = discord.Embed(title="🎰 SLOT MACHINE 🎰", color=discord.Color.gold())
             embed.add_field(name="Spinning...", value="| ❓ | ❓ | ❓ |")
             embed.set_footer(text=f"Balance: {self.format_amount(user_balance)} GP")
             msg = await ctx.send(embed=embed)
 
-            # Generate final results with near-miss logic
-
+            # Generate final results
+            symbol_list = list(symbols.keys())
+            weights = [data["weight"] for data in symbols.values()]
             
-
-            final_symbols = await self.generate_results()
+            if random.random() < 0.15:  # 5% chance for guaranteed match
+                if random.random() < 0.2:  # 40% chance for three of a kind
+                    # Weight towards lower multiplier symbols for three matches
+                    adjusted_weights = []
+                    for symbol, data in symbols.items():
+                        weight = data["weight"] * (1 / data["multiplier"])
+                        adjusted_weights.append(weight)
+                    
+                    total_adjusted = sum(adjusted_weights)
+                    adjusted_weights = [w/total_adjusted for w in adjusted_weights]
+                    
+                    symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
+                    final_symbols = [symbol, symbol, symbol]
+                else:  # 60% chance for two of a kind
+                    adjusted_weights = []
+                    for symbol, data in symbols.items():
+                        weight = data["weight"] * (1 / data["multiplier"])
+                        adjusted_weights.append(weight)
+                    
+                    total_adjusted = sum(adjusted_weights)
+                    adjusted_weights = [w/total_adjusted for w in adjusted_weights]
+                    
+                    symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
+                    remaining_symbols = [s for s in symbol_list if s != symbol]
+                    remaining_weights = [symbols[s]["weight"] for s in remaining_symbols]
+                    total_remaining = sum(remaining_weights)
+                    remaining_weights = [w/total_remaining for w in remaining_weights]
+                    
+                    third = random.choices(remaining_symbols, weights=remaining_weights, k=1)[0]
+                    final_symbols = [symbol, symbol, third]
+                    random.shuffle(final_symbols)
+            else:  # 95% chance for random results
+                final_symbols = random.choices(symbol_list, weights=weights, k=3)
 
             # Spinning animation
             for position in range(3):
-                spins = random.randint(2, 4)  # Random number of spins for this reel
-                last_symbol = None  # Track the last symbol shown
+                spins = random.randint(2, 4)
+                last_symbol = None
                 
                 for _ in range(spins):
-                    temp_symbols = list(final_symbols)  # Create a copy of final symbols
-                    
-                    # Keep spinning current and future reels
+                    temp_symbols = list(final_symbols)
                     for i in range(position, 3):
-                        # For the current position, ensure we don't get the same symbol twice
                         if i == position:
                             new_symbol = random.choice(weighted_symbols)
-                            while new_symbol == last_symbol:  # Keep trying if we got the same symbol
+                            while new_symbol == last_symbol:
                                 new_symbol = random.choice(weighted_symbols)
                             temp_symbols[i] = new_symbol
                             last_symbol = new_symbol
                         else:
                             temp_symbols[i] = random.choice(weighted_symbols)
                     
-                    embed.set_field_at(
-                        0, 
-                        name="Spinning...", 
-                        value=f"| {' | '.join(temp_symbols)} |"
-                    )
+                    embed.set_field_at(0, name="Spinning...", value=f"| {' | '.join(temp_symbols)} |")
                     await msg.edit(embed=embed)
                     await asyncio.sleep(0.5)
                 
-                # Show final symbol for this reel
-                temp_symbols = list(final_symbols)
-                for i in range(position + 1, 3):
-                    temp_symbols[i] = '❓'
-                embed.set_field_at(
-                    0, 
-                    name="Spinning..." if position < 2 else "Results", 
-                    value=f"| {' | '.join(temp_symbols)} |"
-                )
-                await msg.edit(embed=embed)
-                await asyncio.sleep(0.5)
-                
-                # Show final symbol for this reel
                 temp_symbols = list(final_symbols)
                 for i in range(position + 1, 3):
                     temp_symbols[i] = '❓'
@@ -1338,62 +1297,47 @@ class Economy(commands.Cog):
                 await msg.edit(embed=embed)
                 await asyncio.sleep(0.5)
 
-            # Calculate matches and winnings
+            # Calculate matches
             symbol_counts = {}
             for symbol in final_symbols:
                 symbol_counts[symbol] = symbol_counts.get(symbol, 0) + 1
             
             max_matches = max(symbol_counts.values())
 
-            # Calculate winnings based on matches
-# For three of a kind wins:
-            if max_matches == 3:  # Three of a kind (rare, ~0.75% chance)
+            # Calculate and apply winnings
+            if max_matches == 3:
                 symbol = max(symbol_counts, key=symbol_counts.get)
                 multiplier = symbols[symbol]["multiplier"]
                 gross_win = bet * multiplier
                 tax_amount = int(gross_win * 0.05)
                 winnings = gross_win - tax_amount
                 result = f"🎉 JACKPOT! Triple {symbols[symbol]['name']}! 🎉"
+                
+                # Add winnings (bet already deducted)
                 self.currency[user_id] += winnings
-                self.update_stats(user_id, bet, winnings)
-
-            
-            elif max_matches == 2:  # Two of a kind (uncommon, ~4.25% chance)
+                self.currency[house_id] -= winnings
+                
+            elif max_matches == 2:
                 matching_symbol = [s for s, count in symbol_counts.items() if count == 2][0]
                 base_multiplier = symbols[matching_symbol]["multiplier"]
-                multiplier = base_multiplier * 0.4  # 40% of original multiplier
+                multiplier = base_multiplier * 0.4
                 gross_win = int(bet * multiplier)
                 tax_amount = int(gross_win * 0.05)
                 winnings = gross_win - tax_amount
                 result = f"🎈 Double {symbols[matching_symbol]['name']}! 🎈"
+                
+                # Add winnings (bet already deducted)
                 self.currency[user_id] += winnings
-                self.update_stats(user_id, bet, winnings)
-            
-
+                self.currency[house_id] -= winnings
+                
             else:
                 winnings = 0
                 tax_amount = 0
                 result = "No match!"
-                self.currency[user_id] -= bet  # Deduct the bet amount on loss
-                self.update_stats(user_id, bet, 0)
+                # No need to do anything here, bet was already deducted
 
-            # Update balances
-            if winnings > 0:
-                if house_id not in self.currency:
-                    self.currency[house_id] = 0
-                    
-                if self.currency[house_id] < winnings:
-                    await ctx.send("The house doesn't have enough balance to pay out! Try a smaller bet.")
-                    return
-
-                self.currency[user_id] = self.currency.get(user_id, 0) + winnings
-                self.currency[house_id] += tax_amount
-                self.currency[house_id] -= winnings
-            else:
-                self.currency[user_id] = self.currency.get(user_id, 0) - bet
-                self.currency[house_id] = self.currency.get(house_id, 0) + bet
-
-            # Save changes
+            # Update stats and save
+            self.update_stats(user_id, bet, winnings)
             self.save_currency()
 
             # Create result embed
@@ -1422,10 +1366,9 @@ class Economy(commands.Cog):
 
             await msg.edit(embed=result_embed)
 
-           
-
         except Exception as e:
-            await ctx.send(f"An error occurred: {str(e)}")
+            print(f"Error: {e}")
+            await ctx.send("An error occurred while processing your bet.")
 
 
 
