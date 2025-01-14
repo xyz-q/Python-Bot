@@ -7,3 +7,4 @@ merchant_stock.py
 subscribed_channels.json
 *.json
 currency.json
+.json/mocked_users.json

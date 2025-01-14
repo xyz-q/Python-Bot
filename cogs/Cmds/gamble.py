@@ -17,6 +17,7 @@ from pathlib import Path
 import functools
 from datetime import datetime
 import copy
+import typing
 
 class GambleLimits:
     def __init__(self):
@@ -99,6 +100,172 @@ import json
 
 import os
 
+def confirm_bet():
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(self, ctx, amount=None, *args, **kwargs):
+            if amount is None:
+                await ctx.send("Please specify an amount!", delete_after=10)
+                return None
+
+            # Convert letter denominations to numbers
+            try:
+                amount = str(amount).lower().replace(',', '').replace(' ', '')
+                
+                # Handle letter denominations
+                multipliers = {
+                    'k': 1_000,
+                    'm': 1_000_000,
+                    'b': 1_000_000_000
+                }
+                
+                # Extract number and letter
+                if amount[-1] in multipliers:
+                    number = float(amount[:-1])
+                    multiplier = multipliers[amount[-1]]
+                    amount = int(number * multiplier)
+                else:
+                    amount = int(float(amount))
+
+            except (ValueError, TypeError) as e:
+                await ctx.send("Invalid amount specified! Please use a valid number (e.g., 50m, 1k, 100000).", delete_after=10)
+                return None
+
+            # Check if amount is positive
+            if amount <= 0:
+                await ctx.send("Amount must be positive!", delete_after=10)
+                return None
+
+            # Get user's balance
+            balance = await self.get_balance(ctx.author.id)  # Assuming this is your balance getter method
+
+            # Check if user has enough balance
+            if amount > balance:
+                return await func(self, ctx, amount, *args, **kwargs)
+
+            if amount >= self.CONFIRMATION_THRESHOLD:
+                view = BetConfirmation()
+                message = await ctx.send(
+                    f"⚠️ Are you sure you want to use {amount:,} <:goldpoints:1319902464115343473>?", 
+                    view=view
+                )
+                
+                await view.wait()
+                
+                try:
+                    await message.delete()
+                except:
+                    pass
+
+                if view.value is None:
+                    await ctx.send("Bet timed out!", delete_after=10)
+                    return None
+                elif view.value is False:
+                    await ctx.send("Bet cancelled!", delete_after=10)
+                    return None
+                
+            # If confirmed or below threshold, proceed with the original command
+            return await func(self, ctx, amount, *args, **kwargs)
+            
+        return wrapper
+    return decorator
+
+
+
+class TransactionPaginator(discord.ui.View):
+    def __init__(self, transactions, ctx, user_id, display_name):
+        super().__init__(timeout=30)
+        self.transactions = transactions
+        self.ctx = ctx
+        self.user_id = user_id
+        self.display_name = display_name
+        self.current_page = 0
+        self.items_per_page = 5
+        self.total_pages = max(1, (len(transactions) + self.items_per_page - 1) // self.items_per_page)
+
+    @discord.ui.button(label="First", style=discord.ButtonStyle.grey)
+    async def first_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.ctx.author:
+            return
+        self.current_page = 0
+        await interaction.response.edit_message(embed=self.get_page_embed())
+
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.blurple)
+    async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.ctx.author:
+            return
+        self.current_page = max(0, self.current_page - 1)
+        await interaction.response.edit_message(embed=self.get_page_embed())
+
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.red)
+    async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.message.delete()
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.blurple)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.ctx.author:
+            return
+        self.current_page = min(self.total_pages - 1, self.current_page + 1)
+        await interaction.response.edit_message(embed=self.get_page_embed())
+
+    @discord.ui.button(label="Last", style=discord.ButtonStyle.grey)
+    async def last_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.ctx.author:
+            return
+        self.current_page = self.total_pages - 1
+        await interaction.response.edit_message(embed=self.get_page_embed())
+
+    def get_page_embed(self):
+        start_idx = self.current_page * self.items_per_page
+        end_idx = start_idx + self.items_per_page
+        page_transactions = self.transactions[start_idx:end_idx]
+
+        embed = discord.Embed(
+            title=f"Transactions for {self.display_name} ", 
+            color=discord.Color.gold()
+        )
+
+        for trans in reversed(page_transactions):
+            transaction = trans["transaction"]
+            bet = transaction.get("bet", 0)
+            amount = transaction.get("amount", 0)
+            trans_type = transaction.get("type", "game")
+            
+            if trans_type == "game":
+                emoji = "<:upward:1328517849861324931> " if amount > 0 else "<:downward:1328517880882532372> "
+                bet_str = f"Bet: {abs(bet):,}\n" if bet else ""
+                amount_str = f"Result: {'+'if amount > 0 else '-'}{abs(amount):,} <:goldpoints:1319902464115343473>"
+            elif trans_type == "add":
+                emoji = "<:add:1328511998647861390>"
+                bet_str = ""
+                amount_str = f"Added: +{abs(amount):,} <:goldpoints:1319902464115343473>"
+            elif trans_type == "remove":
+                emoji = "<:remove:1328511957208268800>"
+                bet_str = ""
+                amount_str = f"Withdrew: -{abs(amount):,} <:goldpoints:1319902464115343473> "
+            elif trans_type == "transfer":
+                emoji = "<:transfer:1328517050120929380>"
+                bet_str = ""
+                transfer_info = transaction.get("transfer_info", "Transferred")
+                amount_str = f"{transfer_info}: {'+'if amount > 0 else ''}{abs(amount):,} <:goldpoints:1319902464115343473>"
+            
+            embed.add_field(
+                name=f"{emoji} {transaction['command'].title()}",
+                value=f"{bet_str}{amount_str}\n"
+                    f"Balance After: {transaction['final_balance']:,} <:goldpoints:1319902464115343473>\n"
+                    f"Time: {trans['timestamp']}",
+                inline=False
+            )
+
+        embed.set_footer(text=f"(Page {self.current_page + 1}/{self.total_pages})")
+        return embed
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message("This pagination menu is not for you!", ephemeral=True)
+            return False
+        return True
+
 
 
 
@@ -109,15 +276,23 @@ class BetConfirmation(discord.ui.View):
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Disable all buttons after clicking
+        for item in self.children:
+            item.disabled = True
+        
         self.value = True
+        await interaction.response.edit_message(content="Confirmed!", view=self)
         self.stop()
-        await interaction.response.defer()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Disable all buttons after clicking
+        for item in self.children:
+            item.disabled = True
+            
         self.value = False
-        self.stop()
-        await interaction.response.defer()            
+        await interaction.response.edit_message(content="Bet cancelled!", view=self)
+        self.stop()        
 
 class PaginationView(discord.ui.View):
     def __init__(self, embeds):
@@ -159,21 +334,33 @@ class Economy(commands.Cog):
 
         self.CONFIRMATION_THRESHOLD = 25_000_000
         self.symbols = {
-        "💎": {"weight": 1, "multiplier": 50, "name": "Diamond"},     # 1%
-        "🎰": {"weight": 2, "multiplier": 15, "name": "Jackpot"},    # 2%
-        "7️⃣": {"weight": 7, "multiplier": 7, "name": "Seven"},       # 7%
-        "🍀": {"weight": 15, "multiplier": 3, "name": "Clover"},     # 15%
-        "⭐": {"weight": 35, "multiplier": 1.5, "name": "Star"},      # 35%
-        "🎲": {"weight": 40, "multiplier": 0.8, "name": "Dice"}      # 40%
+        "<:rosa:1323457812755644498>": {"weight": 1, "multiplier": 50, "name": "Jackpot"},
+        "<:diamond:1328609035485970432>": {"weight": 3, "multiplier": 25, "name": "Diamond"}, 
+        "<:cash:1328609314411384893>": {"weight": 7, "multiplier": 15, "name": "Cash"},          
+        "<:bar:1328604287495831624>": {"weight": 10, "multiplier": 10, "name": "Bar"},   
+        "<:seven:1328610655854661673>": {"weight": 15, "multiplier": 7, "name": "Seven"},     
+        "<:bell:1328610673047109714>": {"weight": 17, "multiplier": 5, "name": "Bell"},     
+        "<:cherries:1328604145749459036>": {"weight": 17, "multiplier": 2.5, "name": "Cherries"},    
+        "<:grapes:1328603707390033921>": {"weight": 17, "multiplier": 1, "name": "Grapes"},
+        "<:lemon:1328603669565935648>": {"weight": 17, "multiplier": 1, "name": "Lemon"},
+        "<:orange:1328603878316441610>": {"weight": 17, "multiplier": 1, "name": "Orange"}        
 
 }
         if not os.path.exists('logs'):
             os.makedirs('logs')
 
-    async def log_transaction(self, ctx, bet_amount, win_amount, final_balance, transaction_type="game"):
-        """Log a transaction"""
+
+
+    async def log_transaction(self, ctx, bet_amount, win_amount, final_balance, transaction_type="game", is_house=False):
+        """Log a transaction for both users and house"""
         try:
-            user_id = str(ctx.author.id)
+            # If it's a house transaction, use special house ID and name
+            if is_house:
+                user_id = "HOUSE"
+                user_name = "House"
+            else:
+                user_id = str(ctx.author.id)
+                user_name = str(ctx.author)
             
             # Convert all amounts to integers
             bet_amount = int(bet_amount) if bet_amount else 0
@@ -185,23 +372,16 @@ class Economy(commands.Cog):
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "user": {
                     "id": user_id,
-                    "name": str(ctx.author)
+                    "name": user_name
                 },
                 "transaction": {
-                    "command": ctx.command.name,
+                    "command": ctx.command.name if not is_house else "House Transaction",
                     "type": transaction_type,
                     "bet": bet_amount,
                     "amount": win_amount,
                     "final_balance": final_balance
                 }
             }
-
-            # Add transfer-specific information if it's a transfer
-            if transaction_type == "transfer":
-                if win_amount < 0:  # This is a sender
-                    transaction_data["transaction"]["transfer_info"] = f"Sent"
-                else:  # This is a recipient
-                    transaction_data["transaction"]["transfer_info"] = f"Received"
 
             try:
                 with open('logs/transactions.json', 'r') as f:
@@ -222,6 +402,7 @@ class Economy(commands.Cog):
 
         except Exception as e:
             print(f"Logging error: {e}")
+
 
 
     async def confirm_large_bet(self, ctx, amount):
@@ -290,60 +471,44 @@ class Economy(commands.Cog):
 
         self.save_stats()
 
-    @commands.command(name="transactions")
-    async def view_transactions(self, ctx, user: discord.Member = None):
-        """View recent transactions"""
+
+
+
+    @commands.command(name="transactions", aliases=['history', 'past'])
+    async def view_transactions(self, ctx, user: typing.Union[discord.Member, str] = None):
+        """View recent transactions for a user or house"""
         try:
+            await ctx.message.delete()
             with open('logs/transactions.json', 'r') as f:
                 logs = json.load(f)
 
-            target_user = user or ctx.author
-            user_id = str(target_user.id)
-            
+            if user is None:
+                target_user = ctx.author
+                user_id = str(target_user.id)
+                display_name = target_user.name
+            elif isinstance(user, str) and user.lower() == "house":
+                user_id = "HOUSE"
+                display_name = "House"
+            else:
+                target_user = user
+                user_id = str(target_user.id)
+                display_name = target_user.name
+
             if user_id not in logs["users"]:
                 await ctx.send("No transactions found!")
                 return
 
-            transactions = logs["users"][user_id]["transactions"][-5:]
+            transactions = logs["users"][user_id]["transactions"]
             
-            embed = discord.Embed(
-                title=f"Recent Transactions for {target_user.name}", 
-                color=discord.Color.blue()
+            view = TransactionPaginator(
+                transactions=transactions,
+                ctx=ctx,
+                user_id=user_id,
+                display_name=display_name
             )
             
-            for trans in reversed(transactions):
-                transaction = trans["transaction"]
-                bet = transaction.get("bet", 0)
-                amount = transaction.get("amount", 0)
-                trans_type = transaction.get("type", "game")
-                
-                if trans_type == "game":
-                    emoji = "<:upward:1328517849861324931> " if amount > 0 else "<:downward:1328517880882532372> "
-                    bet_str = f"Bet: {abs(bet):,}\n" if bet else ""
-                    amount_str = f"Result: {'+'if amount > 0 else '-'}{abs(amount):,} <:goldpoints:1319902464115343473>"
-                elif trans_type == "add":
-                    emoji = "<:add:1328511998647861390>"
-                    bet_str = ""
-                    amount_str = f"Added: +{abs(amount):,} <:goldpoints:1319902464115343473>"
-                elif trans_type == "remove":
-                    emoji = "<:remove:1328511957208268800>"
-                    bet_str = ""
-                    amount_str = f"Withdrew: -{abs(amount):,} <:goldpoints:1319902464115343473> "
-                elif trans_type == "transfer":
-                    emoji = "<:transfer:1328517050120929380>"
-                    bet_str = ""
-                    transfer_info = transaction.get("transfer_info", "Transferred")
-                    amount_str = f"{transfer_info}: {'+'if amount > 0 else ''}{abs(amount):,} <:goldpoints:1319902464115343473>"
-                
-                embed.add_field(
-                    name=f"{emoji} {transaction['command'].title()}",
-                    value=f"{bet_str}{amount_str}\n"
-                        f"Balance After: {transaction['final_balance']:,} <:goldpoints:1319902464115343473>\n"
-                        f"Time: {trans['timestamp']}",
-                    inline=False
-                )
-
-            await ctx.send(embed=embed)
+            message = await ctx.send(embed=view.get_page_embed(), view=view)
+            view.message = message
 
         except Exception as e:
             await ctx.send("Error retrieving transactions.")
@@ -383,7 +548,7 @@ class Economy(commands.Cog):
         stats = self.stats[user_id]
         net_profit = stats["total_won"] - stats["total_lost"]
         
-        embed = discord.Embed(title=f"Gambling Statistics for {user.name}", color=discord.Color.blue())
+        embed = discord.Embed(title=f"Gambling Statistics for {user.name}", color=discord.Color.gold())
         embed.add_field(name="Total Wagered", value=f"${stats['total_wagered']:,}", inline=False)
         embed.add_field(name="Total Won", value=f"${stats['total_won']:,}", inline=True)
         embed.add_field(name="Total Lost", value=f"${stats['total_lost']:,}", inline=True)
@@ -670,6 +835,7 @@ class Economy(commands.Cog):
     async def add(self, ctx, *, args=None):
         """Add currency to a user's balance (Admin only)"""
         try:
+            
             if not args:
                 await ctx.send("Please provide a user and amount! Example: ,add @user 1000 or ,add house 1000")
                 return
@@ -690,7 +856,7 @@ class Economy(commands.Cog):
                 try:
                     user = await commands.MemberConverter().convert(ctx, user_arg)
                 except:
-                    await ctx.send("Invalid user! Please mention a valid user or type 'house'.")
+                    await ctx.send("Invalid user! Example : ,add @user 100 or ,add house 1000")
                     return
 
             # Validate user
@@ -732,13 +898,26 @@ class Economy(commands.Cog):
                 target_ctx.author = user  # Set the author to the target user
                 
                 # Log the transaction for the target user
-                await self.log_transaction(
-                    ctx=target_ctx,  # Use the modified context
-                    bet_amount=0,
-                    win_amount=amount,
-                    final_balance=final_balance,
-                    transaction_type="add"
-                )
+                if (isinstance(user, discord.Member) and user.id == self.bot.user.id) or (isinstance(user, str) and user.lower() == "house"):
+
+                    # This is a house transaction (bot ID was targeted)
+                    await self.log_transaction(
+                        ctx=ctx,
+                        bet_amount=0,
+                        win_amount=amount,
+                        final_balance=final_balance,
+                        transaction_type="add",
+                        is_house=True
+                    )
+                else:
+                    # This is a regular user transaction
+                    await self.log_transaction(
+                        ctx=ctx,
+                        bet_amount=0,
+                        win_amount=amount,
+                        final_balance=final_balance,
+                        transaction_type="add"
+                    )
               
                 
                 # Create success embed
@@ -784,13 +963,13 @@ class Economy(commands.Cog):
                 try:
                     user = await commands.MemberConverter().convert(ctx, user_arg)
                 except:
-                    await ctx.send("Invalid user! Please mention a valid user or type 'house'.")
+                    await ctx.send("Invalid user! Example ,remove @user 1000 or ,remove house 1000")
                     return
 
             # Validate user
             user_id, user_name, valid = await self.validate_user(user)
             if not valid:
-                await ctx.send("Error: Invalid user! Please mention a valid user or type 'house'.")
+                await ctx.send("Invalid user! Example ,remove @user 1000 or ,remove house 1000")
                 return
 
             # Parse amount
@@ -830,13 +1009,26 @@ class Economy(commands.Cog):
                 target_ctx.author = user  # Set the author to the target user
                 
                 # Log the transaction for the target user
-                await self.log_transaction(
-                    ctx=target_ctx,  # Use the modified context
-                    bet_amount=0,
-                    win_amount=-amount,
-                    final_balance=final_balance,
-                    transaction_type="remove"
-                )             
+                if (isinstance(user, discord.Member) and user.id == self.bot.user.id) or (isinstance(user, str) and user.lower() == "house"):
+
+                    # This is a house transaction (bot ID was targeted)
+                    await self.log_transaction(
+                        ctx=ctx,
+                        bet_amount=0,
+                        win_amount=amount,
+                        final_balance=final_balance,
+                        transaction_type="add",
+                        is_house=True
+                    )
+                else:
+                    # This is a regular user transaction
+                    await self.log_transaction(
+                        ctx=ctx,
+                        bet_amount=0,
+                        win_amount=amount,
+                        final_balance=final_balance,
+                        transaction_type="add"
+                    )            
                 
                 # Create success embed
                 embed = discord.Embed(
@@ -858,6 +1050,7 @@ class Economy(commands.Cog):
 
 
     @commands.command(aliases=['send'])
+    @confirm_bet()
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def transfer(self, ctx, *, args=None):
         """Transfer currency to another user"""
@@ -946,19 +1139,32 @@ class Economy(commands.Cog):
                     bet_amount=0,
                     win_amount=-amount,  # Negative because they're sending
                     final_balance=sender_final_balance,
-                    transaction_type="transfer"
+                    transaction_type="transfer",
+                    is_house=False
                 )
                 
                 # Log transaction for recipient (if not house)
-                if recipient != "house":
-                    recipient_ctx = ctx
+                if recipient.lower() == "house":
+                    # Log house transaction
+                    await self.log_transaction(
+                        ctx=ctx,
+                        bet_amount=0,
+                        win_amount=-amount,  # Negative because they're sending
+                        final_balance=sender_final_balance,
+                        transaction_type="transfer",
+                        is_house=True
+                    )
+                else:
+                    # Create recipient context and log regular transfer
+                    recipient_ctx = copy.copy(ctx)
                     recipient_ctx.author = recipient
                     await self.log_transaction(
-                        ctx=recipient_ctx,
+                        ctx=ctx,
                         bet_amount=0,
-                        win_amount=amount,  # Positive because they're receiving
-                        final_balance=recipient_final_balance,
-                        transaction_type="transfer"
+                        win_amount=-amount,  # Negative because they're sending
+                        final_balance=sender_final_balance,
+                        transaction_type="transfer",
+                        is_house=False
                     )
                 
                 embed = discord.Embed(
@@ -1024,6 +1230,7 @@ class Economy(commands.Cog):
 
 
     @commands.command()
+    @confirm_bet()
     @commands.cooldown(1, 1800, commands.BucketType.user)
     async def deposit(self, ctx, amount: str = None, *, rsn: str = None):
         try:
@@ -1105,6 +1312,7 @@ class Economy(commands.Cog):
             await ctx.send(f"❌ An error occurred: {str(e)}")
 
     @commands.command()
+    @confirm_bet()
     @commands.cooldown(1, 1800, commands.BucketType.user)
     async def withdraw(self, ctx, amount: str = None, *, rsn: str = None):
         try:
@@ -1142,7 +1350,7 @@ class Economy(commands.Cog):
             # Create embed for admin
             admin_embed = discord.Embed(
                 title="💸 New Withdrawal Request",
-                color=discord.Color.blue()
+                color=discord.Color.red()
             )
             admin_embed.add_field(
                 name="User",
@@ -1177,7 +1385,7 @@ class Economy(commands.Cog):
             user_embed = discord.Embed(
                 title="💸 Withdrawal Request Sent",
                 description="Your withdrawal request has been sent to an administrator.",
-                color=discord.Color.blue()
+                color=discord.Color.green()
             )
             user_embed.add_field(
                 name="Amount",
@@ -1339,7 +1547,8 @@ class Economy(commands.Cog):
                 bet_amount=bet_amount,
                 win_amount=win_amount,  # They win the bet minus house tax
                 final_balance=self.currency[winner_id],
-                transaction_type="game"
+                transaction_type="game",
+                is_house=False
             )
 
             # Log transaction for loser
@@ -1348,7 +1557,8 @@ class Economy(commands.Cog):
                 bet_amount=bet_amount,
                 win_amount=-bet_amount,  # They lose their bet
                 final_balance=self.currency[loser_id],
-                transaction_type="game"
+                transaction_type="game",
+                is_house=False
             )
 
             self.update_stats(winner_id, bet_amount, win_amount)  # Winner gets win_amount as profit
@@ -1398,19 +1608,85 @@ class Economy(commands.Cog):
             await ctx.send(f"An error occurred: {str(e)}")
 
 
+    async def spin_animation(self, embed, msg, final_symbols, weighted_symbols):
+        for position in range(3):
+            # Random number of spins for each position (3-5)
+            spins = random.randint(3, 5)
+            used_symbols = set()  # Track used symbols to avoid repetition
+            
+            for _ in range(spins):
+                temp_symbols = list(final_symbols)
+                
+                # Generate a new random symbol that hasn't been used yet
+                available_symbols = [s for s in weighted_symbols if s not in used_symbols]
+                if not available_symbols:  # Reset if we run out of unique symbols
+                    used_symbols.clear()
+                    available_symbols = weighted_symbols
+                    
+                random_symbol = random.choice(available_symbols)
+                used_symbols.add(random_symbol)
+                
+                # Update the current position with the new symbol
+                temp_symbols[position] = random_symbol
+                
+                # For positions not yet reached, show random spinning symbols
+                for i in range(position + 1, 3):
+                    temp_symbols[i] = random.choice(weighted_symbols)
+                    
+                embed.set_field_at(0, name="Spinning...", 
+                                value=f"| {' | '.join(temp_symbols)} |")
+                await msg.edit(embed=embed)
+                await asyncio.sleep(0.5)
+            
+            # After spins complete, show the actual final symbol for this position
+            temp_symbols = list(final_symbols[:position + 1])
+            for i in range(position + 1, 3):
+                temp_symbols.append(random.choice(weighted_symbols))
+                
+            embed.set_field_at(0, name="Results" if position == 2 else "Spinning...", 
+                            value=f"| {' | '.join(temp_symbols)} |")
+            await msg.edit(embed=embed)
+            await asyncio.sleep(0.5)
+
+    def generate_symbols(self, guaranteed_match=False):
+        symbol_list = list(self.symbols.keys())
+        weights = [data["weight"] for data in self.symbols.values()]
+        
+        if guaranteed_match:
+            # Pick a random symbol for the match
+            match_symbol = random.choices(symbol_list, weights=weights, k=1)[0]
+            
+            # For three matching symbols (3% chance)
+            if random.random() < 0.03:
+                return [match_symbol] * 3
+                
+            # For two matching symbols (7% chance)
+            elif random.random() < 0.07:
+                result = [match_symbol] * 2
+                # Add one different symbol
+                remaining_symbols = [s for s in symbol_list if s != match_symbol]
+                remaining_weights = [weights[symbol_list.index(s)] for s in remaining_symbols]
+                result.append(random.choices(remaining_symbols, weights=remaining_weights, k=1)[0])
+                random.shuffle(result)  # Randomize position of matches
+                return result
+
+        # No guaranteed matches - generate each reel independently
+        result = []
+        for _ in range(3):
+            symbol = random.choices(symbol_list, weights=weights, k=1)[0]
+            result.append(symbol)
+        
+        return result
+
+
+
     @commands.command(name="slots", aliases=["gamble", "slot"])
-    @commands.cooldown(1, 7, commands.BucketType.user)
+    @confirm_bet()
+    @commands.cooldown(1, 13, commands.BucketType.user)
     @transaction_limit()
     async def slots(self, ctx, amount: str = None):
         # Define slot machine symbols with weights and multipliers (total weight = 100)
-        symbols = {
-            "💎": {"weight": 17, "multiplier": 25, "name": "Diamond"},     # 1%
-            "🎰": {"weight": 17, "multiplier": 15, "name": "Jackpot"},    # 2%
-            "7️⃣": {"weight": 17, "multiplier": 10, "name": "Seven"},       # 7%
-            "🍀": {"weight": 17, "multiplier": 5, "name": "Clover"},     # 15%
-            "⭐": {"weight": 17, "multiplier": 3, "name": "Star"},      # 35%
-            "🎲": {"weight": 17, "multiplier": 2, "name": "Dice"}      # 40%
-        }
+        symbols = self.symbols
 
         # Create weighted symbol list
         weighted_symbols = []
@@ -1422,13 +1698,13 @@ class Economy(commands.Cog):
         if amount is None:
             # Help embed code
             help_embed = discord.Embed(
-                title="🎰 Slot Machine Guide 🎰",
+                title="<:gamba:1328512027282374718> Slot Machine Guide <:gamba:1328512027282374718>",
                 description="Bet your coins for a chance to win big!\nUse: `,slots <amount>`",
                 color=discord.Color.gold()
             )
             # Add symbol information
             symbols_info = ""
-            for symbol, data in symbols.items():
+            for symbol, data in self.symbols.items():
                 multiplier = data["multiplier"]
                 chance = data["weight"]
                 symbols_info += f"{symbol} **{data['name']}** - {multiplier}x multiplier\n"
@@ -1472,7 +1748,7 @@ class Economy(commands.Cog):
                 return
                     
             if bet > user_balance:
-                await ctx.send(f"You don't have enough coins! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(user_balance)}")
+                await ctx.send(f"You don't have enough coins! Your balance: {self.format_amount(user_balance)} <:goldpoints:1319902464115343473> ")
                 return
 
             # Check house balance
@@ -1487,80 +1763,19 @@ class Economy(commands.Cog):
             self.currency[house_id] += bet
 
             # Create and send initial embed
-            embed = discord.Embed(title="🎰 SLOT MACHINE 🎰", color=discord.Color.gold())
+            embed = discord.Embed(title="<:gamba:1328512027282374718> Slot Machine <:gamba:1328512027282374718>", color=discord.Color.gold())
             embed.add_field(name="Spinning...", value="| ❓ | ❓ | ❓ |")
             embed.set_footer(text=f"Balance: {self.format_amount(user_balance)} GP")
             msg = await ctx.send(embed=embed)
 
             # Generate final results
-            symbol_list = list(symbols.keys())
-            weights = [data["weight"] for data in symbols.values()]
+
             
-            if random.random() < 0.15:  # 5% chance for guaranteed match
-                if random.random() < 0.2:  # 40% chance for three of a kind
-                    # Weight towards lower multiplier symbols for three matches
-                    adjusted_weights = []
-                    for symbol, data in symbols.items():
-                        weight = data["weight"] * (1 / data["multiplier"])
-                        adjusted_weights.append(weight)
-                    
-                    total_adjusted = sum(adjusted_weights)
-                    adjusted_weights = [w/total_adjusted for w in adjusted_weights]
-                    
-                    symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
-                    final_symbols = [symbol, symbol, symbol]
-                else:  # 60% chance for two of a kind
-                    adjusted_weights = []
-                    for symbol, data in symbols.items():
-                        weight = data["weight"] * (1 / data["multiplier"])
-                        adjusted_weights.append(weight)
-                    
-                    total_adjusted = sum(adjusted_weights)
-                    adjusted_weights = [w/total_adjusted for w in adjusted_weights]
-                    
-                    symbol = random.choices(symbol_list, weights=adjusted_weights, k=1)[0]
-                    remaining_symbols = [s for s in symbol_list if s != symbol]
-                    remaining_weights = [symbols[s]["weight"] for s in remaining_symbols]
-                    total_remaining = sum(remaining_weights)
-                    remaining_weights = [w/total_remaining for w in remaining_weights]
-                    
-                    third = random.choices(remaining_symbols, weights=remaining_weights, k=1)[0]
-                    final_symbols = [symbol, symbol, third]
-                    random.shuffle(final_symbols)
-            else:  # 95% chance for random results
-                final_symbols = random.choices(symbol_list, weights=weights, k=3)
+            guaranteed_match = random.random() < 0.1  # 15% chance for a guaranteed match
+            final_symbols = self.generate_symbols(guaranteed_match=guaranteed_match)
 
             # Spinning animation
-            for position in range(3):
-                spins = random.randint(2, 4)
-                last_symbol = None
-                
-                for _ in range(spins):
-                    temp_symbols = list(final_symbols)
-                    for i in range(position, 3):
-                        if i == position:
-                            new_symbol = random.choice(weighted_symbols)
-                            while new_symbol == last_symbol:
-                                new_symbol = random.choice(weighted_symbols)
-                            temp_symbols[i] = new_symbol
-                            last_symbol = new_symbol
-                        else:
-                            temp_symbols[i] = random.choice(weighted_symbols)
-                    
-                    embed.set_field_at(0, name="Spinning...", value=f"| {' | '.join(temp_symbols)} |")
-                    await msg.edit(embed=embed)
-                    await asyncio.sleep(0.5)
-                
-                temp_symbols = list(final_symbols)
-                for i in range(position + 1, 3):
-                    temp_symbols[i] = '❓'
-                embed.set_field_at(
-                    0, 
-                    name="Spinning..." if position < 2 else "Results", 
-                    value=f"| {' | '.join(temp_symbols)} |"
-                )
-                await msg.edit(embed=embed)
-                await asyncio.sleep(0.5)
+            await self.spin_animation(embed, msg, final_symbols, weighted_symbols)
 
             # Calculate matches
             symbol_counts = {}
@@ -1586,7 +1801,7 @@ class Economy(commands.Cog):
                 final_balance = int(self.currency[user_id])
                 
                 result = f"🎉 JACKPOT! Triple {symbols[symbol]['name']}! 🎉"
-                await self.log_transaction(ctx, self.parse_amount(amount), win_amount, final_balance)
+                await self.log_transaction(ctx, self.parse_amount(amount), win_amount, final_balance, is_house=False)
                 
             elif max_matches == 2:
                 matching_symbol = [s for s, count in symbol_counts.items() if count == 2][0]
@@ -1605,7 +1820,7 @@ class Economy(commands.Cog):
                 final_balance = int(self.currency[user_id])
                 
                 result = f"🎈 Double {symbols[matching_symbol]['name']}! 🎈"
-                await self.log_transaction(ctx, self.parse_amount(amount), win_amount, final_balance)
+                await self.log_transaction(ctx, self.parse_amount(amount), win_amount, final_balance, is_house=False)
                 
             else:
                 winnings = 0
@@ -1614,7 +1829,7 @@ class Economy(commands.Cog):
                 bet_amount = self.parse_amount(amount)
                 tax_amount = 0
                 result = "No match!"
-                await self.log_transaction(ctx, bet_amount, -bet_amount, final_balance)
+                await self.log_transaction(ctx, bet_amount, -bet_amount, final_balance, is_house=False)
                 # No need to do anything here, bet was already deducted
 
             # Update stats and save
@@ -1624,7 +1839,7 @@ class Economy(commands.Cog):
 
             # Create result embed
             result_embed = discord.Embed(
-                title="🎰 SLOT MACHINE RESULTS 🎰",
+                title="<:gamba:1328512027282374718> Slot Machine Results <:gamba:1328512027282374718>",
                 color=discord.Color.green() if winnings > 0 else discord.Color.red()
             )
             
@@ -1655,7 +1870,7 @@ class Economy(commands.Cog):
 
 
 
-    @commands.command(aliases=["flowe", "flowers"])
+    @commands.command(aliases=["stake", "flowers"])
     @commands.cooldown(1, 10, commands.BucketType.user)
     @transaction_limit()
     async def flower(self, ctx, bet_amount: str = None):
@@ -1744,7 +1959,7 @@ class Economy(commands.Cog):
                 self.currency[user_id] = 0
             
             if self.currency[user_id] < amount:
-                await ctx.send("You don't have enough balance for this bet!")
+                await ctx.send(f"You don't have enough balance for this bet! Your balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>")
                 return
 
             def calculate_total(numbers):
@@ -2037,7 +2252,7 @@ class Economy(commands.Cog):
                 self.currency[house_id] += amount
                 self.update_stats(user_id, amount, 0)
                 final_balance = await self.get_balance(user_id)
-                await self.log_transaction(ctx, amount, -amount, final_balance)
+                await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
                 
                 final_embed.set_footer(
                     text=f"New Balance: {self.format_amount(final_balance)} GP"
@@ -2055,7 +2270,7 @@ class Economy(commands.Cog):
                 self.currency[house_id] += tax_amount
                 
                 final_balance = await self.get_balance(user_id)
-                await self.log_transaction(ctx, amount, net_winnings, final_balance)
+                await self.log_transaction(ctx, amount, net_winnings, final_balance, is_house=False)
                 
                 final_embed.add_field(
                     name="Result", 
@@ -2073,7 +2288,7 @@ class Economy(commands.Cog):
                 self.update_stats(user_id, amount, 0)
 
                 final_balance = await self.get_balance(user_id)
-                await self.log_transaction(ctx, amount, -amount, final_balance)
+                await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
                 
                 final_embed.add_field(
                     name="Result", 
@@ -2088,7 +2303,7 @@ class Economy(commands.Cog):
                 # Tie
                 self.update_stats(user_id, amount, amount)
                 final_balance = await self.get_balance(user_id)
-                await self.log_transaction(ctx, amount, 0, final_balance)  # 0 for tie since no win/loss
+                await self.log_transaction(ctx, amount, 0, final_balance, is_house=False)  # 0 for tie since no win/loss
                 
                 final_embed.add_field(
                     name="Result", 
@@ -2127,7 +2342,7 @@ class Economy(commands.Cog):
         
         # If no arguments, show current limits
         if min_amount is None or max_amount is None:
-            embed = discord.Embed(title="Current Gambling Limits", color=discord.Color.blue())
+            embed = discord.Embed(title="Current Gambling Limits", color=discord.Color.gold())
             embed.add_field(name="Minimum Bet", value=f"${limits_manager.current_min:,}", inline=False)
             embed.add_field(name="Maximum Bet", value=f"${limits_manager.current_max:,}", inline=False)
             await ctx.send(embed=embed)
