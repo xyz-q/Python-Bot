@@ -2342,8 +2342,8 @@ class Economy(commands.Cog):
                 
                 self.currency[user_id] += amount  # Refund the bet on a tie
                 self.currency[house_id] -= amount               
-                await self.log_transaction(ctx, amount, 0, final_balance, is_house=False)  # 0 for tie since no win/loss
                 final_balance = await self.get_balance(user_id)
+                await self.log_transaction(ctx, amount, 0, final_balance, is_house=False)
                 final_embed.add_field(
                     name="Result", 
                     value="Tie! It's a push. <a:aware:1255561720810831912>", 
