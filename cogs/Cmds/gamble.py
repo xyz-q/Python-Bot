@@ -100,67 +100,81 @@ import json
 
 import os
 
+from functools import wraps
+
 def confirm_bet():
     def decorator(func):
         @wraps(func)
         async def wrapper(self, ctx, amount=None, *args, **kwargs):
-            # If no amount is provided, proceed with the original function
             if amount is None:
+                # If no amount is provided, proceed with the original function
                 return await func(self, ctx, amount, *args, **kwargs)
 
-            # Convert letter denominations to numbers
+            # Step 1: Convert the amount if it's given as a string with a suffix (k, m, b)
             try:
                 amount = str(amount).lower().replace(',', '').replace(' ', '')
-                multipliers = {'k': 1_000, 'm': 1_000_000, 'b': 1_000_000_000}
+                multipliers = {
+                    'k': 1_000,
+                    'm': 1_000_000,
+                    'b': 1_000_000_000
+                }
+
                 if amount[-1] in multipliers:
                     number = float(amount[:-1])
                     multiplier = multipliers[amount[-1]]
                     amount = int(number * multiplier)
                 else:
                     amount = int(float(amount))
-            except (ValueError, TypeError):
-                await ctx.send("Invalid amount! Please enter a valid number.", delete_after=10)
-                return
 
-            # Check if amount is positive
+                print(f"Converted amount: {amount}")
+
+            except (ValueError, TypeError):
+                await ctx.send("Invalid amount format!", delete_after=10)
+                return None
+
+            # Step 2: Check if the amount is valid (positive and within user balance)
             if amount <= 0:
                 await ctx.send("Amount must be positive!", delete_after=10)
-                return
+                return None
 
-            # Get user's balance
             balance = await self.get_balance(ctx.author.id)
-            if amount > balance:
-                await ctx.send("Insufficient balance!", delete_after=10)
-                return
+            print(f"User balance: {balance}")
 
-            # If confirmation is required, ask for it
+            if amount > balance:
+                await ctx.send("You don't have enough balance!", delete_after=10)
+                return None
+
+            # Step 3: If the amount exceeds the threshold, trigger the confirmation
             if amount >= self.CONFIRMATION_THRESHOLD:
-                view = BetConfirmation()
+                print(f"Amount exceeds threshold: {self.CONFIRMATION_THRESHOLD}")
+                view = BetConfirmation()  # Assuming this is a button or modal view
                 message = await ctx.send(
                     f"⚠️ Are you sure you want to use {amount:,} <:goldpoints:1319902464115343473>?", 
                     view=view
                 )
+
                 await view.wait()
 
-                # Clean up the confirmation message
                 try:
                     await message.delete()
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Error deleting message: {e}")
 
-                # Handle confirmation result
                 if view.value is None:
-                    await ctx.send("Bet timed out!", delete_after=10)
-                    return
+                    await ctx.send("Warning timed out!", delete_after=10)
+                    return None
                 elif view.value is False:
-                    await ctx.send("Bet cancelled!", delete_after=10)
-                    return
+                    await ctx.send("Cancelled!", delete_after=10)
+                    return None
 
-            # Proceed with the original function if all checks pass
+                print("Bet confirmed!")
+
+            # Step 4: If the amount is below threshold or confirmed, proceed with the command
             return await func(self, ctx, amount, *args, **kwargs)
 
         return wrapper
     return decorator
+
 
 
 
@@ -1879,6 +1893,7 @@ class Economy(commands.Cog):
     @commands.command(aliases=["stake", "flowers"])
     @commands.cooldown(1, 10, commands.BucketType.user)
     @transaction_limit()
+    @confirm_bet()
     async def flower(self, ctx, bet_amount: str = None):
         user_id = ctx.author.id
         initial_amount = self.parse_amount(bet_amount)
