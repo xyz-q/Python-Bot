@@ -8,3 +8,5 @@ subscribed_channels.json
 *.json
 currency.json
 .json/mocked_users.json
+*.json
+*.pyc
