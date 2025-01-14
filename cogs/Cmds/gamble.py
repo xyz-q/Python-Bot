@@ -1989,19 +1989,13 @@ class Economy(commands.Cog):
             self.currency[house_id] += amount   
 
             def calculate_total(numbers):
-                """Calculate total, implementing the 10+ reset rule after each addition"""
-                print(f"Received numbers to calculate: {numbers}")  # Debug print
-                running_total = 0
-                for num in numbers:
-                    if isinstance(num, int):
-                        print(f"Adding {num} to {running_total}")  # Debug print
-                        running_total += num
-                        running_total %= 10
-                        print(f"After mod 10: {running_total}")  # Debug print
-                
-                print(f"Final total: {running_total}")  # Debug print
-                return running_total
-
+                """Calculate total, implementing the 10+ reset rule after the sum."""
+                print(f"Received numbers to calculate: {numbers}")  
+                total = sum(numbers) 
+                final_total = sum(numbers) % 10                
+                print(f"Running total (before mod 10): {total}")  
+                print(f"Final total: {final_total}")  
+                return total % 10   
 
 
             def needs_third_card(total):
@@ -2013,6 +2007,7 @@ class Economy(commands.Cog):
                 flower_list = list(flowers.keys())
                 weights = [flowers[f]["weight"] for f in flower_list]
                 chosen_flower = random.choices(flower_list, weights=weights, k=1)[0]
+                print(f"Picked flower: {chosen_flower} with value: {flowers[chosen_flower]['value']}")
                 return chosen_flower, flowers[chosen_flower]["value"]
 
             # Initialize game state with placeholder seeds
@@ -2051,7 +2046,8 @@ class Economy(commands.Cog):
                 player_hand.append(p_value)
                 player_flowers[i] = p_flower
 
-                game_embed.clear_fields()  # Clear existing fields
+                # Clear previous fields and update the embed
+                game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
                     value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
@@ -2114,8 +2110,7 @@ class Economy(commands.Cog):
                 
 
                 
-                player_hand.append(p_value)
-                player_flowers[i] = p_flower  # Replace placeholder with actual flower
+
                 
                 game_embed.clear_fields()
                 game_embed.add_field(
@@ -2138,9 +2133,8 @@ class Economy(commands.Cog):
                 await asyncio.sleep(1)
 
             # Check if player needs third card
+            # Check if the player needs a third card
             player_total = calculate_total(player_hand)
-            player_hand.append(p_value)
-            player_flowers[2] = p_flower           
             if needs_third_card(player_total):
                 game_embed.add_field(
                     name="Status", 
@@ -2150,12 +2144,12 @@ class Economy(commands.Cog):
                 await game_message.edit(embed=game_embed)
                 await asyncio.sleep(1)
 
+                # Pick a new flower and value for the third card
+                p_flower, p_value = pick_flower()  # New card for third draw
+                player_hand.append(p_value)
+                player_flowers[2] = p_flower  # Assign the third card properly
 
-                
-
-                player_total = calculate_total(player_hand)  # Recalculate total after third card
-            # Replace third placeholder
-                
+                # Update the embed with the new hand
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
@@ -2164,7 +2158,7 @@ class Economy(commands.Cog):
                 )
                 game_embed.add_field(
                     name="Player's Hand", 
-                    value=f"{''.join(player_flowers)}", 
+                    value=f"{''.join(player_flowers)} = {player_total}", 
                     inline=False
                 )
                 game_embed.add_field(
@@ -2208,6 +2202,7 @@ class Economy(commands.Cog):
             # Check if banker needs third card
             banker_total = calculate_total(banker_hand)
             if needs_third_card(banker_total):
+                print(f"Banker's total: {banker_total}, needs third card")
                 game_embed.add_field(
                     name="Status", 
                     value="Drawing third card for banker...", 
