@@ -354,9 +354,9 @@ class Economy(commands.Cog):
         "<:bar:1328604287495831624>": {"weight": 10, "multiplier": 10, "name": "Bar"},   
         "<:seven:1328610655854661673>": {"weight": 15, "multiplier": 7, "name": "Seven"},     
         "<:bell:1328610673047109714>": {"weight": 17, "multiplier": 5, "name": "Bell"},     
-        "<:cherries:1328604145749459036>": {"weight": 17, "multiplier": 2.5, "name": "Cherries"},    
-        "<:grapes:1328603707390033921>": {"weight": 17, "multiplier": 1, "name": "Grapes"},
-        "<:lemon:1328603669565935648>": {"weight": 17, "multiplier": 1, "name": "Lemon"},
+        "<:cherries:1328604145749459036>": {"weight": 17, "multiplier": 3.5, "name": "Cherries"},    
+        "<:grapes:1328603707390033921>": {"weight": 17, "multiplier": 2.5, "name": "Grapes"},
+        "<:lemon:1328603669565935648>": {"weight": 17, "multiplier": 1.5, "name": "Lemon"},
         "<:orange:1328603878316441610>": {"weight": 17, "multiplier": 1, "name": "Orange"}        
 
 }
