@@ -1070,8 +1070,7 @@ class Economy(commands.Cog):
 
 
     @commands.command(aliases=['send'])
-    @confirm_bet()
-    @commands.cooldown(1, 60, commands.BucketType.user)
+    @commands.cooldown(1, 1, commands.BucketType.user)
     async def transfer(self, ctx, *, args=None):
         """Transfer currency to another user"""
         try:
@@ -1164,7 +1163,7 @@ class Economy(commands.Cog):
                 )
                 
                 # Log transaction for recipient (if not house)
-                if recipient.lower() == "house":
+                if recipient_arg.lower() == "house":
                     # Log house transaction
                     await self.log_transaction(
                         ctx=ctx,
