@@ -174,7 +174,7 @@ def confirm_bet():
 
 class TransactionPaginator(discord.ui.View):
     def __init__(self, transactions, ctx, user_id, display_name):
-        super().__init__(timeout=30)
+        super().__init__(timeout=20)
         self.transactions = transactions
         self.ctx = ctx
         self.user_id = user_id
@@ -260,10 +260,23 @@ class TransactionPaginator(discord.ui.View):
         embed.set_footer(text=f"(Page {self.current_page + 1}/{self.total_pages})")
         return embed
 
+    async def on_timeout(self):
+        # Disable all buttons
+        for item in self.children:
+            item.disabled = True
+        
+        # Try to update the message with disabled buttons
+        try:
+            if self.message:
+                await self.message.delete()
+        except:
+            pass  
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
             await interaction.response.send_message("This pagination menu is not for you!", ephemeral=True)
             return False
+        self.message = interaction.message
         return True
 
 
@@ -315,7 +328,12 @@ class PaginationView(discord.ui.View):
     @discord.ui.button(label="Close", style=discord.ButtonStyle.red)
     async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.message.delete()
-
+    
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message("This pagination menu is not for you!", ephemeral=True)
+            return False
+        return True
 
 
 
@@ -1017,7 +1035,7 @@ class Economy(commands.Cog):
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
-                        transaction_type="add",
+                        transaction_type="remove",
                         is_house=True
                     )
                 else:
@@ -1027,7 +1045,7 @@ class Economy(commands.Cog):
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
-                        transaction_type="add"
+                        transaction_type="remove"
                     )            
                 
                 # Create success embed
