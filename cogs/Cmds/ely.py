@@ -104,6 +104,7 @@ class PriceChecker(commands.Cog):
             "manuscripts": "manus",
             "scripts": "scriptu",
             "scriptures": "scriptu",
+            "pink": "pink santa hat"
 
             
 
@@ -380,14 +381,14 @@ class PriceChecker(commands.Cog):
                             oldest_price = trades[-1]['price']
                             newest_price = trades[0]['price']
                             trend_percentage = ((newest_price - oldest_price) / oldest_price) * 100
-                            trend_symbol = "<:up:1320181605918183496>" if trend_percentage > 0 else "<:down:1320181619406929970>"
+                            trend_symbol = " <:upward:1328517849861324931> " if trend_percentage > 0 else " <:downward:1328517880882532372> "
                             last_three_trades = trades[-3:]  # Get last 3 trades
                             highest_recent = max(trade['price'] for trade in last_three_trades)
                             lowest_recent = min(trade['price'] for trade in last_three_trades)
 
                             price_info = (
                                 f"**Current Street Price** <:goldpoints:1319902464115343473> ***{format_price(lowest_recent)} - {format_price(highest_recent)}***\n\n"
-                                f"**Margin:**<:margin:1320185569703100470>({margin_percentage:.1f}%) ~ ***{format_price(margin)}***\n\n"                              
+                                f"**Margin:** <:margin:1320185569703100470> ({margin_percentage:.1f}%) ~ ***{format_price(margin)}***\n\n"                              
                                 f"**Trend:** {trend_symbol} ({'+' if trend_percentage > 0 else ''}{trend_percentage:.1f}%) ~ **{format_price(oldest_price)}** → ***{format_price(newest_price)}*** \n\n"
                                 f" \u200B \n"
                             )
