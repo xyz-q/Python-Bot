@@ -799,7 +799,7 @@ class Economy(commands.Cog):
         embeds = []
         for i, page in enumerate(pages, 1):
             embed = discord.Embed(
-                title="💰 Balance Rankings",
+                title="Balance Rankings",
                 description=page,
                 color=discord.Color.gold()
             )
