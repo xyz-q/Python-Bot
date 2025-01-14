@@ -329,11 +329,7 @@ class PaginationView(discord.ui.View):
     async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.message.delete()
     
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user != self.ctx.author:
-            await interaction.response.send_message("This pagination menu is not for you!", ephemeral=True)
-            return False
-        return True
+
 
 
 
