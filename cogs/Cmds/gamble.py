@@ -105,8 +105,8 @@ def confirm_bet():
         @wraps(func)
         async def wrapper(self, ctx, amount=None, *args, **kwargs):
             if amount is None:
-                await ctx.send("Please specify an amount!", delete_after=10)
-                return None
+                return await func(self, ctx, amount, *args, **kwargs)
+                
 
             # Convert letter denominations to numbers
             try:
@@ -128,8 +128,8 @@ def confirm_bet():
                     amount = int(float(amount))
 
             except (ValueError, TypeError) as e:
-                await ctx.send("Invalid amount specified! Please use a valid number (e.g., 50m, 1k, 100000).", delete_after=10)
-                return None
+                return await func(self, ctx, amount, *args, **kwargs)
+                
 
             # Check if amount is positive
             if amount <= 0:
