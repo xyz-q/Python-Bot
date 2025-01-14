@@ -107,7 +107,7 @@ class SystemEvents(commands.Cog):
 
             # Command channel restriction
             if message.content.startswith(','):
-                if message.content.startswith((',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer')):
+                if message.content.startswith((',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')):
                     await self.bot.process_commands(message)
                     return
 
