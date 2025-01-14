@@ -2338,12 +2338,13 @@ class Economy(commands.Cog):
 
             else:
                 # Tie
-                self.update_stats(user_id, amount, amount)
+                
                 
                 self.currency[user_id] += amount  # Refund the bet on a tie
                 self.currency[house_id] -= amount               
                 final_balance = await self.get_balance(user_id)
                 await self.log_transaction(ctx, amount, 0, final_balance, is_house=False)
+                self.update_stats(user_id, amount, amount)
                 final_embed.add_field(
                     name="Result", 
                     value="Tie! It's a push. <a:aware:1255561720810831912>", 
@@ -2355,7 +2356,7 @@ class Economy(commands.Cog):
 
 
             # Save the updated currency values
-            final_amount = await self.get_balance(user_id)
+
 
             self.save_currency()
             await game_message.edit(embed=final_embed)
