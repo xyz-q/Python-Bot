@@ -22,7 +22,7 @@ class GambleLimits:
     def __init__(self):
         self.default_min = 500_000
         self.default_max = 100_000_000
-        self.limits_file = "limits.json"
+        self.limits_file = ".json/limits.json"
         self.current_min = self.default_min
         self.current_max = self.default_max
         self.load_limits()
@@ -243,13 +243,13 @@ class Economy(commands.Cog):
 
     def load_stats(self):
         try:
-            with open('gambling_stats.json', 'r') as f:
+            with open('.json/gambling_stats.json', 'r') as f:
                 self.stats = json.load(f)
         except FileNotFoundError:
             self.stats = {}
 
     def save_stats(self):
-        with open('gambling_stats.json', 'w') as f:
+        with open('.json/gambling_stats.json', 'w') as f:
             json.dump(self.stats, f, indent=4)
 
     def initialize_user_stats(self, user_id):
@@ -448,13 +448,13 @@ class Economy(commands.Cog):
         
     def load_currency(self):
         try:
-            with open('currency.json', 'r') as f:
+            with open('.json/currency.json', 'r') as f:
                 self.currency = json.load(f)
         except FileNotFoundError:
             self.currency = {}
 
     def save_currency(self):
-        with open('currency.json', 'w') as f:
+        with open('.json/currency.json', 'w') as f:
             json.dump(self.currency, f, indent=4)
 
     def get_balance(self, user_id):

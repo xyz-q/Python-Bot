@@ -3,7 +3,7 @@ from discord.ext import commands
 import json
 import os
 
-AFK_FILE = "afk_data.json"
+AFK_FILE = ".json/afk_data.json"
 
 class UserCommands(commands.Cog):
     def __init__(self, bot):

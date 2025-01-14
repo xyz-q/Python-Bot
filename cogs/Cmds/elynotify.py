@@ -15,7 +15,7 @@ class ElyNotify(commands.Cog):
         self.bot = bot
         self.item_dictionary = data
         self.price_alerts = {}
-        self.alerts_file = 'alerts.json'
+        self.alerts_file = '.json/alerts.json'
         self.load_alerts()  # Load saved alerts when bot starts
         self.check_prices.start()
 
