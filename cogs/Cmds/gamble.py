@@ -100,26 +100,25 @@ import json
 
 import os
 
+from functools import wraps
+
 def confirm_bet():
     def decorator(func):
         @wraps(func)
         async def wrapper(self, ctx, amount=None, *args, **kwargs):
             if amount is None:
+                # If no amount is provided, proceed with the original function
                 return await func(self, ctx, amount, *args, **kwargs)
-                
 
-            # Convert letter denominations to numbers
+            # Step 1: Convert the amount if it's given as a string with a suffix (k, m, b)
             try:
                 amount = str(amount).lower().replace(',', '').replace(' ', '')
-                
-                # Handle letter denominations
                 multipliers = {
                     'k': 1_000,
                     'm': 1_000_000,
                     'b': 1_000_000_000
                 }
-                
-                # Extract number and letter
+
                 if amount[-1] in multipliers:
                     number = float(amount[:-1])
                     multiplier = multipliers[amount[-1]]
@@ -127,48 +126,55 @@ def confirm_bet():
                 else:
                     amount = int(float(amount))
 
-            except (ValueError, TypeError) as e:
-                return await func(self, ctx, amount, *args, **kwargs)
-                
+                print(f"Converted amount: {amount}")
 
-            # Check if amount is positive
+            except (ValueError, TypeError):
+                await ctx.send("Invalid amount format!", delete_after=10)
+                return None
+
+            # Step 2: Check if the amount is valid (positive and within user balance)
             if amount <= 0:
                 await ctx.send("Amount must be positive!", delete_after=10)
                 return None
 
-            # Get user's balance
-            balance = await self.get_balance(ctx.author.id)  # Assuming this is your balance getter method
+            balance = await self.get_balance(ctx.author.id)
+            print(f"User balance: {balance}")
 
-            # Check if user has enough balance
             if amount > balance:
-                return await func(self, ctx, amount, *args, **kwargs)
+                await ctx.send("You don't have enough balance!", delete_after=10)
+                return None
 
+            # Step 3: If the amount exceeds the threshold, trigger the confirmation
             if amount >= self.CONFIRMATION_THRESHOLD:
-                view = BetConfirmation()
+                print(f"Amount exceeds threshold: {self.CONFIRMATION_THRESHOLD}")
+                view = BetConfirmation()  # Assuming this is a button or modal view
                 message = await ctx.send(
                     f"⚠️ Are you sure you want to use {amount:,} <:goldpoints:1319902464115343473>?", 
                     view=view
                 )
-                
+
                 await view.wait()
-                
+
                 try:
                     await message.delete()
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Error deleting message: {e}")
 
                 if view.value is None:
-                    await ctx.send("Bet timed out!", delete_after=10)
+                    await ctx.send("Warning timed out!", delete_after=10)
                     return None
                 elif view.value is False:
-                    await ctx.send("Bet cancelled!", delete_after=10)
+                    await ctx.send("Cancelled!", delete_after=10)
                     return None
-                
-            # If confirmed or below threshold, proceed with the original command
+
+                print("Bet confirmed!")
+
+            # Step 4: If the amount is below threshold or confirmed, proceed with the command
             return await func(self, ctx, amount, *args, **kwargs)
-            
+
         return wrapper
     return decorator
+
 
 
 
@@ -1775,11 +1781,11 @@ class Economy(commands.Cog):
             # Deduct bet ONCE at the start
             self.currency[user_id] -= bet
             self.currency[house_id] += bet
-
+            while_betting_balance = await self.get_balance(user_id)
             # Create and send initial embed
             embed = discord.Embed(title="<:gamba:1328512027282374718> Slot Machine <:gamba:1328512027282374718>", color=discord.Color.gold())
             embed.add_field(name="Spinning...", value="| ❓ | ❓ | ❓ |")
-            embed.set_footer(text=f"Balance: {self.format_amount(user_balance)} GP")
+            embed.set_footer(text=f"Balance: {self.format_amount(while_betting_balance)} GP")
             msg = await ctx.send(embed=embed)
 
             # Generate final results
@@ -1887,6 +1893,7 @@ class Economy(commands.Cog):
     @commands.command(aliases=["stake", "flowers"])
     @commands.cooldown(1, 10, commands.BucketType.user)
     @transaction_limit()
+    @confirm_bet()
     async def flower(self, ctx, bet_amount: str = None):
         user_id = ctx.author.id
         initial_amount = self.parse_amount(bet_amount)
@@ -1971,10 +1978,16 @@ class Economy(commands.Cog):
             user_id = str(ctx.author.id)
             if user_id not in self.currency:
                 self.currency[user_id] = 0
+
+
+            self.save_currency()             
             
             if self.currency[user_id] < amount:
                 await ctx.send(f"You don't have enough balance for this bet! Your balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>")
                 return
+
+            self.currency[user_id] -= amount
+            self.currency[house_id] += amount   
 
             def calculate_total(numbers):
                 """Calculate total, implementing the 10+ reset rule after each addition"""
@@ -2061,7 +2074,7 @@ class Economy(commands.Cog):
                 def check_special_flowers(hand_values, flowers_display):
                     for value, flower in zip(hand_values, flowers_display):
                         if value == 69:  # White Flower
-                            return "win", "**WHITE FLOWER!** Instant Win! 💰", discord.Color.green()
+                            return "win", f"**WHITE FLOWER!** Instant Win! 💰\n", discord.Color.green()
                         elif value == 420:  # Black Flower
                             return "loss", "**BLACK FLOWER!** House Wins! 💀", discord.Color.red()
                     return None, None, None
@@ -2078,15 +2091,28 @@ class Economy(commands.Cog):
                     await game_message.edit(embed=game_embed)
                     
                     if result == "win":
-                        winnings = amount * 1.90
-                        self.currency[user_id] += amount
-                        self.update_stats(user_id, amount, winnings)  # Changed to track actual winnings
+                        winnings = amount * 2
+                        tax_amount = int(winnings * 0.05)
+                        net_winnings = winnings - tax_amount
+
+                        self.currency[house_id] -= winnings
+                        self.currency[user_id] += net_winnings
+                        self.currency[house_id] += tax_amount
+                        self.update_stats(user_id, amount, net_winnings)
+                        final_balance = await self.get_balance(user_id)
+                        print(f"+{winnings} %{tax_amount} net +{net_winnings} ${final_balance}")
+
+
                     else:
-                        self.currency[user_id] += amount
-                        self.update_stats(user_id, amount, amount)  # For push/return
+                        self.update_stats(user_id, amount, amount)
+                        final_balance = await self.get_balance(user_id)
+            
+                        await self.log_transaction(ctx, amount, 0, final_balance, is_house=False)
+                        print(f"-{amount} ${final_balance} THIS IS A BLACK FLOWER")
                     
                     self.save_currency()
                     return
+                
 
                 
                 player_hand.append(p_value)
@@ -2262,8 +2288,7 @@ class Economy(commands.Cog):
                     inline=False
                 )
                                         
-                self.currency[user_id] -= amount
-                self.currency[house_id] += amount
+
                 self.update_stats(user_id, amount, 0)
                 final_balance = await self.get_balance(user_id)
                 await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
@@ -2297,8 +2322,7 @@ class Economy(commands.Cog):
                                         
             elif banker_total > player_total:
                 # Banker wins
-                self.currency[user_id] -= amount
-                self.currency[house_id] += amount
+
                 self.update_stats(user_id, amount, 0)
 
                 final_balance = await self.get_balance(user_id)
@@ -2317,6 +2341,8 @@ class Economy(commands.Cog):
                 # Tie
                 self.update_stats(user_id, amount, amount)
                 final_balance = await self.get_balance(user_id)
+                self.currency[user_id] += amount  # Refund the bet on a tie
+                self.currency[house_id] -= amount               
                 await self.log_transaction(ctx, amount, 0, final_balance, is_house=False)  # 0 for tie since no win/loss
                 
                 final_embed.add_field(
@@ -2336,7 +2362,12 @@ class Economy(commands.Cog):
             await game_message.edit(embed=final_embed)
 
         except Exception as e:
-            await ctx.send(f"An error occurred: {str(e)}")
+            # Refund the bet amount in case of an error
+            self.currency[user_id] += amount
+            self.currency[house_id] -= amount
+            self.save_currency()
+            await ctx.send(f"An error occurred: {str(e)}. Your bet has been refunded.")
+            return
 
 
     @commands.Cog.listener()
