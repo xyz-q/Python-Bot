@@ -1,6 +1,6 @@
 import json
 from discord.ext import commands, tasks
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 import pytz
 import aiohttp
 import discord
@@ -124,6 +124,29 @@ class TravellingMerchant(commands.Cog):
                         return items if items else None
                 return None
 
+    def get_current_stock(self):
+        try:
+            from merchant_stock import stock
+            
+            # Get current UTC time
+            current_time = datetime.now(timezone.utc)
+            current_date = current_time.strftime("%d %B %Y")
+            
+            # Debug prints
+            print(f"Current UTC time: {current_time}")
+            print(f"Formatted date: {current_date}")
+            print(f"Available stock dates: {list(stock.keys())}")
+            
+            # Get the stock for the current date
+            if current_date in stock:
+                return stock[current_date]
+            else:
+                return None
+                
+        except Exception as e:
+            print(f"Error getting current stock: {str(e)}")
+            return None
+
     @commands.command(name="stock")
     async def check_stock_command(self, ctx):
         """Manual command to check merchant stock"""
@@ -204,7 +227,7 @@ class TravellingMerchant(commands.Cog):
     
 
 
-    @tasks.loop(time=time(hour=0, minute=00)) 
+    @tasks.loop(time=time(hour=0, minute=0, second=5))
     async def daily_notification(self):
         """Send daily notifications to subscribed users"""
         items = await self.get_merchant_stock()
@@ -393,7 +416,7 @@ class TravellingMerchant(commands.Cog):
 
 
 
-    @tasks.loop(time=time(hour=0, minute=00))  # Using the same format as your daily_notification
+    @tasks.loop(time=time(hour=0, minute=0, second=5))  # Using the same format as your daily_notification
     async def daily_channel(self):
         """Send daily notifications to subscribed channels"""
         items = await self.get_merchant_stock()
