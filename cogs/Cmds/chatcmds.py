@@ -4,7 +4,7 @@ import json
 import asyncio
 import typing
 
-json_file_path = "mocked_users.json"
+json_file_path = ".json/mocked_users.json"
 
 class ChatCommands(commands.Cog):
     def __init__(self, bot):

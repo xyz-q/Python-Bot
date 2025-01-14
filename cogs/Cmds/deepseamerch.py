@@ -64,14 +64,14 @@ class TravellingMerchant(commands.Cog):
 
     def load_preferences(self):
         try:
-            with open('merchant_preferences.json', 'r') as f:
+            with open('.json/merchant_preferences.json', 'r') as f:
                 self.user_preferences = json.load(f)
         except FileNotFoundError:
             self.user_preferences = {}
             self.save_preferences()
 
     def save_preferences(self):
-        with open('merchant_preferences.json', 'w') as f:
+        with open('.json/merchant_preferences.json', 'w') as f:
             json.dump(self.user_preferences, f)
 
     @commands.command(name="merch")
@@ -381,14 +381,14 @@ class TravellingMerchant(commands.Cog):
 
     def load_cpreferences(self):
         try:
-            with open('subscribed_channels.json', 'r') as f:
+            with open('.json/subscribed_channels.json', 'r') as f:
                 self.subscribed_channels = json.load(f)
         except FileNotFoundError:
             self.subscribed_channels = {}
             self.save_cpreferences()
 
     def save_cpreferences(self):
-        with open('subscribed_channels.json', 'w') as f:
+        with open('.json/subscribed_channels.json', 'w') as f:
             json.dump(self.subscribed_channels, f)
 
 
@@ -520,7 +520,7 @@ class TravellingMerchant(commands.Cog):
     def load_subscribed_channels(self):
         """Load subscribed channels from JSON file"""
         try:
-            with open('subscribed_channels.json', 'r') as f:
+            with open('.json/subscribed_channels.json', 'r') as f:
                 data = json.load(f)
                 self.subscribed_channels = data.get('channels', [])
         except FileNotFoundError:
@@ -532,7 +532,7 @@ class TravellingMerchant(commands.Cog):
 
     def save_subscribed_channels(self):
         """Save subscribed channels to JSON file"""
-        with open('subscribed_channels.json', 'w') as f:
+        with open('.json/subscribed_channels.json', 'w') as f:
             json.dump({'channels': self.subscribed_channels}, f, indent=4)
 
     def get_subscribed_channels(self):

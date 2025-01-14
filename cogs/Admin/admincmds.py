@@ -8,7 +8,7 @@ class AdminCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.auto_delete_enabled = False
-        self.AUTO_DELETE_FILE = "auto_delete.json"
+        self.AUTO_DELETE_FILE = ".json/auto_delete.json"
         self.ORIGINAL_NAME = "xyz"
         try:
             with open(self.AUTO_DELETE_FILE, "r") as f:
