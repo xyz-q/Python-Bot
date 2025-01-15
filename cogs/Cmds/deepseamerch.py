@@ -75,7 +75,7 @@ class TravellingMerchant(commands.Cog):
             json.dump(self.user_preferences, f)
 
     @commands.command(name="merch")
-    @commands.has_permissions(administrator=True)  # Optional: Restrict to users with admin permissions
+    @commands.has_permissions(administrator=True) 
     async def toggle_notifications(self, ctx, user: discord.User = None):
         """
         Toggle daily merchant notifications for yourself or another user.
@@ -85,8 +85,9 @@ class TravellingMerchant(commands.Cog):
         - !merch @username: Toggles notifications for the specified user (admin only).
         """
         user_id = str(user.id if user else ctx.author.id)
+        bot_owner_id = 110927272210354176
         
-        if ctx.author.id != self.bot_owner_id and user:  # Replace with your ID or check admin permissions
+        if ctx.author.id != bot_owner_id and user: 
             await ctx.send("❌ You do not have permission to toggle notifications for others.")
             return
 
