@@ -2132,7 +2132,7 @@ class Economy(commands.Cog):
                 await game_message.edit(embed=game_embed)
                 await asyncio.sleep(1)
 
-            # Check if player needs third card
+
             # Check if the player needs a third card
             player_total = calculate_total(player_hand)
             if needs_third_card(player_total):
@@ -2147,7 +2147,10 @@ class Economy(commands.Cog):
                 # Pick a new flower and value for the third card
                 p_flower, p_value = pick_flower()  # New card for third draw
                 player_hand.append(p_value)
-                player_flowers[2] = p_flower  # Assign the third card properly
+                player_flowers[2] = p_flower
+                player_total = sum(player_hand) % 10 
+                print(f"Player's hand after third card: {player_hand}")
+                print(f"Final total after third card: {player_total}")  # Assign the third card properly
 
                 # Update the embed with the new hand
                 game_embed.clear_fields()
@@ -2171,6 +2174,7 @@ class Economy(commands.Cog):
 
             # Now banker's turn
             game_embed.add_field(name="Status", value="Drawing banker's cards...", inline=False)
+
             await game_message.edit(embed=game_embed)
             await asyncio.sleep(1)
 
