@@ -324,7 +324,7 @@ class TravellingMerchant(commands.Cog):
     @commands.is_owner()
     async def show_merch_users(self, ctx):
         async with ctx.typing():
-            asyncio.sleep(0.5)
+            await asyncio.sleep(0.5)
         
         """Show all users subscribed to merchant notifications"""
         if not self.user_preferences:

@@ -12,12 +12,14 @@ from discord.ext import commands
 from typing import List
 import math
 from discord.ui import View, Button
-from discord.ext.commands import CommandOnCooldown
 from pathlib import Path
 import functools
 from datetime import datetime
 import copy
 import typing
+
+
+
 
 class GambleLimits:
     def __init__(self):
@@ -49,6 +51,8 @@ class GambleLimits:
 
 # Create a global instance
 limits_manager = GambleLimits()
+
+
 
 # Modified transaction_limit function
 def transaction_limit():
@@ -344,6 +348,7 @@ class Economy(commands.Cog):
     MAX_TRANSACTION_AMOUNT = 1_000_000_000  # 5B maximum
     def __init__(self, bot):
         self.bot = bot
+        self.current_author = None
         self.currency = {}
         self.load_currency()
         self.balances = {}
@@ -369,7 +374,11 @@ class Economy(commands.Cog):
         if not os.path.exists('logs'):
             os.makedirs('logs')
 
+    def set_author(self, author):
+        self.current_author = author
 
+    def get_author(self):
+        return self.current_author
 
     async def log_transaction(self, ctx, bet_amount, win_amount, final_balance, transaction_type="game", is_house=False):
         """Log a transaction for both users and house"""
@@ -1070,7 +1079,7 @@ class Economy(commands.Cog):
 
 
     @commands.command(aliases=['send'])
-    @commands.cooldown(1, 1, commands.BucketType.user)
+
     async def transfer(self, ctx, *, args=None):
         """Transfer currency to another user"""
         try:
@@ -1250,7 +1259,7 @@ class Economy(commands.Cog):
 
     @commands.command()
     @confirm_bet()
-    @commands.cooldown(1, 1800, commands.BucketType.user)
+
     async def deposit(self, ctx, amount: str = None, *, rsn: str = None):
         try:
             if amount is None or rsn is None:
@@ -1332,7 +1341,7 @@ class Economy(commands.Cog):
 
     @commands.command()
     @confirm_bet()
-    @commands.cooldown(1, 1800, commands.BucketType.user)
+
     async def withdraw(self, ctx, amount: str = None, *, rsn: str = None):
         try:
             if amount is None or rsn is None:
@@ -1425,7 +1434,7 @@ class Economy(commands.Cog):
     
 
     @commands.command(name="pvpflip", aliases=["flip", "challenge", "cf"])
-    @commands.cooldown(1, 30, commands.BucketType.user)
+
     @transaction_limit()
     async def pvpflip(self, ctx, opponent: discord.Member = None, bet: str = None):
         """Challenge another player to a coin flip"""
@@ -1701,12 +1710,12 @@ class Economy(commands.Cog):
 
     @commands.command(name="slots", aliases=["gamble", "slot"])
     @confirm_bet()
-    @commands.cooldown(1, 13, commands.BucketType.user)
+
     @transaction_limit()
     async def slots(self, ctx, amount: str = None):
         # Define slot machine symbols with weights and multipliers (total weight = 100)
         symbols = self.symbols
-
+        
         # Create weighted symbol list
         weighted_symbols = []
         for symbol, data in symbols.items():
@@ -1778,7 +1787,9 @@ class Economy(commands.Cog):
                 return
 
             # Deduct bet ONCE at the start
+            print(f"taking {bet} from {user_id}")
             self.currency[user_id] -= bet
+            print(f"giving {bet} to house")
             self.currency[house_id] += bet
             while_betting_balance = await self.get_balance(user_id)
             # Create and send initial embed
@@ -1813,7 +1824,9 @@ class Economy(commands.Cog):
                 win_amount = gross_win - tax_amount
                 
                 # Add winnings (bet already deducted)
+                print(f"adding {winnings} to {user_id} from a 3 of a kind!")
                 self.currency[user_id] += winnings
+                print(f"subtracting {winnings} from house")
                 self.currency[house_id] -= winnings
                 
                 # Get final balance after transaction
@@ -1832,7 +1845,9 @@ class Economy(commands.Cog):
                 win_amount = gross_win - tax_amount
                 
                 # Add winnings (bet already deducted)
+                print(f"adding {winnings} to {user_id} from a 2 of a kind!")
                 self.currency[user_id] += winnings
+                print(f"subtracting {winnings} from house")
                 self.currency[house_id] -= winnings
                 
                 # Get final balance after transaction
@@ -1848,6 +1863,7 @@ class Economy(commands.Cog):
                 bet_amount = self.parse_amount(amount)
                 tax_amount = 0
                 result = "No match!"
+                print(f"house wins! house keeps the {bet_amount} gp!")
                 await self.log_transaction(ctx, bet_amount, -bet_amount, final_balance, is_house=False)
                 # No need to do anything here, bet was already deducted
 
@@ -1890,7 +1906,7 @@ class Economy(commands.Cog):
 
 
     @commands.command(aliases=["stake", "flowers"])
-    @commands.cooldown(1, 10, commands.BucketType.user)
+
     @transaction_limit()
     @confirm_bet()
     async def flower(self, ctx, bet_amount: str = None):
@@ -1978,15 +1994,17 @@ class Economy(commands.Cog):
             if user_id not in self.currency:
                 self.currency[user_id] = 0
 
-
+            print(f"taking {amount} from {user_id} for flower game")
+            self.currency[user_id] -= amount
+            print(f"giving {amount} to house")
+            self.currency[house_id] += amount 
             self.save_currency()             
             
             if self.currency[user_id] < amount:
                 await ctx.send(f"You don't have enough balance for this bet! Your balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>")
                 return
 
-            self.currency[user_id] -= amount
-            self.currency[house_id] += amount   
+  
 
             def calculate_total(numbers):
                 """Calculate total, implementing the 10+ reset rule after the sum."""
@@ -2000,7 +2018,9 @@ class Economy(commands.Cog):
 
             def needs_third_card(total):
                 """Determine if a third card is needed (5 or below)"""
+                print(f"Checking if third card is needed for total: {total}")
                 return total <= 5
+                
 
             def pick_flower():
                 """Pick a random flower based on weights"""
@@ -2089,7 +2109,7 @@ class Economy(commands.Cog):
                         winnings = amount * 2
                         tax_amount = int(winnings * 0.05)
                         net_winnings = winnings - tax_amount
-
+                        print(f"Player wins {winnings} GP, tax: {tax_amount}, net: {net_winnings} from a white flower!")
                         self.currency[house_id] -= winnings
                         self.currency[user_id] += net_winnings
                         self.currency[house_id] += tax_amount
@@ -2286,7 +2306,7 @@ class Economy(commands.Cog):
                     inline=False
                 )
                                         
-
+                print(f"banker wins {amount} GP! from double 9s!")
                 self.update_stats(user_id, amount, 0)
                 final_balance = await self.get_balance(user_id)
                 await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
@@ -2302,7 +2322,7 @@ class Economy(commands.Cog):
                 net_winnings = winnings - tax_amount
                 self.currency[user_id] += net_winnings
                 self.update_stats(user_id, amount, net_winnings)
-                
+                print(f"Player wins {winnings} GP, tax: {tax_amount}, net: {net_winnings}")
                 self.currency[house_id] -= winnings
                 self.currency[house_id] += tax_amount
                 
@@ -2322,7 +2342,7 @@ class Economy(commands.Cog):
                 # Banker wins
 
                 self.update_stats(user_id, amount, 0)
-
+                print(f"banker wins {amount} GP! from banker win!")
                 final_balance = await self.get_balance(user_id)
                 await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
                 
@@ -2338,7 +2358,7 @@ class Economy(commands.Cog):
             else:
                 # Tie
                 
-                
+                print(f"Tie! Refunding bet: {amount}")
                 self.currency[user_id] += amount  # Refund the bet on a tie
                 self.currency[house_id] -= amount               
                 final_balance = await self.get_balance(user_id)
@@ -2362,6 +2382,7 @@ class Economy(commands.Cog):
 
         except Exception as e:
             # Refund the bet amount in case of an error
+            print(f"An error occurred: {str(e)}, refunding bet: {amount}")
             self.currency[user_id] += amount
             self.currency[house_id] -= amount
             self.save_currency()
@@ -2369,12 +2390,7 @@ class Economy(commands.Cog):
             return
 
 
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
-        if isinstance(error, CommandOnCooldown):
-            remaining = round(error.retry_after, 1)
-            await ctx.send(f" You are on cooldown.  {remaining}s remaining.")
-            return
+
 
 
 
