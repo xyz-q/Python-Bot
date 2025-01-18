@@ -339,7 +339,7 @@ class YouTubeCommands(commands.Cog):
             return
 
     async def play_next(self, ctx):
-        global queue, current_playing_url
+        global queue, current_playing_url, is_playing
 
         print("Attempting to play next song in queue...")
 
@@ -358,6 +358,7 @@ class YouTubeCommands(commands.Cog):
             if voice_client and voice_client.is_connected():
                 await voice_client.disconnect()
                 print("Queue is empty, disconnected from voice channel.")
+            is_playing = False
             return
 
         next_query = queue.pop(0)
@@ -371,41 +372,54 @@ class YouTubeCommands(commands.Cog):
 
         voice_client = ctx.guild.voice_client
 
-        try:
-            fresh_url = await self.get_fresh_url(next_query)
-            if fresh_url:
-                current_playing_url = fresh_url
-                info = await self.download_info(next_query, self.ytdl_format_options)
-                if info and 'entries' in info:
-                    title = info['entries'][0]['title']
-                    
-                    # Send new "Now playing" message with fresh controls
-                    play_message = await ctx.send(f'Now playing: {title}')
-                    print(f'Now playing: {title}')
-                    
-                    voice_client.play(
-                        discord.FFmpegPCMAudio(
-                            current_playing_url,
-                            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
-                        ),
-                        after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
-                    )
-                    
-                    controls = MusicControls(ctx, voice_client)
-                    await play_message.edit(view=controls)
-            else:
-                await ctx.send("Could not get a valid URL for the next song.")
-                print("Could not get a valid URL for the next song.")
-        except youtube_dl.DownloadError as e:
-            if "sign in to confirm you're not a bot" in str(e):
-                await ctx.send("The video requires user authentication. Please try another video.")
-                print("The video requires user authentication. Please try another video.")
-            else:
-                await ctx.send(f"An error occurred while playing the next song: {str(e)}")
+        retries = 3
+        for attempt in range(retries):
+            try:
+                fresh_url = await self.get_fresh_url(next_query)
+                if fresh_url:
+                    current_playing_url = fresh_url
+                    info = await self.download_info(next_query, self.ytdl_format_options)
+                    if info and 'entries' in info:
+                        title = info['entries'][0]['title']
+                        
+                        # Send new "Now playing" message with fresh controls
+                        play_message = await ctx.send(f'Now playing: {title}')
+                        print(f'Now playing: {title}')
+                        
+                        voice_client.play(
+                            discord.FFmpegPCMAudio(
+                                current_playing_url,
+                                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                            ),
+                            after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
+                        )
+                        
+                        controls = MusicControls(ctx, voice_client)
+                        await play_message.edit(view=controls)
+                        is_playing = True
+                        return
+                else:
+                    await ctx.send("Could not get a valid URL for the next song.")
+                    print("Could not get a valid URL for the next song.")
+                    return
+            except youtube_dl.DownloadError as e:
+                if "sign in to confirm you're not a bot" in str(e):
+                    await ctx.send("The video requires user authentication. Please try another video.")
+                    print("The video requires user authentication. Please try another video.")
+                    return
+                else:
+                    print(f"DownloadError occurred: {str(e)}")
+            except Exception as e:
                 print(f"An error occurred while playing the next song: {str(e)}")
-        except Exception as e:
-            await ctx.send(f"An error occurred while playing the next song: {str(e)}")
-            print(f"An error occurred while playing the next song: {str(e)}")
+            
+            print(f"Retrying... ({attempt + 1}/{retries})")
+            await asyncio.sleep(2)
+
+        await ctx.send("Failed to play the next song after multiple attempts.")
+        print("Failed to play the next song after multiple attempts.")
+        is_playing = False
+
+
     @commands.command()
     async def q(self, ctx):
         if not queue:
