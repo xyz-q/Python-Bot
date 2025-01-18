@@ -218,7 +218,7 @@ class YouTubeCommands(commands.Cog):
             await ctx.send("Fetching playlist information... This might take a moment.")
             
             # Create a new YTDL instance with playlist options
-            ydl = yt_dlp.YoutubeDL(playlist_options)
+            ydl =   youtube_dl.YoutubeDL(playlist_options)
             
             # Extract playlist info
             with ydl:
