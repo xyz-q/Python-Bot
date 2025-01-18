@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 import yt_dlp as youtube_dl
 from concurrent.futures import ThreadPoolExecutor 
-import yt_dlp
+
 
 
 youtube_dl.utils.bug_reports_message = lambda: ''
