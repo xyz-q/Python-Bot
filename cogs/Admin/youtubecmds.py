@@ -328,6 +328,11 @@ class YouTubeCommands(commands.Cog):
                         print(f"An error occurred while playing: {str(e)}")
                         return
 
+            # Check if nothing is playing and start playing the next song
+            if not voice_client.is_playing() and not is_playing:
+                print("Nothing is playing, starting the next song in the queue.")
+                await self.play_next(ctx)
+
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
             print(f"Error details: {str(e)}")
@@ -394,7 +399,6 @@ class YouTubeCommands(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred while playing the next song: {str(e)}")
             print(f"An error occurred while playing the next song: {str(e)}")
-
     @commands.command()
     async def q(self, ctx):
         if not queue:
