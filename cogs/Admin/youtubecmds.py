@@ -170,12 +170,15 @@ class YouTubeCommands(commands.Cog):
     async def play(self, ctx, *, query):
         global queue, current_playing_url, is_playing
 
+        print(f"Received play command with query: {query}")
+
         # Check if user is in voice channel
         author = ctx.message.author
         voice_channel = author.voice.channel if author.voice else None
 
         if not voice_channel:
             await ctx.send('You need to be in a voice channel to use this command.')
+            print("User not in a voice channel.")
             return
 
         voice_client = ctx.guild.voice_client
@@ -184,10 +187,13 @@ class YouTubeCommands(commands.Cog):
         try:
             if voice_client and voice_client.is_connected():
                 await voice_client.move_to(voice_channel)
+                print("Moved to the user's voice channel.")
             else:
                 voice_client = await voice_channel.connect()
+                print("Connected to the user's voice channel.")
         except Exception as e:
             await ctx.send(f"Couldn't connect to voice channel: {str(e)}")
+            print(f"Error connecting to voice channel: {str(e)}")
             return
 
         # Special options for playlist extraction
@@ -216,10 +222,11 @@ class YouTubeCommands(commands.Cog):
 
         try:
             await ctx.send("Fetching playlist information... This might take a moment.")
-            
+            print("Fetching playlist information...")
+
             # Create a new YTDL instance with playlist options
-            ydl =   youtube_dl.YoutubeDL(playlist_options)
-            
+            ydl = youtube_dl.YoutubeDL(playlist_options)
+
             # Extract playlist info
             with ydl:
                 result = await self.bot.loop.run_in_executor(
@@ -228,17 +235,20 @@ class YouTubeCommands(commands.Cog):
 
             if not result:
                 await ctx.send("Could not fetch playlist information.")
+                print("Could not fetch playlist information.")
                 return
 
             if 'entries' in result:
                 entries = list(result['entries'])
                 playlist_title = result.get('title', 'Unknown Playlist')
-                
+
                 if not entries:
                     await ctx.send("No videos found in playlist.")
+                    print("No videos found in playlist.")
                     return
 
                 await ctx.send(f'Processing playlist: {playlist_title} ({len(entries)} tracks)')
+                print(f'Processing playlist: {playlist_title} ({len(entries)} tracks)')
 
                 # Process each video in the playlist
                 for i, entry in enumerate(entries):
@@ -247,15 +257,16 @@ class YouTubeCommands(commands.Cog):
 
                     title = entry.get('title', 'Unknown Title')
                     video_url = entry.get('url', entry.get('webpage_url'))
-                    
+
                     if i == 0 and not (voice_client.is_playing() or is_playing):
                         # Play first song immediately
                         download_msg = await ctx.send(f'Downloading: {title}')
                         await asyncio.sleep(2)
                         await download_msg.delete()
-                        
+
                         play_message = await ctx.send(f'Now playing: {title}')
-                        
+                        print(f'Now playing: {title}')
+
                         try:
                             fresh_url = await self.get_fresh_url(video_url)
                             current_playing_url = fresh_url if fresh_url else video_url
@@ -266,19 +277,19 @@ class YouTubeCommands(commands.Cog):
                                     current_playing_url,
                                     before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
                                 ),
-                                after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
+                                after=lambda _: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
                             )
-                            
+
                             controls = MusicControls(ctx, voice_client)
                             await play_message.edit(view=controls)
                         except Exception as e:
                             is_playing = False
                             await ctx.send(f"Error playing {title}: {str(e)}")
+                            print(f"Error playing {title}: {str(e)}")
                     else:
                         # Add other songs to queue
                         queue.append(video_url)
                         print(f'Added to queue: {title}')
-                        
 
             else:
                 # Handle single video
@@ -290,28 +301,31 @@ class YouTubeCommands(commands.Cog):
                     queue.append(query)
                     await ctx.send(f'Added to queue: {title}')
                     await download_msg.delete()
+                    print(f'Added to queue: {title}')
                 else:
                     await download_msg.delete()
                     play_message = await ctx.send(f'Now playing: {title}')
-                    
+                    print(f'Now playing: {title}')
+
                     try:
                         fresh_url = await self.get_fresh_url(query)
                         current_playing_url = fresh_url if fresh_url else result.get('url')
-                        
+
                         is_playing = True
                         voice_client.play(
                             discord.FFmpegPCMAudio(
                                 current_playing_url,
                                 before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
                             ),
-                            after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
+                            after=lambda _: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
                         )
-                        
+
                         controls = MusicControls(ctx, voice_client)
                         await play_message.edit(view=controls)
                     except Exception as e:
                         is_playing = False
                         await ctx.send(f"An error occurred while playing: {str(e)}")
+                        print(f"An error occurred while playing: {str(e)}")
                         return
 
         except Exception as e:
