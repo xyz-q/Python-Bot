@@ -396,6 +396,13 @@ class YouTubeCommands(commands.Cog):
             else:
                 await ctx.send("Could not get a valid URL for the next song.")
                 print("Could not get a valid URL for the next song.")
+        except youtube_dl.DownloadError as e:
+            if "sign in to confirm you're not a bot" in str(e):
+                await ctx.send("The video requires user authentication. Please try another video.")
+                print("The video requires user authentication. Please try another video.")
+            else:
+                await ctx.send(f"An error occurred while playing the next song: {str(e)}")
+                print(f"An error occurred while playing the next song: {str(e)}")
         except Exception as e:
             await ctx.send(f"An error occurred while playing the next song: {str(e)}")
             print(f"An error occurred while playing the next song: {str(e)}")
