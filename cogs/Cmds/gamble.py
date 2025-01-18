@@ -1994,15 +1994,17 @@ class Economy(commands.Cog):
             if user_id not in self.currency:
                 self.currency[user_id] = 0
 
-            print(f"taking {amount} from {user_id} for flower game")
-            self.currency[user_id] -= amount
-            print(f"giving {amount} to house")
-            self.currency[house_id] += amount 
-            self.save_currency()             
+           # If they dont, tell them they dont have enough balance
             
             if self.currency[user_id] < amount:
                 await ctx.send(f"You don't have enough balance for this bet! Your balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>")
                 return
+
+            print(f"taking {amount} from {user_id} for flower game")
+            self.currency[user_id] -= amount
+            print(f"giving {amount} to house")
+            self.currency[house_id] += amount 
+            self.save_currency()  
 
   
 
