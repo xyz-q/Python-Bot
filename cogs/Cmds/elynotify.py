@@ -273,7 +273,7 @@ class ElyNotify(commands.Cog):
     @commands.command(name='myalerts')
     async def list_alerts(self, ctx):
         async with ctx.typing():
-            asyncio.sleep(0.5)
+            await asyncio.sleep(0.5)
         print(f"\nListing alerts for {ctx.author}")
         
         if ctx.author.id not in self.price_alerts or not self.price_alerts[ctx.author.id]:
