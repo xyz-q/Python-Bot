@@ -22,10 +22,15 @@ class AdminCommands(commands.Cog):
 
     @commands.command()
     async def kick(self, ctx, members: commands.Greedy[discord.Member], *, reason: str = None):
+        print("attempting...")
         if not ctx.guild.me.guild_permissions.kick_members:
             await ctx.send("I don't have permission to kick members.")
             return
 
+        if not members:
+            await ctx.send("User not found.")
+            return
+        
         from datetime import datetime
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -56,6 +61,8 @@ class AdminCommands(commands.Cog):
                 await ctx.send(f"I don't have permission to kick {member.mention}.")
             except discord.HTTPException:
                 await ctx.send(f"An error occurred while trying to kick {member.mention}.")
+            else:
+                print("unable to kick member")
 
 
 
