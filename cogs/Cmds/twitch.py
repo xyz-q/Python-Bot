@@ -48,6 +48,7 @@ class Twitch(commands.Cog):
 
     @tasks.loop(seconds=45)
     async def stream_status(self):
+        print("Checking Twitch stream status...")
         for config in self.configurations:
             channel = self.bot.get_channel(config['discord_channel_id'])
             if channel is None:
@@ -68,12 +69,15 @@ class Twitch(commands.Cog):
                     stream_button = StreamButton(stream_url)
                     await channel.send("@everyone", embed=embed, view=stream_button)
                     config['previous_status'] = 'live'
+                    print(f"{config['twitch_username']} is now live!")
+                    
             else:
                 if config['previous_status'] != 'offline':
                     twitch_channel_url = f"https://www.twitch.tv/{config['twitch_username']}"
                     embed = discord.Embed(title=f"{config['twitch_username']} is currently offline", url=twitch_channel_url, color=0xFF0000)
                     await channel.send(embed=embed)
                     config['previous_status'] = 'offline'
+                    print(f"{config['twitch_username']} is currently offline")
 
     @stream_status.before_loop
     async def before_stream_status(self):
