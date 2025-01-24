@@ -18,8 +18,13 @@ class Twitch(commands.Cog):
     def load_configurations(self):
         try:
             with open('.json/ttv.json', 'r') as file:
-                return json.load(file)
+                content = file.read().strip()
+                if not content:
+                    return []
+                return json.loads(content)
         except FileNotFoundError:
+            return []
+        except json.JSONDecodeError:
             return []
 
     def save_configurations(self):
@@ -131,7 +136,22 @@ class Twitch(commands.Cog):
                 self.save_configurations()
                 await ctx.send(f"Added Twitch user {twitch_username} for notifications in {channel.mention}")
 
-                
+
+
+    @commands.command()
+    async def ttvlist(self, ctx):
+        """View the list of Twitch user configurations"""
+        if not self.configurations:
+            await ctx.send("No Twitch user configurations found.")
+            return
+
+        embed = discord.Embed(title="Twitch User Configurations", color=0x00FF00)
+        for config in self.configurations:
+            channel = self.bot.get_channel(config['discord_channel_id'])
+            channel_name = channel.name if channel else "Unknown Channel"
+            embed.add_field(name=config['twitch_username'], value=f"Channel: {channel_name} (ID: {config['discord_channel_id']})", inline=False)
+
+        await ctx.send(embed=embed)
 
 
 
