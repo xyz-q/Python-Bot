@@ -126,8 +126,8 @@ class Twitch(commands.Cog):
             else:
                 await ctx.send(f"Please specify a channel. Example ',ttv {twitch_username} #general.'")
         else:
-            if config:
-                await ctx.send(f"Twitch user {twitch_username} is already configured for notifications.")
+            if config and channel.id == config['discord_channel_id']:
+                await ctx.send(f"Twitch user {twitch_username} is already configured for notifications on this channel")
             else:
                 new_config = {
                     'twitch_username': twitch_username,
