@@ -52,6 +52,12 @@ class SystemEvents(commands.Cog):
             print(f"\033[91mError in on_disconnect: {str(e)}\033[0m")
             traceback.print_exc()
 
+
+    @commands.Cog.listener()
+    async def on_error(self, event, *args, **kwargs):
+        print(f"\033[91mError in event {event}: {args} {kwargs}\033[0m")
+        traceback.print_exc()   
+        
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         try:
@@ -86,15 +92,6 @@ class SystemEvents(commands.Cog):
             return
 
         try:
-            # Admin user handling with logging
-            if message.author.id == 110927272210354176:
-                print(f"\033[93m{message.author} attempted: {message.content}\033[0m")
-                try:
-                    await self.bot.process_commands(message)
-                except Exception as e:
-                    print(f"\033[91mError processing admin command: {str(e)}\033[0m")
-                    traceback.print_exc()
-                return
 
             # Block DM interactions
             if isinstance(message.channel, discord.DMChannel):
@@ -113,6 +110,8 @@ class SystemEvents(commands.Cog):
 
                 if message.channel.name != 'admin-commands':
                     try:
+                        if message.author.id == 110927272210354176:
+                            return
                         warning = await message.channel.send("❌ Please use commands in #admin-commands")
                         await asyncio.sleep(7)
                         await message.delete()
@@ -121,19 +120,7 @@ class SystemEvents(commands.Cog):
                         print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
                     return
 
-                # Role check
-                #required_role = discord.utils.get(message.guild.roles, name='.trusted')
-                #if required_role not in message.author.roles:
-                #    try:
-                #        warning = await message.channel.send("❌ You don't have permission to use this command!")
-                #        await asyncio.sleep(7)
-                #        await message.delete()
-                #        await warning.delete()
-                #    except Exception as e:
-                #        print(f"\033[91mError handling permission denied: {str(e)}\033[0m")
-                #    return
 
-         #   await self.bot.process_commands(message)
 
         except Exception as e:
             print(f"\033[91mError in on_message: {str(e)}\033[0m")

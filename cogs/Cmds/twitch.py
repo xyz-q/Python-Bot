@@ -48,7 +48,7 @@ class Twitch(commands.Cog):
 
     @tasks.loop(seconds=45)
     async def stream_status(self):
-        print("Checking Twitch stream status...")
+
         for config in self.configurations:
             channel = self.bot.get_channel(config['discord_channel_id'])
             if channel is None:
@@ -67,7 +67,7 @@ class Twitch(commands.Cog):
                     embed.add_field(name="Category", value=category, inline=False)
                     embed.set_thumbnail(url=f"https://static-cdn.jtvnw.net/previews-ttv/live_user_{config['twitch_username']}-320x180.jpg")
                     stream_button = StreamButton(stream_url)
-                    await channel.send("@everyone", embed=embed, view=stream_button)
+                    await channel.send("@.live", embed=embed, view=stream_button)
                     config['previous_status'] = 'live'
                     print(f"{config['twitch_username']} is now live!")
                     
@@ -83,34 +83,6 @@ class Twitch(commands.Cog):
     async def before_stream_status(self):
         await self.bot.wait_until_ready()
 
-    @commands.command()
-    async def twitch(self, ctx, twitch_username: str):
-        """Check if the Twitch stream is live"""
-        config = next((c for c in self.configurations if c['twitch_username'] == twitch_username), None)
-        if not config:
-            await ctx.send(f"No configuration found for Twitch username: {twitch_username}")
-            return
-
-        is_live = self.check_stream_status(config['twitch_username'], config['twitch_client_id'], config['twitch_access_token'])
-
-        if is_live:
-            title = is_live.get('title', 'No title available')
-            category = is_live.get('game_name', 'No category available')
-            if config['previous_status'] != 'live':
-                stream_url = f"https://www.twitch.tv/{config['twitch_username']}"
-                embed = discord.Embed(title=f"{config['twitch_username']} is now live!", url=stream_url, color=0x00FF00)
-                embed.add_field(name="Title", value=title, inline=False)
-                embed.add_field(name="Category", value=category, inline=False)
-                embed.set_thumbnail(url=f"https://static-cdn.jtvnw.net/previews-ttv/live_user_{config['twitch_username']}-320x180.jpg")
-                stream_button = StreamButton(stream_url)
-                await ctx.send("@everyone", embed=embed, view=stream_button)
-                config['previous_status'] = 'live'
-        else:
-            if config['previous_status'] != 'offline':
-                twitch_channel_url = f"https://www.twitch.tv/{config['twitch_username']}"
-                embed = discord.Embed(title=f"{config['twitch_username']} is currently offline", url=twitch_channel_url, color=0xFF0000)
-                await ctx.send(embed=embed)
-                config['previous_status'] = 'offline'
 
     @commands.command()
     async def ttv(self, ctx, twitch_username: str, channel: discord.TextChannel = None):

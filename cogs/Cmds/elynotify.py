@@ -150,7 +150,7 @@ class ElyNotify(commands.Cog):
 
     @tasks.loop(minutes=15)
     async def check_prices(self):
-        print("\nChecking prices for alerts...")
+        
         
         headers = {
             'accept': '*/*',
@@ -173,7 +173,7 @@ class ElyNotify(commands.Cog):
 
             for alert in alerts[:]:
                 item_id, target_price, item_name, direction = alert
-                print(f"Checking {item_name} for user {user.name}")
+                
                 
                 try:
                     url = f"https://www.ely.gg/chart/{item_id}/prices"
@@ -183,7 +183,7 @@ class ElyNotify(commands.Cog):
                                 data = await response.json()
                                 if data['items']:
                                     current_price = data['items'][-1]['price']
-                                    print(f"{item_name} current price: {current_price}, target: {target_price}, direction: {direction}")
+                                    
                                     
                                     condition_met = (direction == 'h' and current_price >= target_price) or \
                                                   (direction == 'l' and current_price <= target_price)
