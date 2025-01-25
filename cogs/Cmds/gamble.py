@@ -144,9 +144,7 @@ def confirm_bet():
             balance = await self.get_balance(ctx.author.id)
             print(f"User balance: {balance}")
 
-            if amount > balance:
-                await ctx.send(f"You don't have enough coins! Your balance: {self.format_amount(amount)} <:goldpoints:1319902464115343473> ", delete_after=10)
-                return None
+
 
             # Step 3: If the amount exceeds the threshold, trigger the confirmation
             if amount >= self.CONFIRMATION_THRESHOLD:
