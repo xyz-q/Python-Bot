@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 import requests
 from discord import ui
 import json
-
+import twitch
 class StreamButton(ui.View):
     def __init__(self, stream_url):
         super().__init__()
