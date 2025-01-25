@@ -102,7 +102,7 @@ class SystemEvents(commands.Cog):
             if message.content.startswith(','):
                 print(f"\033[0;32mCommand: {message.content}\033[0m by {message.author}")
                 if message.content.startswith((',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')):
-                    print(f"\033[0;32mCommand: {message.content}\033[0m by {message.author} has been bypassed")
+                    print(f"\033[0;32mCommand has been bypassed properly.\033[0m")
                     await self.bot.process_commands(message)
                     return
 
