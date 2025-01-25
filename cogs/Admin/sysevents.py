@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import traceback
 import asyncio
+import difflib
 
 class SystemEvents(commands.Cog):
     def __init__(self, bot):
@@ -63,11 +64,19 @@ class SystemEvents(commands.Cog):
 
             if isinstance(error, commands.CommandNotFound):
                 try:
-                    await ctx.message.delete()
-                    warning = await ctx.send("⚠️ That command doesn't exist!")
-                    await asyncio.sleep(7)
+                    # Retrieve all command names
+                    valid_commands = [command.name for command in self.bot.commands]
+                    similar_commands = difflib.get_close_matches(ctx.message.content.lower(), valid_commands)
                     
+                    if similar_commands:
+                        suggestion = f"⚠️ That command doesn't exist! Did you mean any of these? {', '.join(similar_commands)}"
+                        warning = await ctx.send(suggestion)
+                    else:
+                        warning = await ctx.send("⚠️ That command doesn't exist!")
+                    
+                    await asyncio.sleep(7)
                     await warning.delete()
+                    await ctx.message.delete()
                 except Exception as e:
                     print(f"\033[91mError handling CommandNotFound: {str(e)}\033[0m")
             else:
