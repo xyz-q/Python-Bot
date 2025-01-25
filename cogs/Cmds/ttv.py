@@ -3,7 +3,8 @@ from discord.ext import commands, tasks
 import requests
 from discord import ui
 import json
-import twitch
+
+
 class StreamButton(ui.View):
     def __init__(self, stream_url):
         super().__init__()
@@ -132,10 +133,7 @@ class Twitch(commands.Cog):
 
 
 
-    @twitch.error
-    async def twitch_error(self, ctx, error):
-        if isinstance(error, commands.CommandInvokeError):
-            await ctx.send("An error occurred while checking the Twitch stream status.")
+
 
 async def setup(bot):
     await bot.add_cog(Twitch(bot))
