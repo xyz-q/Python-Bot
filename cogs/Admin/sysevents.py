@@ -53,11 +53,7 @@ class SystemEvents(commands.Cog):
             traceback.print_exc()
 
 
-    @commands.Cog.listener()
-    async def on_error(self, event, *args, **kwargs):
-        print(f"\033[91mError in event {event}: {args} {kwargs}\033[0m")
-        traceback.print_exc()   
-        
+
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         try:
@@ -104,7 +100,9 @@ class SystemEvents(commands.Cog):
 
             # Command channel restriction
             if message.content.startswith(','):
+                print(f"\033[0;32mCommand: {message.content}\033[0m by {message.author}")
                 if message.content.startswith((',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')):
+                    print(f"\033[0;32mCommand: {message.content}\033[0m by {message.author} has been bypassed")
                     await self.bot.process_commands(message)
                     return
 
