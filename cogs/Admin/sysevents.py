@@ -105,11 +105,10 @@ class SystemEvents(commands.Cog):
                     print(f"\033[91mError handling DM: {str(e)}\033[0m")
                     return
             message.content = message.content.lower()         
-            
+            allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')
 
                 
-            if message.content.startswith((',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')):
-                if not message.channel.name != 'admin-commands':
+            if message.content.startswith(allowed_commands):
                     print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
                     print(f"\033[0;32mCommand has been bypassed properly.\033[0m")
                     await self.bot.process_commands(message)
