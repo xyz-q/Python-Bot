@@ -46,8 +46,8 @@ class Twitch(commands.Cog):
             return stream_data
         else:
             return None
-
-    @tasks.loop(seconds=5)
+        
+    @tasks.loop(seconds=45)
     async def stream_status(self):
 
         for config in self.configurations:
@@ -75,18 +75,18 @@ class Twitch(commands.Cog):
                     else:
                         await channel.send("The .live role does not exist.")
 
-
-
                     config['previous_status'] = 'live'
-                    print(f"{config['twitch_username']} is now live!")
+                    print(f"Updated {config['twitch_username']} status to live")
+                    self.save_configurations()
                     
             else:
-                if config['previous_status'] != 'null':
+                if config['previous_status'] != 'offline':
                     twitch_channel_url = f"https://www.twitch.tv/{config['twitch_username']}"
                     embed = discord.Embed(title=f"{config['twitch_username']} is currently offline", url=twitch_channel_url, color=0xFF0000)
                     await channel.send(embed=embed)
                     config['previous_status'] = 'offline'
-                    print(f"{config['twitch_username']} is currently offline")
+                    print(f"Updated {config['twitch_username']} status to offline")
+                    self.save_configurations()
 
     @stream_status.before_loop
     async def before_stream_status(self):
