@@ -109,10 +109,12 @@ class SystemEvents(commands.Cog):
 
                 
             if message.content.startswith((',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')):
-                print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
-                print(f"\033[0;32mCommand has been bypassed properly.\033[0m")
-
-                return
+                if not message.channel.name != 'admin-commands':
+                    print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
+                    print(f"\033[0;32mCommand has been bypassed properly.\033[0m")
+                    await self.bot.process_commands(message)
+                    return
+                
 
             if message.channel.name != 'admin-commands':
                 try:
