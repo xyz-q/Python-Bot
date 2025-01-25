@@ -53,8 +53,6 @@ class SystemEvents(commands.Cog):
             print(f"\033[91mError in on_disconnect: {str(e)}\033[0m")
             traceback.print_exc()
 
-
-
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         try:
@@ -104,24 +102,23 @@ class SystemEvents(commands.Cog):
                 except Exception as e:
                     print(f"\033[91mError handling DM: {str(e)}\033[0m")
                     return
-            message.content = message.content.lower()         
+
+            message.content = message.content.lower()
             allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')
 
-                
             if message.content.startswith(allowed_commands):
-                    print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
-                    print(f"\033[0;32mCommand has been bypassed properly.\033[0m")
-
-                    return
-                
+                print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
+                await self.bot.process_commands(message)
+                return
 
             if message.channel.name != 'admin-commands':
+                if message.author.id == 110927272210354176:
+                    await self.bot.process_commands(message)
+                    print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
+                    print("Processing command from owner..")
+                    return
+
                 try:
-                    if message.author.id == 110927272210354176:
-                        await self.bot.process_commands(message)
-                        print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
-                        print("Processing command from owner..")
-                        return
                     warning = await message.channel.send("❌ Please use commands in #admin-commands")
                     print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
                     await asyncio.sleep(7)
