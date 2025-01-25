@@ -97,7 +97,7 @@ class SystemEvents(commands.Cog):
                 except Exception as e:
                     print(f"\033[91mError handling DM: {str(e)}\033[0m")
                     return
-
+            message.content = message.content.lower()         
             # Command channel restriction
             if message.content.startswith(','):
                 print(f"\033[0;32mCommand: {message.content}\033[0m by {message.author}")
