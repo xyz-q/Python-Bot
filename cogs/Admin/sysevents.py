@@ -69,7 +69,7 @@ class SystemEvents(commands.Cog):
                     similar_commands = difflib.get_close_matches(ctx.message.content.lower(), valid_commands)
                     
                     if similar_commands:
-                        suggestion = f"⚠️ That command doesn't exist! Did you mean any of these? {', '.join(similar_commands)}"
+                        suggestion = f"Did you mean any of these? {', '.join(similar_commands)}"
                         warning = await ctx.send(suggestion)
                     else:
                         warning = await ctx.send("⚠️ That command doesn't exist!")
