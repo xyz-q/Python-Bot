@@ -111,7 +111,7 @@ class SystemEvents(commands.Cog):
             if message.content.startswith(allowed_commands):
                     print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
                     print(f"\033[0;32mCommand has been bypassed properly.\033[0m")
-                    await self.bot.process_commands(message)
+
                     return
                 
 
