@@ -110,7 +110,7 @@ class SystemEvents(commands.Cog):
 
             if message.channel.name != 'admin-commands':
                 if message.author.id == 110927272210354176:
-                    if message.content.startswith(allowed_commands):
+                    if message.content.startswith(allowed_commands) or "," in message.content:
                         await self.bot.process_commands(message)
                         print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
                         print(f"\033[0;32mBypassing command '{message.content}' from {message.author} in channel #{message.channel.name}\033[0m")
