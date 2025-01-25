@@ -81,7 +81,7 @@ class Twitch(commands.Cog):
                     print(f"{config['twitch_username']} is now live!")
                     
             else:
-                if config['previous_status'] != 'offline':
+                if config['previous_status'] != 'null':
                     twitch_channel_url = f"https://www.twitch.tv/{config['twitch_username']}"
                     embed = discord.Embed(title=f"{config['twitch_username']} is currently offline", url=twitch_channel_url, color=0xFF0000)
                     await channel.send(embed=embed)
