@@ -99,9 +99,8 @@ class SystemEvents(commands.Cog):
                     return
 
             # Command channel restriction
-            if message.content.startswith(',') and message.content.channel != 'admin-commands':
+            if message.content.startswith(','):
                 print(f"\033[0;32mCommand: {message.content}\033[0m by {message.author}")
-                await self.bot.process_commands(message)
                 if message.content.startswith((',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')):
                     print(f"\033[0;32mCommand has been bypassed properly.\033[0m")
                     await self.bot.process_commands(message)
@@ -119,7 +118,7 @@ class SystemEvents(commands.Cog):
                         print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
                     return
 
-
+            await self.bot.process_commands(message)
 
         except Exception as e:
             print(f"\033[91mError in on_message: {str(e)}\033[0m")
