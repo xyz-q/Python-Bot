@@ -95,6 +95,7 @@ class SystemEvents(commands.Cog):
             return
 
         try:
+            # Handle DMs
             if isinstance(message.channel, discord.DMChannel):
                 try:
                     await message.channel.send("❌ I don't respond to DMs!")
@@ -106,32 +107,44 @@ class SystemEvents(commands.Cog):
             message.content = message.content.lower()
             allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')
 
-
-
-            if message.channel.name != 'admin-commands':
-                if message.author.id == 110927272210354176:
-                    if message.content.startswith(allowed_commands) or message.content.startswith(','):
-                        await self.bot.process_commands(message)
-                        print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
-                        print(f"\033[0;32mBypassing command '{message.content}' from {message.author} in channel #{message.channel.name}\033[0m")
-                        return
-
-                try:
-                    warning = await message.channel.send("❌ Please use commands in #admin-commands")
-                    print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
-                    await asyncio.sleep(7)
-                    await message.delete()
-                    await warning.delete()
-                except Exception as e:
-                    print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
+            # Only process commands that start with ','
+            if not message.content.startswith(','):
                 return
 
-            await self.bot.process_commands(message)
-            print("Processing command..")
+            # Allow admin to use any command anywhere
+            if message.author.id == 110927272210354176:
+                await self.bot.process_commands(message)
+                print(f"\033[0;32mAdmin Command: {message.content} by {message.author}\033[0m")
+                return
+
+            # If in admin-commands channel, let the normal command handler process it
+            if message.channel.name == 'admin-commands':
+                return  # Let the normal command handler handle it
+
+            # Handle allowed commands in other channels
+            if message.content.startswith(allowed_commands):
+                await self.bot.process_commands(message)
+                print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
+                return
+
+            # If it's not an allowed command and not in admin-commands, warn the user
+            try:
+                warning = await message.channel.send("❌ Please use commands in #admin-commands")
+                print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
+                await asyncio.sleep(7)
+                await message.delete()
+                await warning.delete()
+            except Exception as e:
+                print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
 
         except Exception as e:
             print(f"\033[91mError in on_message: {str(e)}\033[0m")
             traceback.print_exc()
+
+
+
+
+
 
     @commands.Cog.listener()
     async def on_error(self, event, *args, **kwargs):
