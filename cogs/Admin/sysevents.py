@@ -97,8 +97,6 @@ class SystemEvents(commands.Cog):
             return
 
         try:
-
-            # Block DM interactions
             if isinstance(message.channel, discord.DMChannel):
                 try:
                     await message.channel.send("❌ I don't respond to DMs!")
@@ -107,28 +105,30 @@ class SystemEvents(commands.Cog):
                     print(f"\033[91mError handling DM: {str(e)}\033[0m")
                     return
             message.content = message.content.lower()         
-            # Command channel restriction
+            
             if message.content.startswith(','):
                 print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
-                if message.content.startswith((',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')):
-                    print(f"\033[0;32mCommand has been bypassed properly.\033[0m")
-                    await self.bot.process_commands(message)
-                    return
+                return
+                
+            if message.content.startswith((',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')):
+                print(f"\033[0;32mCommand has been bypassed properly.\033[0m")
+                await self.bot.process_commands(message)
+                return
 
-                if message.channel.name != 'admin-commands':
-                    try:
-                        if message.author.id == 110927272210354176:
-                            await self.bot.process_commands(message)
-                            print("Processing command from owner..")
-                            return
-                        warning = await message.channel.send("❌ Please use commands in #admin-commands")
-                        print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
-                        await asyncio.sleep(7)
-                        await message.delete()
-                        await warning.delete()
-                    except Exception as e:
-                        print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
-                    return
+            if message.channel.name != 'admin-commands':
+                try:
+                    if message.author.id == 110927272210354176:
+                        await self.bot.process_commands(message)
+                        print("Processing command from owner..")
+                        return
+                    warning = await message.channel.send("❌ Please use commands in #admin-commands")
+                    print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
+                    await asyncio.sleep(7)
+                    await message.delete()
+                    await warning.delete()
+                except Exception as e:
+                    print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
+                return
 
             await self.bot.process_commands(message)
             print("Processing command..")
