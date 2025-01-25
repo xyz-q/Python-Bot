@@ -47,7 +47,7 @@ class Twitch(commands.Cog):
         else:
             return None
 
-    @tasks.loop(seconds=45)
+    @tasks.loop(seconds=5)
     async def stream_status(self):
 
         for config in self.configurations:
@@ -68,7 +68,15 @@ class Twitch(commands.Cog):
                     embed.add_field(name="Category", value=category, inline=False)
                     embed.set_thumbnail(url=f"https://static-cdn.jtvnw.net/previews-ttv/live_user_{config['twitch_username']}-320x180.jpg")
                     stream_button = StreamButton(stream_url)
-                    await channel.send("@.live", embed=embed, view=stream_button)
+                    role_name = ".live"
+                    role = discord.utils.get(channel.guild.roles, name=role_name)
+                    if role:
+                        await channel.send(f"{role.mention}", embed=embed, view=stream_button)
+                    else:
+                        await channel.send("The .live role does not exist.")
+
+
+
                     config['previous_status'] = 'live'
                     print(f"{config['twitch_username']} is now live!")
                     
