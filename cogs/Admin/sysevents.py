@@ -99,8 +99,9 @@ class SystemEvents(commands.Cog):
                     return
 
             # Command channel restriction
-            if message.content.startswith(','):
+            if message.content.startswith(',') and message.content.channel != 'admin-commands':
                 print(f"\033[0;32mCommand: {message.content}\033[0m by {message.author}")
+                await self.bot.process_commands(message)
                 if message.content.startswith((',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send')):
                     print(f"\033[0;32mCommand has been bypassed properly.\033[0m")
                     await self.bot.process_commands(message)
