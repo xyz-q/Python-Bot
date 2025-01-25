@@ -218,7 +218,7 @@ class ElyNotify(commands.Cog):
     @commands.command(name='notify', aliases=['alert', 'setalert'])
     async def add_alert(self, ctx, *, text: str = None):
         async with ctx.typing():
-            asyncio.sleep(0.5)
+            await asyncio.sleep(0.5)
         print(f"\nNotify command received from {ctx.author}: {text}")
         
         if text is None:
@@ -298,7 +298,7 @@ class ElyNotify(commands.Cog):
     @commands.command(name='removealert')
     async def remove_alert(self, ctx, *, item_name: str):
         async with ctx.typing():
-            asyncio.sleep(0.5)
+            await asyncio.sleep(0.5)
         print(f"\nRemoving alert for {ctx.author}: {item_name}")
         
         if ctx.author.id not in self.price_alerts:
@@ -322,7 +322,7 @@ class ElyNotify(commands.Cog):
     @commands.is_owner() 
     async def all_alerts(self, ctx):
         async with ctx.typing():
-            asyncio.sleep(0.5)
+            await asyncio.sleep(0.5)
         print("\nListing all alerts for all users")
         
         if not self.price_alerts:

@@ -133,5 +133,10 @@ class SystemEvents(commands.Cog):
             print(f"\033[91mError in on_message: {str(e)}\033[0m")
             traceback.print_exc()
 
+    @commands.Cog.listener()
+    async def on_error(self, event, *args, **kwargs):
+        print(f"\033[91mError in event {event}: {args} {kwargs}\033[0m")
+        traceback.print_exc()     
+
 async def setup(bot):
     await bot.add_cog(SystemEvents(bot))
