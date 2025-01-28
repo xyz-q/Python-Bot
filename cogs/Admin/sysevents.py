@@ -250,14 +250,14 @@ class SystemEvents(commands.Cog):
             # Handle DMs
             if isinstance(message.channel, discord.DMChannel):
                 try:
-                    await message.channel.send("❌ I don't respond to DMs!")
+                    print(f"\033[0;32mDM from {message.author}: {message.content}\033[0m")
                     return
                 except Exception as e:
                     print(f"\033[91mError handling DM: {str(e)}\033[0m")
                     return
 
 
-            allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send', ',cf', ',pvpflip')
+            allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send', ',cf', ',pvpflip', ',ticket')
 
             # Only process commands that start with ','
             if not message.content.startswith(','):
