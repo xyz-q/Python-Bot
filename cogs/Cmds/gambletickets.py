@@ -531,87 +531,116 @@ class GambleSystem(commands.Cog):
             location = location_response.content.title()  # This will capitalize first letter of each word
 
             await question_msg.delete()
-            
-            # Create embed for user and channel
-            user_embed = discord.Embed(
-                title="✅ Active Trade Session\n       ",
-                description=f"Your {ticket_type} request has been approved.",
-                color=discord.Color.green()
-            )
-            user_embed.add_field(
-                name="Admin Details",
-                value=f"RSN: {admin_rsn}\nCombat Level: {admin_level}",
-                inline=False
-            )
-            user_embed.add_field(
-                name="Meeting Point",
-                value=f"World {world}\nLocation: {location}",  # Modified to include location
-                inline=False
-            )
-            user_embed.add_field(
-                name="Amount",
-                value=f"{self.format_amount2(ticket_data['amount'])} <:goldpoints:1319902464115343473>",
 
-                inline=False
-            )
-            user_embed.add_field(
-                name="Client RSN",
-                value=ticket_data['rsn'],
-                inline=False
-            )
-            user_embed.set_footer(text=f"Approved by {ctx.author}")
-            
-            # Create embed for admin DM
-            admin_embed = user_embed.copy()
-            admin_embed.title = f"🎫 Active {ticket_type} "
-            admin_embed.description = f"Ticket ID: {ticket_id} for {ticket_data['user_name']}"
-            
-            # Send to user with initial timer
-            if user:
-                user_embed_msg = await user.send(embed=user_embed)
-                user_timer_msg = await user.send("⏳ Time remaining: 10m 0s")
-            
-            # Send to channel for reference
-            public_msg = await ctx.send("✅ Trade session started.")
-            timer_msg = await ctx.send(f"Ticket #{ticket_id} accepted by {ctx.author}.")
-            
-            # Send DM to admin with controls
-            admin_embed_msg = await ctx.author.send(embed=admin_embed)
-            admin_timer_msg = await ctx.author.send("⏳ Time remaining: 10m 0s")
-            
-            # Add buttons to admin DM
-            admin_view = AdminTicketView(
-                self.bot, 
-                ticket_data['user_id'], 
-                timer_msg, 
-                ticket_data, 
-                public_msg, 
-                self, 
-                ticket_type,
-                user_timer_msg,     # User's timer message
-                admin_timer_msg,    # Admin's timer message
-                user_embed_msg,     # User's embed message
-                admin_embed_msg     # Admin's embed message
-            )
-            await admin_embed_msg.edit(view=admin_view)
-            
-            # Start timer
-            end_time = datetime.datetime.now() + datetime.timedelta(minutes=10)
-            await self.update_timer_message(
-                timer_msg, 
-                end_time, 
-                ctx.author.id, 
-                ticket_data['user_id'], 
-                admin_timer_msg, 
-                public_msg,
-                user_timer_msg,
-                admin_embed_msg
-            )
+            # Display summary messages
+            summary1 = await ctx.send(f"RSN: {admin_rsn}")
+            summary2 = await ctx.send(f"Combat Level: {admin_level}")
+            summary3 = await ctx.send(f"World: {world}")
+            summary4 = await ctx.send(f"Location: {location}")
+            confirm_msg = await ctx.send("Type 'confirm' to submit or 'decline' to cancel")
+
+            try:
+                confirmation = await self.bot.wait_for(
+                    'message',
+                    timeout=30.0,
+                    check=lambda message: message.author == ctx.author and 
+                                        message.content.lower() in ['confirm', 'decline']
+                )
+                await confirmation.delete()
+                await confirm_msg.delete()
+                await summary1.delete()
+                await summary2.delete()
+                await summary3.delete()
+                await summary4.delete()
+
+                if confirmation.content.lower() != 'confirm':
+                    await ctx.send("Information declined and discarded.")
+                    return
+
+                # [Rest of your original code continues exactly the same from here]
+                user_embed = discord.Embed(
+                    title="✅ Active Trade Session\n       ",
+                    description=f"Your {ticket_type} request has been approved.\n__***We will never trade you first.***__",
+                    color=discord.Color.green()
+                )
+                user_embed.add_field(
+                    name="Admin Details",
+                    value=f"RSN: {admin_rsn}\nCombat Level: {admin_level}",
+                    inline=False
+                )
+                user_embed.add_field(
+                    name="Meeting Point",
+                    value=f"World {world}\nLocation: {location}",  # Modified to include location
+                    inline=False
+                )
+                user_embed.add_field(
+                    name="Amount",
+                    value=f"{self.format_amount2(ticket_data['amount'])} <:goldpoints:1319902464115343473>",
+                    inline=False
+                )
+                user_embed.add_field(
+                    name="Client RSN",
+                    value=ticket_data['rsn'],
+                    inline=False
+                )
+                user_embed.set_footer(text=f"Approved by {ctx.author}")
+                
+                # Create embed for admin DM
+                admin_embed = user_embed.copy()
+                admin_embed.title = f"🎫 Active {ticket_type} "
+                admin_embed.description = f"Ticket ID: {ticket_id} for {ticket_data['user_name']}"
+                
+                # Send to user with initial timer
+                if user:
+                    user_embed_msg = await user.send(embed=user_embed)
+                    user_timer_msg = await user.send("⏳ Time remaining: 10m 0s")
+                
+                # Send to channel for reference
+                public_msg = await ctx.send("✅ Trade session started.")
+                timer_msg = await ctx.send(f"Ticket #{ticket_id} accepted by {ctx.author}.")
+                
+                # Send DM to admin with controls
+                admin_embed_msg = await ctx.author.send(embed=admin_embed)
+                admin_timer_msg = await ctx.author.send("⏳ Time remaining: 10m 0s")
+                
+                # Add buttons to admin DM
+                admin_view = AdminTicketView(
+                    self.bot, 
+                    ticket_data['user_id'], 
+                    timer_msg, 
+                    ticket_data, 
+                    public_msg, 
+                    self, 
+                    ticket_type,
+                    user_timer_msg,     # User's timer message
+                    admin_timer_msg,    # Admin's timer message
+                    user_embed_msg,     # User's embed message
+                    admin_embed_msg     # Admin's embed message
+                )
+                await admin_embed_msg.edit(view=admin_view)
+                
+                # Start timer
+                end_time = datetime.datetime.now() + datetime.timedelta(minutes=10)
+                await self.update_timer_message(
+                    timer_msg, 
+                    end_time, 
+                    ctx.author.id, 
+                    ticket_data['user_id'], 
+                    admin_timer_msg, 
+                    public_msg,
+                    user_timer_msg,
+                    admin_embed_msg
+                )
+
+            except asyncio.TimeoutError:
+                await ctx.send("Confirmation timed out. Information discarded.")
+                await confirm_msg.delete()
 
         except asyncio.TimeoutError:
             await question_msg.delete()
             await ctx.send("❌ Timed out waiting for response.", delete_after=5)
             return
+
 
 
 
