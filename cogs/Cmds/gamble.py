@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ui import View, Button
 import json
 from typing import List
@@ -14,9 +14,10 @@ import math
 from discord.ui import View, Button
 from pathlib import Path
 import functools
-from datetime import datetime
+from datetime import datetime, timedelta
 import copy
 import typing
+
 
 
 
@@ -122,17 +123,20 @@ def confirm_bet():
                 print(f"Converted amount: {amount}")
 
             except ValueError:
-                await ctx.send("❌Confirmation error: Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)", delete_after=10)
+                await ctx.send("<:remove:1328511957208268800> Confirmation error: Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)", delete_after=10)
                 return None
 
             # Step 2: Check if the amount is valid (positive and within user balance)
             if amount <= 0:
-                await ctx.send("❌Confirmation error:  Amount must be positive!", delete_after=10)
+                await ctx.send("<:remove:1328511957208268800> Confirmation error:  Amount must be positive!", delete_after=10)
                 return None
 
             balance = await self.get_balance(ctx.author.id)
             print(f"User balance: {balance}")
-
+            if amount > balance:
+                await ctx.message.delete()
+                await ctx.send(f"<:remove:1328511957208268800> Confirmation error: Insufficient balance! Your balance <:goldpoints:1319902464115343473> {self.format_amount(balance)}", delete_after=10)
+                return None
             # Step 3: If the amount exceeds the threshold, trigger the confirmation
             if amount >= self.CONFIRMATION_THRESHOLD:
                 print(f"Amount exceeds threshold: {self.CONFIRMATION_THRESHOLD}")
@@ -153,10 +157,10 @@ def confirm_bet():
                     await ctx.send("⚠️ Warning timed out!", delete_after=10)
                     return None
                 elif view.value is False:
-                    await ctx.send("❌ Cancelled!", delete_after=10)
+                    await ctx.send("<:remove:1328511957208268800> Cancelled!", delete_after=10)
                     return None
 
-                print("Bet confirmed!")
+                print("Confirmed!")
 
             # Step 4: If the amount is below threshold or confirmed, proceed with the command
             return await func(self, ctx, amount, *args, **kwargs)
@@ -243,6 +247,14 @@ class TransactionPaginator(discord.ui.View):
                 bet_str = ""
                 transfer_info = transaction.get("transfer_info", "Transferred")
                 amount_str = f"{transfer_info}: {'+'if amount > 0 else ''}{abs(amount):,} <:goldpoints:1319902464115343473>"
+            elif trans_type == "vault_deposit":
+                emoji = "🏦"  # or use a custom emoji if you have one
+                bet_str = ""
+                amount_str = f"Deposited to vault: -{abs(amount):,} <:goldpoints:1319902464115343473>"
+            elif trans_type == "vault_withdraw":
+                emoji = "🏦"  # or use a custom emoji if you have one
+                bet_str = ""
+                amount_str = f"Withdrawn from vault: +{abs(amount):,} <:goldpoints:1319902464115343473>"
             
             embed.add_field(
                 name=f"{emoji} {transaction['command'].title()}",
@@ -342,6 +354,9 @@ class Economy(commands.Cog):
         self.stats = {}
         self.load_stats()  
         self.admin_id = 110927272210354176
+        if not hasattr(self, 'interest_task') or not self.interest_task.is_running():
+            self.interest_task.start()
+
         
 
         self.CONFIRMATION_THRESHOLD = 75_000_000
@@ -418,6 +433,12 @@ class Economy(commands.Cog):
 
         except Exception as e:
             print(f"Logging error: {e}")
+
+
+
+ 
+
+
 
 
 
@@ -564,7 +585,7 @@ class Economy(commands.Cog):
             embed = discord.Embed(
                 title="Statistics Reset",
                 description=f"Reset statistics for {users_affected} users",
-                color=discord.Color.blue()
+                color=discord.Color.gold()
             )
             
             # Add sample users to embed
@@ -600,7 +621,7 @@ class Economy(commands.Cog):
             embed = discord.Embed(
                 title="Statistics Reset",
                 description=f"Statistics have been reset for {target_user.name}",
-                color=discord.Color.blue()
+                color=discord.Color.gold()
             )
             
             await ctx.send(embed=embed)
@@ -608,9 +629,9 @@ class Economy(commands.Cog):
     @reset_stats.error
     async def reset_stats_error(self, ctx, error):
         if isinstance(error, commands.MemberNotFound):
-            await ctx.send("❌ Could not find that user!")
+            await ctx.send("<:remove:1328511957208268800> Could not find that user!")
         elif isinstance(error, commands.BadUnionArgument):
-            await ctx.send("❌ Invalid target! Use either a user mention or 'all'")
+            await ctx.send("<:remove:1328511957208268800> Invalid target! Use either a user mention or 'all'")
 
 
     @commands.command(name="stats")
@@ -1305,6 +1326,82 @@ class Economy(commands.Cog):
             await ctx.send(f"An error occurred: {str(e)}")
 
 
+    @commands.command(name='cleartransactions', aliases=['cleartrans'])
+    @commands.has_permissions(administrator=True)
+    async def clear_transactions(self, ctx, target: typing.Optional[discord.Member] = None, option: str = None):
+        """Clear transaction logs for a user or all users"""
+        
+        try:
+            with open('logs/transactions.json', 'r') as f:
+                logs = json.load(f)
+        except FileNotFoundError:
+            return await ctx.send("No transaction logs found.")
+
+        if not logs.get("users"):
+            return await ctx.send("No transactions to clear.")
+
+        # If "all" option is specified, ask for confirmation
+        if option and option.lower() == 'all':
+            confirm_msg = await ctx.send("⚠️ Are you sure you want to clear ALL transaction logs for ALL users? This cannot be undone!\n"
+                                    "React with ✅ to confirm or ❌ to cancel.")
+            await confirm_msg.add_reaction('✅')
+            await confirm_msg.add_reaction('❌')
+
+            def check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in ['✅', '❌'] and reaction.message == confirm_msg
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+                
+                if str(reaction.emoji) == '✅':
+                    # Clear all transactions but keep the structure
+                    logs["users"] = {}
+                    with open('logs/transactions.json', 'w') as f:
+                        json.dump(logs, f, indent=2)
+                    await ctx.send("✅ Cleared all transaction logs for all users.")
+                else:
+                    await ctx.send("❌ Operation cancelled.")
+                return
+                
+            except asyncio.TimeoutError:
+                await ctx.send("❌ Confirmation timed out. Operation cancelled.")
+                return
+
+        # If no target specified, default to command user
+        if not target:
+            target = ctx.author
+
+        user_id = str(target.id)
+        
+        if user_id not in logs["users"]:
+            return await ctx.send(f"No transactions found for {target.display_name}.")
+
+        # Ask for confirmation for individual user clear
+        confirm_msg = await ctx.send(f"⚠️ Are you sure you want to clear all transaction logs for {target.display_name}?\n"
+                                "React with ✅ to confirm or ❌ to cancel.")
+        await confirm_msg.add_reaction('✅')
+        await confirm_msg.add_reaction('❌')
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ['✅', '❌'] and reaction.message == confirm_msg
+
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            
+            if str(reaction.emoji) == '✅':
+                # Remove user's transactions
+                del logs["users"][user_id]
+                with open('logs/transactions.json', 'w') as f:
+                    json.dump(logs, f, indent=2)
+                await ctx.send(f"✅ Cleared all transaction logs for {target.display_name}.")
+            else:
+                await ctx.send("❌ Operation cancelled.")
+                
+        except asyncio.TimeoutError:
+            await ctx.send("❌ Confirmation timed out. Operation cancelled.")
+
+
+
 
 
     @commands.command()
@@ -1358,14 +1455,14 @@ class Economy(commands.Cog):
     #     """Handle deposits with proper input validation"""
     #     # Check if args is missing
     #     if not args:
-    #         await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,deposit <amount> <rsn>`\nExample: `,deposit 100M Zezima`")
+    #         await ctx.send("<:remove:1328511957208268800> Please provide both amount and RSN!\nUsage: `,deposit <amount> <rsn>`\nExample: `,deposit 100M Zezima`")
     #         return
 
     #     # Split args into amount and RSN
     #     try:
     #         amount, rsn = args.split(' ', 1)
     #     except ValueError:
-    #         await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,deposit <amount> <rsn>`\nExample: `,deposit 100M Zezima`")
+    #         await ctx.send("<:remove:1328511957208268800> Please provide both amount and RSN!\nUsage: `,deposit <amount> <rsn>`\nExample: `,deposit 100M Zezima`")
     #         return
 
     #     # Try to parse the amount
@@ -1373,21 +1470,21 @@ class Economy(commands.Cog):
     #         parsed_amount = self.parse_amount(amount)
     #         # Add minimum and maximum limit checks
     #         if parsed_amount < self.MIN_TRANSACTION_AMOUNT:
-    #             await ctx.send(f"❌ Minimum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
+    #             await ctx.send(f"<:remove:1328511957208268800> Minimum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
     #             return
     #         if parsed_amount > self.MAX_DEPOSIT_AMOUNT:
-    #             await ctx.send(f"❌ Maximum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_DEPOSIT_AMOUNT)}!")
+    #             await ctx.send(f"<:remove:1328511957208268800> Maximum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_DEPOSIT_AMOUNT)}!")
     #             return
     #         formatted_amount = self.format_amount(parsed_amount)
     #     except ValueError:
-    #         await ctx.send("❌ Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
+    #         await ctx.send("<:remove:1328511957208268800> Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
     #         return
 
     #     try:
     #         # Get admin user
     #         admin = self.bot.get_user(self.admin_id)
     #         if not admin:
-    #             await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
+    #             await ctx.send("<:remove:1328511957208268800> Unable to process request at this time. Please contact an administrator.")
     #             return
 
     #         # Create embed for admin
@@ -1416,7 +1513,7 @@ class Economy(commands.Cog):
     #         try:
     #             await admin.send(embed=admin_embed)
     #         except discord.Forbidden:
-    #             await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
+    #             await ctx.send("<:remove:1328511957208268800> Unable to process request at this time. Please contact an administrator.")
     #             return
 
     #         # Confirmation embed for user
@@ -1440,7 +1537,7 @@ class Economy(commands.Cog):
     #         await ctx.send(embed=user_embed)
 
     #     except Exception as e:
-    #         await ctx.send(f"❌ An error occurred: {str(e)}")
+    #         await ctx.send(f"<:remove:1328511957208268800> An error occurred: {str(e)}")
     #         return
 
     # @commands.command()
@@ -1448,14 +1545,14 @@ class Economy(commands.Cog):
     #     """Handle withdrawals with proper input validation"""
     #     # Check if args is missing
     #     if not args:
-    #         await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,withdraw <amount> <rsn>`\nExample: `,withdraw 100M Zezima`")
+    #         await ctx.send("<:remove:1328511957208268800> Please provide both amount and RSN!\nUsage: `,withdraw <amount> <rsn>`\nExample: `,withdraw 100M Zezima`")
     #         return
 
     #     # Split args into amount and RSN
     #     try:
     #         amount, rsn = args.split(' ', 1)
     #     except ValueError:
-    #         await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,withdraw <amount> <rsn>`\nExample: `,withdraw 100M Zezima`")
+    #         await ctx.send("<:remove:1328511957208268800> Please provide both amount and RSN!\nUsage: `,withdraw <amount> <rsn>`\nExample: `,withdraw 100M Zezima`")
     #         return
 
     #     # Try to parse the amount
@@ -1463,27 +1560,27 @@ class Economy(commands.Cog):
     #         parsed_amount = self.parse_amount(amount)
     #         # Add minimum and maximum limit checks
     #         if parsed_amount < self.MIN_TRANSACTION_AMOUNT:
-    #             await ctx.send(f"❌ Minimum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
+    #             await ctx.send(f"<:remove:1328511957208268800> Minimum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
     #             return
     #         if parsed_amount > self.MAX_WITHDRAW_AMOUNT:
-    #             await ctx.send(f"❌ Maximum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_WITHDRAW_AMOUNT)}!")
+    #             await ctx.send(f"<:remove:1328511957208268800> Maximum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_WITHDRAW_AMOUNT)}!")
     #             return
     #         formatted_amount = self.format_amount(parsed_amount)
     #     except ValueError:
-    #         await ctx.send("❌ Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
+    #         await ctx.send("<:remove:1328511957208268800> Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
     #         return
 
     #     # Check if user has enough balance
     #     user_balance = await self.get_balance(str(ctx.author.id))
     #     if user_balance < parsed_amount:
-    #         await ctx.send(f"❌ Insufficient balance! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(user_balance)}")
+    #         await ctx.send(f"<:remove:1328511957208268800> Insufficient balance! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(user_balance)}")
     #         return
 
     #     try:
     #         # Get admin user
     #         admin = self.bot.get_user(self.admin_id)
     #         if not admin:
-    #             await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
+    #             await ctx.send("<:remove:1328511957208268800> Unable to process request at this time. Please contact an administrator.")
     #             return
 
     #         # Create embed for admin
@@ -1517,7 +1614,7 @@ class Economy(commands.Cog):
     #         try:
     #             await admin.send(embed=admin_embed)
     #         except discord.Forbidden:
-    #             await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
+    #             await ctx.send("<:remove:1328511957208268800> Unable to process request at this time. Please contact an administrator.")
     #             return
 
     #         # Confirmation embed for user
@@ -1541,7 +1638,7 @@ class Economy(commands.Cog):
     #         await ctx.send(embed=user_embed)
 
     #     except Exception as e:
-    #         await ctx.send(f"❌ An error occurred: {str(e)}")
+    #         await ctx.send(f"<:remove:1328511957208268800> An error occurred: {str(e)}")
     #         return
     
 
@@ -1995,7 +2092,7 @@ class Economy(commands.Cog):
 
         except Exception as e:
             print(f"Error in slots: {str(e)}")
-            await ctx.send("❌ An error occurred while processing your bet.")
+            await ctx.send("<:remove:1328511957208268800> An error occurred while processing your bet.")
 
 
 
@@ -2524,11 +2621,11 @@ class Economy(commands.Cog):
 
             # Validation
             if new_min <= 0 or new_max <= 0:
-                await ctx.send("❌ Limits must be positive numbers!")
+                await ctx.send("<:remove:1328511957208268800> Limits must be positive numbers!")
                 return
 
             if new_min >= new_max:
-                await ctx.send("❌ Minimum limit must be less than maximum limit!")
+                await ctx.send("<:remove:1328511957208268800> Minimum limit must be less than maximum limit!")
                 return
 
             # Update limits
@@ -2543,12 +2640,12 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
 
         except ValueError:
-            await ctx.send("❌ Invalid amount format! Use numbers with optional k, m, or b suffix (e.g., 500k, 1m)")
+            await ctx.send("<:remove:1328511957208268800> Invalid amount format! Use numbers with optional k, m, or b suffix (e.g., 500k, 1m)")
 
     @set_limits.error
     async def limits_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send("❌ You need administrator permissions to change limits!")
+            await ctx.send("<:remove:1328511957208268800> You need administrator permissions to change limits!")
 
 
 
@@ -2619,18 +2716,689 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
 
         except ValueError:
-            await ctx.send("❌ Invalid amount format! Use numbers with optional k, m, or b suffix (e.g., 500k, 1m)")
+            await ctx.send("<:remove:1328511957208268800> Invalid amount format! Use numbers with optional k, m, or b suffix (e.g., 500k, 1m)")
         except Exception as e:
-            await ctx.send(f"❌ An error occurred: {str(e)}")
+            await ctx.send(f"<:remove:1328511957208268800> An error occurred: {str(e)}")
 
     @set_balance.error
     async def set_balance_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send("❌ You need administrator permissions to set balances!")
+            await ctx.send("<:remove:1328511957208268800> You need administrator permissions to set balances!")
         elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("❌ Usage: ,setbalance <@user|all> <amount>")
+            await ctx.send("<:remove:1328511957208268800> Usage: ,setbalance <@user|all> <amount>")
         elif isinstance(error, commands.MemberNotFound):
-            await ctx.send("❌ Could not find that user!")
+            await ctx.send("<:remove:1328511957208268800> Could not find that user!")
+
+    @commands.group(invoke_without_command=True, aliases=["vaults"])
+    async def vault(self, ctx):
+        """Shows all vault commands"""
+        embed = discord.Embed(
+            title="🏦 Vault Commands",
+            description="Secure storage for your currency",
+            color=discord.Color.gold()
+        )
+        
+        # Get all vault subcommands
+        for command in self.vault.walk_commands():
+            # Get command aliases if any
+            aliases = f" ({', '.join(command.aliases)})" if command.aliases else ""
+            
+            # Get command description
+            description = command.help or "No description available"
+            
+            # Format command syntax
+            if command.signature:
+                syntax = f",vault {command.name} {command.signature}"
+            else:
+                syntax = f",vault {command.name}"
+                
+            embed.add_field(
+                name=f"{syntax}{aliases}",
+                value=description,
+                inline=False
+            )
+
+        embed.set_footer(text="Keep your wealth secure!")
+        
+        await ctx.send(embed=embed)
+
+    def get_vault_balance(self, user_id):
+        """Get vault balance with accumulated interest"""
+        try:
+            vault_data = self.load_vault_data()
+            if user_id not in vault_data:
+                return 0
+
+            current_time = datetime.now().timestamp()
+            last_interest = vault_data[user_id].get("last_interest", current_time)
+            balance = vault_data[user_id]["balance"]
+
+            # Calculate hours passed
+            hours_passed = (current_time - last_interest) / 3600
+            
+            # Calculate interest (1% per day = 0.0417% per hour)
+            hourly_rate = 0.000417  # 1% / 24 hours
+            interest = int(balance * hourly_rate * hours_passed)
+            
+            # Update balance and last interest time
+            vault_data[user_id]["balance"] += interest
+            vault_data[user_id]["last_interest"] = current_time
+            self.save_vault_data(vault_data)
+            
+            return vault_data[user_id]["balance"]
+            
+        except Exception as e:
+            print(f"Balance calculation error: {e}")
+            return 0
+
+
+    @vault.command(name="balance", aliases=["bal"])
+    async def vault_balance(self, ctx):
+        """Check your vault balance"""
+        try:
+            user_id = str(ctx.author.id)
+            vault_data = self.load_vault_data()
+            
+            user_vault = vault_data.get(user_id, {"balance": 0})
+            vault_balance = user_vault.get("balance", 0)
+            total_interest = int(vault_balance * 0.01)  # 1% interest per cycle
+            wallet_balance = self.currency.get(user_id, 0)
+            total_worth = vault_balance + wallet_balance
+            
+            embed = discord.Embed(
+                title="🏦 Personal Vault",
+                color=discord.Color.gold()
+            )
+            
+            embed.add_field(
+                name="Stored Balance",
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_balance)}",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="Interest Per Cycle",
+                value=f"<:goldpoints:1319902464115343473> +{self.format_amount(total_interest)} (1%)",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="Wallet Balance",
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(wallet_balance)}",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="Total Net Worth",
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(total_worth)}",
+                inline=False
+            )
+
+            if user_vault.get("locked", False):
+                lock_until = datetime.fromtimestamp(user_vault.get("lock_until", 0))
+                embed.add_field(
+                    name="🔒 Vault Status",
+                    value=f"Locked until {lock_until.strftime('%Y-%m-%d %H:%M')}",
+                    inline=False
+                )
+            
+            await ctx.send(embed=embed)
+            
+        except Exception as e:
+            print(f"Balance error: {e}")
+            await ctx.send(f"An error occurred: {str(e)}")
+
+
+
+    @vault.command(name="deposit", aliases=["add"])
+    @confirm_bet()
+    async def vault_add(self, ctx, amount=None):
+        """Deposit money into your vault"""
+        try:
+            if amount is None:
+                await ctx.send("Please specify an amount to deposit!")
+                return
+                
+            # Parse amount
+            try:
+                amount = self.parse_amount(str(amount))
+            except ValueError:
+                await ctx.send("Invalid amount format! Use numbers with K, M, B, or T (e.g., 1.5K, 2M, 3B)")
+                return
+
+            # Check minimum deposit
+            if amount < 500000:
+                await ctx.send("Minimum deposit amount is 500k!")
+                return
+                
+            user_id = str(ctx.author.id)
+            
+            # Check if user has enough money
+            if self.currency.get(user_id, 0) < amount:
+                await ctx.send("You don't have enough money!")
+                return
+                
+            # Load vault data
+            vault_data = self.load_vault_data()
+            
+            # Initialize user's vault if it doesn't exist
+            if user_id not in vault_data:
+                vault_data[user_id] = {
+                    "balance": amount,  # Set initial balance
+                    "locked": False,
+                    "lock_until": None
+                }
+            else:
+                # Add to existing balance
+                vault_data[user_id]["balance"] = vault_data[user_id]["balance"] + amount
+                
+            # Update wallet balance
+            self.currency[user_id] -= amount
+            
+            # Save changes
+            self.save_vault_data(vault_data)
+            self.save_currency()
+            
+            embed = discord.Embed(
+                title="🏦 Vault Deposit",
+                description=f"Successfully deposited <:goldpoints:1319902464115343473> {self.format_amount(amount)}",
+                color=discord.Color.green()
+            )
+            
+            embed.add_field(
+                name="New Vault Balance",
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_data[user_id]['balance'])}",
+                inline=True
+            )
+            embed.add_field(
+                name="New Wallet Balance",
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(self.currency[user_id])}",
+                inline=True
+            )
+            
+            final_balance = self.currency[user_id]  # Vault balance after deposit
+            await self.log_transaction(
+                ctx=ctx,
+                bet_amount=0,
+                win_amount=amount,  # Amount deposited
+                final_balance=final_balance,
+                transaction_type="vault_deposit"
+            )            
+            await ctx.send(embed=embed)
+                
+        except Exception as e:
+            print(f"Deposit error: {e}")
+            await ctx.send(f"An error occurred: {str(e)}")
+            # Refund if error occurs
+            self.currency[user_id] += amount
+            self.save_currency()
+
+    @vault.command(name="withdraw", aliases=["remove"])
+    async def vault_remove(self, ctx, amount=None):
+        """Remove money from your vault"""
+        try:
+            if amount is None:
+                await ctx.send("Please specify an amount to remove!")
+                return
+                
+            # Parse amount
+            try:
+                amount = self.parse_amount(str(amount))
+            except ValueError:
+                await ctx.send("Invalid amount format! Use numbers with K, M, B, or T (e.g., 1.5K, 2M, 3B)")
+                return
+                
+            user_id = str(ctx.author.id)
+            vault_data = self.load_vault_data()
+            
+            # Check if user has a vault
+            if user_id not in vault_data:
+                await ctx.send("You don't have a vault yet!")
+                return
+
+            # Check if vault is locked
+            if vault_data[user_id].get("locked", False):
+                lock_time = datetime.fromtimestamp(vault_data[user_id]["lock_until"])
+                if lock_time > datetime.now():
+                    remaining = lock_time - datetime.now()
+                    hours = int(remaining.total_seconds() // 3600)
+                    minutes = int((remaining.total_seconds() % 3600) // 60)
+                    
+                    embed = discord.Embed(
+                        title="🔒 Vault Locked",
+                        description=f"Your vault is currently locked!\nUnlocks in: {hours}h {minutes}m",
+                        color=discord.Color.red()
+                    )
+                    await ctx.send(embed=embed)
+                    return
+                else:
+                    vault_data[user_id]["locked"] = False
+                    vault_data[user_id]["lock_until"] = None
+                    self.save_vault_data(vault_data)
+
+            # Check balance
+            if vault_data[user_id]["balance"] < amount:
+                await ctx.send("You don't have enough in your vault!")
+                return
+                
+            if amount < 500000:
+                await ctx.send("Minimum withdrawal amount is 500k!")
+                return
+
+            # Update balances
+            vault_data[user_id]["balance"] -= amount
+            self.currency[user_id] = self.currency.get(user_id, 0) + amount
+            
+            # Save changes
+            self.save_vault_data(vault_data)
+            self.save_currency()
+            
+            embed = discord.Embed(
+                title="🏦 Vault Withdrawal",
+                description=f"Successfully withdrawn <:goldpoints:1319902464115343473> {self.format_amount(amount)}",
+                color=discord.Color.green()
+            )
+            
+            embed.add_field(
+                name="New Vault Balance",
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_data[user_id]['balance'])}",
+                inline=True
+            )
+            embed.add_field(
+                name="New Wallet Balance",
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(self.currency[user_id])}",
+                inline=True
+            )
+
+            final_balance = self.currency[user_id]  # Wallet balance after withdrawal
+            await self.log_transaction(
+                ctx=ctx,
+                bet_amount=0,
+                win_amount=-amount,  # Negative amount for withdrawal
+                final_balance=final_balance,
+                transaction_type="vault_withdraw"
+            )            
+            await ctx.send(embed=embed)
+                
+        except Exception as e:
+            print(f"Remove error: {e}")
+            await ctx.send(f"An error occurred: {str(e)}")
+
+
+    @vault.command(name="leaderboard", aliases=["lb"])
+    async def vault_leaderboard(self, ctx):
+        """Display the vault leaderboard"""
+        try:
+            await ctx.message.delete()
+            
+            # Load vault data from JSON
+            vault_data = self.load_vault_data()
+            
+            # Convert to list of (user_id, balance) tuples
+            vault_list = [(user_id, data['balance']) for user_id, data in vault_data.items()]
+            
+            # Sort by balance (highest to lowest)
+            vault_list.sort(key=lambda x: x[1], reverse=True)
+
+            embed = discord.Embed(
+                title="🏦 Vault Leaderboard",
+                description="Top Vault Holders",
+                color=discord.Color.gold()
+            )
+
+            # Add top 10 players to embed
+            for i, (user_id, balance) in enumerate(vault_list[:10], 1):
+                try:
+                    user = await self.bot.fetch_user(int(user_id))
+                    username = user.name
+                except:
+                    username = f"User {user_id}"
+
+                medal = ""
+                if i == 1:
+                    medal = "🥇"
+                elif i == 2:
+                    medal = "🥈"
+                elif i == 3:
+                    medal = "🥉"
+                else:
+                    medal = "👑"
+
+                embed.add_field(
+                    name=f"{medal} Rank #{i}",
+                    value=f"**{username}**\n<:goldpoints:1319902464115343473> {self.format_amount(balance)}",
+                    inline=False
+                )
+
+            # Add footer with total vaults
+            total_vaults = len(vault_list)
+            total_wealth = sum(balance for _, balance in vault_list)
+            embed.set_footer(text=f"Total Vaults: {total_vaults} | Combined Wealth: {self.format_amount(total_wealth)}")
+
+            await ctx.send(embed=embed)
+
+        except Exception as e:
+            print(f"Leaderboard error: {e}")
+            await ctx.send(f"An error occurred: {str(e)}")
+
+
+
+    @tasks.loop(minutes=195)  # 3 hours and 15 minutes
+    async def interest_task(self):
+        try:
+            print("Interest loop running...")
+            vault_data = self.load_vault_data()
+            house_id = str(self.bot.user.id)
+            total_interest = 0
+            
+            # Calculate total interest first to ensure house can afford it
+            for user_id, data in vault_data.items():
+                if data.get("locked", False):  # Only apply interest to locked vaults
+                    current_balance = data.get("balance", 0)
+                    interest = int(current_balance * 0.01)  # 1% interest
+                    total_interest += interest
+
+            # Check if house has enough to pay interest
+            house_balance = int(self.currency[house_id])
+            if house_balance < total_interest:
+                print(f"House cannot afford interest payments! Need: {total_interest}, Have: {house_balance}")
+                return
+
+            # Apply interest if house can afford it
+            for user_id, data in vault_data.items():
+                if data.get("locked", False):
+                    current_balance = data.get("balance", 0)
+                    interest = int(current_balance * 0.01)  # 1% interest
+                    vault_data[user_id]["balance"] = current_balance + interest
+                    print(f"Paid {interest} interest to {user_id}")
+
+            # Deduct total interest from house account
+            self.currency[house_id] = house_balance - total_interest
+            
+            self.save_vault_data(vault_data)
+            self.save_currency()
+            print(f"Interest loop completed. Total interest paid: {total_interest}")
+
+        except Exception as e:
+            print(f"Interest task error: {e}")
+
+
+
+        
+
+
+    @vault.command(name="lock")
+    async def vault_lock(self, ctx):
+        """Lock your vault"""
+        try:
+            user_id = str(ctx.author.id)
+            vault_data = self.load_vault_data()
+
+            # Check if user has a vault and minimum balance
+            if user_id not in vault_data:
+                await ctx.send("You don't have a vault yet!")
+                return
+
+            if vault_data[user_id]["balance"] < 500000:
+                await ctx.send("You need at least 500k in your vault to lock it!")
+                return
+
+            # Check if already locked
+            if vault_data[user_id].get("locked", False):
+                lock_until = datetime.fromtimestamp(vault_data[user_id]["lock_until"])
+                if lock_until > datetime.now():
+                    remaining = lock_until - datetime.now()
+                    hours = int(remaining.total_seconds() // 3600)
+                    minutes = int((remaining.total_seconds() % 3600) // 60)
+                    embed = discord.Embed(
+                        title="🔒 Vault Already Locked",
+                        description=f"Your vault is already locked!\nUnlocks in: {hours}h {minutes}m",
+                        color=discord.Color.red()
+                    )
+                    await ctx.send(embed=embed)
+                    return
+
+            # Create informational embed
+            info_embed = discord.Embed(
+                title="🔒 Vault Lock Information",
+                description=(
+                    "Locking your vault prevents withdrawals until the lock expires.\n\n"
+                    "**Benefits:**\n"
+                    "• Protect your money from theft\n"
+                    "• Earn interest while locked\n"
+                    "• Force yourself to save\n\n"
+                    "**Warning:**\n"
+                    "• Early unlock costs 10% of vault balance\n"
+                    "• Requires 50M minimum balance to unlock early\n"
+                    "• Lock duration cannot be shortened once set\n\n"
+                    "Choose your lock duration:"
+                ),
+                color=discord.Color.blue()
+            )
+
+            class LockDurationView(discord.ui.View):
+                def __init__(self):
+                    super().__init__(timeout=30)
+                    self.value = None
+
+                @discord.ui.button(label="1 Hour", style=discord.ButtonStyle.blurple)
+                async def hour(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id != ctx.author.id:
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        return
+                    self.value = timedelta(hours=1)
+                    self.disable_all_buttons()
+                    await interaction.response.edit_message(view=self)
+                    self.stop()
+
+                @discord.ui.button(label="1 Day", style=discord.ButtonStyle.blurple)
+                async def day(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id != ctx.author.id:
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        return
+                    self.value = timedelta(days=1)
+                    self.disable_all_buttons()
+                    await interaction.response.edit_message(view=self)
+                    self.stop()
+
+                @discord.ui.button(label="1 Week", style=discord.ButtonStyle.blurple)
+                async def week(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id != ctx.author.id:
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        return
+                    self.value = timedelta(weeks=1)
+                    self.disable_all_buttons()
+                    await interaction.response.edit_message(view=self)
+                    self.stop()
+
+                @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
+                async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id != ctx.author.id:
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        return
+                    self.value = None
+                    self.disable_all_buttons()
+                    await interaction.response.edit_message(view=self)
+                    self.stop()
+
+                def disable_all_buttons(self):
+                    for item in self.children:
+                        item.disabled = True
+
+            view = LockDurationView()
+            message = await ctx.send(embed=info_embed, view=view)
+
+            # Wait for button interaction
+            await view.wait()
+            
+            if view.value:
+                lock_duration = view.value
+                lock_until = datetime.now() + lock_duration
+                
+                # Save lock data
+                vault_data[user_id]["locked"] = True
+                vault_data[user_id]["lock_until"] = lock_until.timestamp()
+                self.save_vault_data(vault_data)
+
+                # Calculate when it unlocks
+                hours = int(lock_duration.total_seconds() // 3600)
+                minutes = int((lock_duration.total_seconds() % 3600) // 60)
+
+                success_embed = discord.Embed(
+                    title="🔒 Vault Locked Successfully",
+                    description=(
+                        f"Your vault has been locked for: **{hours}h {minutes}m**\n\n"
+                        f"Unlocks on: {lock_until.strftime('%Y-%m-%d %H:%M')}\n"
+                        f"Current Balance: <:goldpoints:1319902464115343473> {self.format_amount(vault_data[user_id]['balance'])}"
+                    ),
+                    color=discord.Color.green()
+                )
+                await message.edit(embed=success_embed, view=None)
+            else:
+                cancel_embed = discord.Embed(
+                    title="❌ Lock Cancelled",
+                    description="Your vault remains unlocked.",
+                    color=discord.Color.red()
+                )
+                await message.edit(embed=cancel_embed, view=None)
+
+        except Exception as e:
+            print(f"Lock error: {e}")
+            await ctx.send(f"An error occurred: {str(e)}")
+
+
+    @vault.command(name="unlock")
+    async def vault_unlock(self, ctx):
+        """Emergency unlock your vault (10% fee, minimum 50M balance required)"""
+        try:
+            user_id = str(ctx.author.id)
+            vault_data = self.load_vault_data()
+            house_id = "1102678649257066507" 
+            # Check if user has a vault
+            if user_id not in vault_data:
+                await ctx.send("You don't have a vault yet!")
+                return
+
+            # Check if vault is actually locked
+            if not vault_data[user_id].get("locked", False):
+                await ctx.send("Your vault is not locked!")
+                return
+
+            # Check minimum balance requirement
+            current_balance = vault_data[user_id]["balance"]
+            if current_balance < 50000000:  # 50M minimum
+                await ctx.send("You need at least 50M in your vault to use emergency unlock!")
+                return
+
+            # Calculate 10% fee
+            fee = int(current_balance * 0.10) 
+            if fee != vault_data[user_id]['balance']:
+                print(f"Fee: {fee}")
+                print(f"Current vault balance: {vault_data[user_id]['balance']}")
+            class UnlockConfirmView(discord.ui.View):
+                def __init__(self):
+                    super().__init__(timeout=30)
+                    self.value = None
+
+                @discord.ui.button(label="Confirm Unlock", style=discord.ButtonStyle.green, emoji="✅")
+                async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id != ctx.author.id:
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        return
+                    self.value = True
+                    self.disable_all_buttons()
+                    await interaction.response.edit_message(view=self)
+                    self.stop()
+
+                @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, emoji="❌")
+                async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id != ctx.author.id:
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        return
+                    self.value = False
+                    self.disable_all_buttons()
+                    await interaction.response.edit_message(view=self)
+                    self.stop()
+
+                def disable_all_buttons(self):
+                    for item in self.children:
+                        item.disabled = True
+
+            view = UnlockConfirmView()
+            embed = discord.Embed(
+                title="🔓 Emergency Unlock",
+                description=f"Are you sure you want to unlock your vault?\n\n"
+                        f"Current Balance: <:goldpoints:1319902464115343473> {self.format_amount(current_balance)}\n"
+                        f"Unlock Fee (10%): <:goldpoints:1319902464115343473> {self.format_amount(fee)}\n"
+                        f"Final Balance: <:goldpoints:1319902464115343473> {self.format_amount(current_balance - fee)}",
+                color=discord.Color.gold()
+            )
+            message = await ctx.send(embed=embed, view=view)
+
+            # Wait for button interaction
+            await view.wait()
+            
+            if view.value is True:
+                # Apply fee
+                vault_data[user_id]["balance"] -= fee
+                # Unlock vault
+                vault_data[user_id]["locked"] = False
+                vault_data[user_id]["lock_until"] = None
+                # Save the changes
+                print(f"House balance before: {self.currency.get(house_id, 0)}")
+                self.currency[house_id] = self.currency.get(house_id, 0) + fee
+                self.save_vault_data(vault_data)
+                self.save_currency()
+                print(f"House balance after: {self.currency[house_id]}")
+
+                success_embed = discord.Embed(
+                    title="🔓 Vault Unlocked",
+                    description=f"Your vault has been unlocked!\n\n"
+                            f"Fee Paid: <:goldpoints:1319902464115343473> {self.format_amount(fee)}\n"
+                            f"New Balance: <:goldpoints:1319902464115343473> {self.format_amount(vault_data[user_id]['balance'])}",
+                    color=discord.Color.green()
+                )
+                await message.edit(embed=success_embed, view=None)
+            elif view.value is False:
+                cancel_embed = discord.Embed(
+                    title="❌ Unlock Cancelled",
+                    description="Your vault remains locked.",
+                    color=discord.Color.red()
+                )
+                await message.edit(embed=cancel_embed, view=None)
+            else:
+                timeout_embed = discord.Embed(
+                    title="⏰ Unlock Timed Out",
+                    description="No response received. Your vault remains locked.",
+                    color=discord.Color.red()
+                )
+                await message.edit(embed=timeout_embed, view=None)
+
+        except Exception as e:
+            print(f"Unlock error: {e}")
+            await ctx.send(f"An error occurred: {str(e)}")
+
+
+
+
+
+
+
+
+    def save_vault_data(self, data):
+        """Save vault data to JSON file"""
+        with open('.json/vaults.json', 'w') as f:
+            json.dump(data, f, indent=4)
+
+    def load_vault_data(self):
+        """Load vault data from JSON file"""
+        try:
+            with open('.json/vaults.json', 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
+
+
 
 
 
