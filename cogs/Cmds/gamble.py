@@ -3095,7 +3095,7 @@ class Economy(commands.Cog):
             for user_id, data in vault_data.items():
                 if data.get("locked", False):  # Only apply interest to locked vaults
                     current_balance = data.get("balance", 0)
-                    interest = int(current_balance * 0.01)  # 1% interest
+                    interest = int(current_balance * 0.005)  
                     total_interest += interest
 
             # Check if house has enough to pay interest
