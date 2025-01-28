@@ -54,7 +54,6 @@ limits_manager = GambleLimits()
 
 
 
-# Modified transaction_limit function
 def transaction_limit():
     async def predicate(ctx):
         try:
@@ -66,13 +65,15 @@ def transaction_limit():
             amount = None
             for arg in args[1:]:
                 try:
-                    cleaned_arg = arg.strip('$,k,m,b,K,M,B')
+                    cleaned_arg = arg.strip('$,k,m,b,t,K,M,B,T')  # Added 't' and 'T'
                     if 'k' in arg.lower():
                         amount = float(cleaned_arg) * 1000
                     elif 'm' in arg.lower():
                         amount = float(cleaned_arg) * 1000000
                     elif 'b' in arg.lower():
                         amount = float(cleaned_arg) * 1000000000
+                    elif 't' in arg.lower():  # Added trillion support
+                        amount = float(cleaned_arg) * 1000000000000
                     else:
                         amount = float(cleaned_arg)
                     break
@@ -96,6 +97,7 @@ def transaction_limit():
             print(f"Transaction limit check error: {e}")
             return True
 
+
     return commands.check(predicate)
 
 
@@ -114,44 +116,29 @@ def confirm_bet():
                 # If no amount is provided, proceed with the original function
                 return await func(self, ctx, amount, *args, **kwargs)
 
-            # Step 1: Convert the amount if it's given as a string with a suffix (k, m, b)
+            # Step 1: Convert the amount using your existing parse_amount method
             try:
-                amount = str(amount).lower().replace(',', '').replace(' ', '')
-                multipliers = {
-                    'k': 1_000,
-                    'm': 1_000_000,
-                    'b': 1_000_000_000
-                }
-
-                if amount[-1] in multipliers:
-                    number = float(amount[:-1])
-                    multiplier = multipliers[amount[-1]]
-                    amount = int(number * multiplier)
-                else:
-                    amount = int(float(amount))
-
+                amount = self.parse_amount(str(amount))
                 print(f"Converted amount: {amount}")
 
-            except (ValueError, TypeError):
-                await ctx.send("Invalid amount format!", delete_after=10)
+            except ValueError:
+                await ctx.send("❌Confirmation error: Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)", delete_after=10)
                 return None
 
             # Step 2: Check if the amount is valid (positive and within user balance)
             if amount <= 0:
-                await ctx.send("Amount must be positive!", delete_after=10)
+                await ctx.send("❌Confirmation error:  Amount must be positive!", delete_after=10)
                 return None
 
             balance = await self.get_balance(ctx.author.id)
             print(f"User balance: {balance}")
-
-
 
             # Step 3: If the amount exceeds the threshold, trigger the confirmation
             if amount >= self.CONFIRMATION_THRESHOLD:
                 print(f"Amount exceeds threshold: {self.CONFIRMATION_THRESHOLD}")
                 view = BetConfirmation()  # Assuming this is a button or modal view
                 message = await ctx.send(
-                    f"⚠️ Are you sure you want to use {amount:,} <:goldpoints:1319902464115343473>?", 
+                    f"⚠️ Are you sure you want to use {self.format_amount(amount)} <:goldpoints:1319902464115343473>?", 
                     view=view
                 )
 
@@ -163,10 +150,10 @@ def confirm_bet():
                     print(f"Error deleting message: {e}")
 
                 if view.value is None:
-                    await ctx.send("Warning timed out!", delete_after=10)
+                    await ctx.send("⚠️ Warning timed out!", delete_after=10)
                     return None
                 elif view.value is False:
-                    await ctx.send("Cancelled!", delete_after=10)
+                    await ctx.send("❌ Cancelled!", delete_after=10)
                     return None
 
                 print("Bet confirmed!")
@@ -342,9 +329,11 @@ class PaginationView(discord.ui.View):
 
 
 class Economy(commands.Cog):
-    MIN_TRANSACTION_AMOUNT = 50_000_000  # 50M minimum
-    MAX_TRANSACTION_AMOUNT = 1_000_000_000  # 5B maximum
+    MIN_TRANSACTION_AMOUNT = 10_000_000  # 50M minimum
+    MAX_DEPOSIT_AMOUNT = 2_000_000_000  # 2B maximum
+    MAX_WITHDRAW_AMOUNT = 500_000_000  # 500M maximum
     def __init__(self, bot):
+        self.admin_ids = [110927272210354176, 311612585524854805]
         self.bot = bot
         self.current_author = None
         self.currency = {}
@@ -542,26 +531,87 @@ class Economy(commands.Cog):
             print(f"Error: {e}")
 
     @commands.command(name="resetstats")
-    async def reset_stats(self, ctx, user: discord.Member = None):
-        if user and not ctx.author.guild_permissions.administrator:
+    async def reset_stats(self, ctx, target: typing.Union[discord.Member, str] = None):
+        """Reset statistics for a user or all users"""
+        if target and not ctx.author.guild_permissions.administrator:
             await ctx.send("Only administrators can reset other users' stats!")
             return
+
+        if isinstance(target, str) and target.lower() == "all":
+            if not ctx.author.guild_permissions.administrator:
+                await ctx.send("Only administrators can reset all users' stats!")
+                return
+
+            # Store the number of users affected
+            users_affected = len(self.stats)
             
-        target_user = user or ctx.author
-        user_id = str(target_user.id)
-        
-        # Reset the stats for the user
-        self.stats[user_id] = {
-            "total_wagered": 0,
-            "total_won": 0,
-            "total_lost": 0,
-            "biggest_win": 0,
-            "games_played": 0
-        }
-        
-        self.save_stats()
-        
-        await ctx.send(f"📊 Statistics have been reset for {target_user.name}!")
+            # Store some examples for the embed
+            example_users = list(self.stats.keys())[:5]  # First 5 users
+            
+            # Reset all stats
+            for user_id in self.stats:
+                self.stats[user_id] = {
+                    "total_wagered": 0,
+                    "total_won": 0,
+                    "total_lost": 0,
+                    "biggest_win": 0,
+                    "games_played": 0
+                }
+            
+            self.save_stats()
+
+            # Create embed for response
+            embed = discord.Embed(
+                title="Statistics Reset",
+                description=f"Reset statistics for {users_affected} users",
+                color=discord.Color.blue()
+            )
+            
+            # Add sample users to embed
+            if example_users:
+                sample_users = "\n".join([f"<@{user_id}>" for user_id in example_users])
+                if len(self.stats) > 5:
+                    sample_users += "\n..."
+                embed.add_field(
+                    name="Sample Users Reset",
+                    value=sample_users,
+                    inline=False
+                )
+
+            await ctx.send(embed=embed)
+
+        else:
+            # Handle single user reset
+            target_user = target or ctx.author
+            user_id = str(target_user.id)
+            
+            # Reset the stats for the user
+            self.stats[user_id] = {
+                "total_wagered": 0,
+                "total_won": 0,
+                "total_lost": 0,
+                "biggest_win": 0,
+                "games_played": 0
+            }
+            
+            self.save_stats()
+
+            # Create embed for single user reset
+            embed = discord.Embed(
+                title="Statistics Reset",
+                description=f"Statistics have been reset for {target_user.name}",
+                color=discord.Color.blue()
+            )
+            
+            await ctx.send(embed=embed)
+
+    @reset_stats.error
+    async def reset_stats_error(self, ctx, error):
+        if isinstance(error, commands.MemberNotFound):
+            await ctx.send("❌ Could not find that user!")
+        elif isinstance(error, commands.BadUnionArgument):
+            await ctx.send("❌ Invalid target! Use either a user mention or 'all'")
+
 
     @commands.command(name="stats")
     async def show_stats(self, ctx, user: discord.Member = None):
@@ -678,37 +728,81 @@ class Economy(commands.Cog):
         self.save_data()
         return self.balances[user_id]
 
-    def parse_amount(self, amount):
-        """Convert string amounts like '5k', '1m', etc. to integers"""
-        if isinstance(amount, (int, float)):
-            return int(amount)
-            
-        amount = str(amount).lower().strip()
-        multipliers = {
-            'k': 1000,
-            'm': 1000000,
-            'b': 1000000000,
-            't': 1000000000000
-        }
-        
+    def parse_amount(self, amount: str) -> int:
+        """Parse amount with proper multiplier validation"""
         try:
-            if amount[-1] in multipliers:
-                number = float(amount[:-1])
-                return int(number * multipliers[amount[-1]])
+            amount = amount.strip().lower()
+            
+            # Valid multipliers
+            multipliers = {
+                'k': 1_000,
+                'm': 1_000_000,
+                'b': 1_000_000_000,
+                't': 1_000_000_000_000
+            }
+
+            # If amount ends with a letter
+            if amount[-1].isalpha():
+                multiplier = amount[-1]
+                number = amount[:-1]
+
+                # Check if it's a valid multiplier
+                if multiplier not in multipliers:
+                    raise ValueError("Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B, 1T)")
+
+                try:
+                    base_amount = float(number)
+                    parsed_amount = int(base_amount * multipliers[multiplier])
+                    
+                    # Convert large B amounts to T if they exceed 1000B
+                    if multiplier == 'b' and base_amount >= 1000:
+                        parsed_amount = int((base_amount / 1000) * multipliers['t'])
+                    
+                    return parsed_amount
+                except ValueError:
+                    raise ValueError("Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B, 1T)")
+
+            # If no multiplier, try to parse as regular number
             return int(float(amount))
-        except (ValueError, IndexError):
-            return 0
+
+        except ValueError as e:
+            raise ValueError(str(e))
+        except Exception:
+            raise ValueError("Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B, 1T)")
 
     def format_amount(self, amount):
-        if amount >= 10000000000:  # 10B+
-            billions = amount / 1000000000
-            return f"{int(billions):,}B"
-        elif amount >= 1000000:  # Millions
-            millions = amount / 1000000
-            return f"{int(millions):,}M"
-        elif amount >= 1000:  # Thousands
+        # For amounts >= 1T
+        if amount >= 1000000000000:  # 1T+
+            if amount >= 10000000000000:  # 10T+
+                trillions = amount / 1000000000000
+                return f"{int(trillions):,}T"
+            else:
+                billions = amount / 1000000000
+                return f"{int(billions):,}B"
+                
+        # For amounts >= 1B
+        elif amount >= 1000000000:  # 1B+
+            if amount >= 10000000000:  # 10B+
+                billions = amount / 1000000000
+                return f"{int(billions):,}B"
+            else:
+                millions = amount / 1000000
+                return f"{int(millions):,}M"
+                
+        # For amounts >= 1M
+        elif amount >= 1000000:  # 1M+
+            if amount >= 10000000:  # 10M+
+                millions = amount / 1000000
+                return f"{int(millions):,}M"
+            else:
+                thousands = amount / 1000
+                return f"{int(thousands):,}K"
+                
+        # For amounts >= 1K
+        elif amount >= 1000:
             thousands = amount / 1000
             return f"{int(thousands):,}K"
+        
         return f"{int(amount):,}"
 
 
@@ -896,7 +990,7 @@ class Economy(commands.Cog):
             try:
                 amount = self.parse_amount(amount)
             except ValueError:
-                await ctx.send("Invalid amount format! Use numbers with K, M, B, or T (e.g., 1.5K, 2M, 3B, 1T)")
+                await ctx.send("Invalid amount format! Use numbers with K, M, or B (e.g., 1.5K, 2M, 3B, 1T)")
                 return
 
             if amount <= 0:
@@ -1003,7 +1097,7 @@ class Economy(commands.Cog):
             try:
                 amount = self.parse_amount(amount)
             except ValueError:
-                await ctx.send("Invalid amount format! Use numbers with K, M, B, or T (e.g., 1.5K, 2M, 3B, 1T)")
+                await ctx.send("Invalid amount format! Use numbers with K, M, or B (e.g., 1.5K, 2M, 3B, 1T)")
                 return
 
             if amount <= 0:
@@ -1013,7 +1107,7 @@ class Economy(commands.Cog):
             # Check if user has enough balance
             current_balance = await self.get_balance(user_id)
             if current_balance < amount:
-                await ctx.send(f"{user_name} doesn't have enough balance!")
+                await ctx.send(f"{user_name} doesn't have enough balance! Their balance: <:goldpoints:1319902464115343473> {self.format_amount(current_balance)}")
                 return
 
             # Create confirmation view
@@ -1114,7 +1208,7 @@ class Economy(commands.Cog):
             try:
                 amount = self.parse_amount(amount)
             except ValueError:
-                await ctx.send("Invalid amount format! Use numbers with K, M, B, or T (e.g., 1.5K, 2M, 3B, 1T)")
+                await ctx.send("Invalid amount format! Use numbers with K, M, or B (e.g., 1.5K, 2M, 3B, 1T)")
                 return
 
             sender_id = str(ctx.author.id)
@@ -1215,17 +1309,21 @@ class Economy(commands.Cog):
 
     @commands.command()
     async def staking(self, ctx):
-        """Shows all available economy commands"""
-        # Delete the invoked command message
         await ctx.message.delete()
 
-        # Get all commands from this cog
-        commands_list = sorted(
-            [cmd for cmd in self.bot.get_cog('Economy').get_commands()],
-            key=lambda x: x.name
-        )
+        # Get commands from multiple cogs
+        commands_list = []
+        cogs_to_include = ['Economy', 'GambleSystem']  # Add the names of cogs you want to include
+        
+        for cog_name in cogs_to_include:
+            cog = self.bot.get_cog(cog_name)
+            if cog:
+                commands_list.extend(cog.get_commands())
+        
+        # Sort all commands alphabetically
+        commands_list = sorted(commands_list, key=lambda x: x.name)
 
-        # Create command descriptions
+        # Rest of your existing code remains the same
         command_descriptions = []
         for cmd in commands_list:
             aliases = f" (aliases: {', '.join(cmd.aliases)})" if cmd.aliases else ""
@@ -1255,184 +1353,199 @@ class Economy(commands.Cog):
         await ctx.send(embed=embeds[0], view=view)
 
 
-    @commands.command()
-    @confirm_bet()
+    # @commands.command()
+    # async def deposit(self, ctx, *, args=None):
+    #     """Handle deposits with proper input validation"""
+    #     # Check if args is missing
+    #     if not args:
+    #         await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,deposit <amount> <rsn>`\nExample: `,deposit 100M Zezima`")
+    #         return
 
-    async def deposit(self, ctx, amount: str = None, *, rsn: str = None):
-        try:
-            if amount is None or rsn is None:
-                await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,deposit <amount> <rsn>`\nExample: `,deposit 100M Zezima`")
-                return
+    #     # Split args into amount and RSN
+    #     try:
+    #         amount, rsn = args.split(' ', 1)
+    #     except ValueError:
+    #         await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,deposit <amount> <rsn>`\nExample: `,deposit 100M Zezima`")
+    #         return
 
-            # Parse and validate amount
-            try:
-                parsed_amount = self.parse_amount(amount)
-                # Add minimum and maximum limit checks
-                if parsed_amount < self.MIN_TRANSACTION_AMOUNT:
-                    await ctx.send(f"❌ Minimum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
-                    return
-                if parsed_amount > self.MAX_TRANSACTION_AMOUNT:
-                    await ctx.send(f"❌ Maximum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_TRANSACTION_AMOUNT)}!")
-                    return
-                formatted_amount = self.format_amount(parsed_amount)
-            except ValueError:
-                await ctx.send("❌ Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
-                return
+    #     # Try to parse the amount
+    #     try:
+    #         parsed_amount = self.parse_amount(amount)
+    #         # Add minimum and maximum limit checks
+    #         if parsed_amount < self.MIN_TRANSACTION_AMOUNT:
+    #             await ctx.send(f"❌ Minimum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
+    #             return
+    #         if parsed_amount > self.MAX_DEPOSIT_AMOUNT:
+    #             await ctx.send(f"❌ Maximum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_DEPOSIT_AMOUNT)}!")
+    #             return
+    #         formatted_amount = self.format_amount(parsed_amount)
+    #     except ValueError:
+    #         await ctx.send("❌ Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
+    #         return
 
-            # Get admin user
-            admin = self.bot.get_user(self.admin_id)
-            if not admin:
-                await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
-                return
+    #     try:
+    #         # Get admin user
+    #         admin = self.bot.get_user(self.admin_id)
+    #         if not admin:
+    #             await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
+    #             return
 
-            # Create embed for admin
-            admin_embed = discord.Embed(
-                title="💰 New Deposit Request",
-                color=discord.Color.green()
-            )
-            admin_embed.add_field(
-                name="User",
-                value=f"{ctx.author} (ID: {ctx.author.id})",
-                inline=False
-            )
-            admin_embed.add_field(
-                name="Amount",
-                value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
-                inline=False
-            )
-            admin_embed.add_field(
-                name="RSN",
-                value=rsn,
-                inline=False
-            )
-            admin_embed.set_footer(text=f"Requested at {discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    #         # Create embed for admin
+    #         admin_embed = discord.Embed(
+    #             title="💰 New Deposit Request",
+    #             color=discord.Color.green()
+    #         )
+    #         admin_embed.add_field(
+    #             name="User",
+    #             value=f"{ctx.author} (ID: {ctx.author.id})",
+    #             inline=False
+    #         )
+    #         admin_embed.add_field(
+    #             name="Amount",
+    #             value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
+    #             inline=False
+    #         )
+    #         admin_embed.add_field(
+    #             name="RSN",
+    #             value=rsn,
+    #             inline=False
+    #         )
+    #         admin_embed.set_footer(text=f"Requested at {discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
-            # Send DM to admin
-            try:
-                await admin.send(embed=admin_embed)
-            except discord.Forbidden:
-                await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
-                return
+    #         # Send DM to admin
+    #         try:
+    #             await admin.send(embed=admin_embed)
+    #         except discord.Forbidden:
+    #             await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
+    #             return
 
-            # Confirmation embed for user
-            user_embed = discord.Embed(
-                title="💰 Deposit Request Sent",
-                description="Your deposit request has been sent to an administrator.",
-                color=discord.Color.green()
-            )
-            user_embed.add_field(
-                name="Amount",
-                value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
-                inline=False
-            )
-            user_embed.add_field(
-                name="RSN",
-                value=rsn,
-                inline=False
-            )
-            user_embed.set_footer(text="Please wait for an administrator to process your request.")
+    #         # Confirmation embed for user
+    #         user_embed = discord.Embed(
+    #             title="💰 Deposit Request Sent",
+    #             description="Your deposit request has been sent to an administrator.",
+    #             color=discord.Color.green()
+    #         )
+    #         user_embed.add_field(
+    #             name="Amount",
+    #             value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
+    #             inline=False
+    #         )
+    #         user_embed.add_field(
+    #             name="RSN",
+    #             value=rsn,
+    #             inline=False
+    #         )
+    #         user_embed.set_footer(text="Please wait for an administrator to process your request.")
 
-            await ctx.send(embed=user_embed)
+    #         await ctx.send(embed=user_embed)
 
-        except Exception as e:
-            await ctx.send(f"❌ An error occurred: {str(e)}")
+    #     except Exception as e:
+    #         await ctx.send(f"❌ An error occurred: {str(e)}")
+    #         return
 
-    @commands.command()
-    @confirm_bet()
+    # @commands.command()
+    # async def withdraw(self, ctx, *, args=None):
+    #     """Handle withdrawals with proper input validation"""
+    #     # Check if args is missing
+    #     if not args:
+    #         await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,withdraw <amount> <rsn>`\nExample: `,withdraw 100M Zezima`")
+    #         return
 
-    async def withdraw(self, ctx, amount: str = None, *, rsn: str = None):
-        try:
-            if amount is None or rsn is None:
-                await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,withdraw <amount> <rsn>`\nExample: `,withdraw 100M Zezima`")
-                return
+    #     # Split args into amount and RSN
+    #     try:
+    #         amount, rsn = args.split(' ', 1)
+    #     except ValueError:
+    #         await ctx.send("❌ Please provide both amount and RSN!\nUsage: `,withdraw <amount> <rsn>`\nExample: `,withdraw 100M Zezima`")
+    #         return
 
-            # Parse and validate amount
-            try:
-                parsed_amount = self.parse_amount(amount)
-                # Add minimum and maximum limit checks
-                if parsed_amount < self.MIN_TRANSACTION_AMOUNT:
-                    await ctx.send(f"❌ Minimum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
-                    return
-                if parsed_amount > self.MAX_TRANSACTION_AMOUNT:
-                    await ctx.send(f"❌ Maximum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_TRANSACTION_AMOUNT)}!")
-                    return
-                formatted_amount = self.format_amount(parsed_amount)
-            except ValueError:
-                await ctx.send("❌ Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
-                return
+    #     # Try to parse the amount
+    #     try:
+    #         parsed_amount = self.parse_amount(amount)
+    #         # Add minimum and maximum limit checks
+    #         if parsed_amount < self.MIN_TRANSACTION_AMOUNT:
+    #             await ctx.send(f"❌ Minimum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
+    #             return
+    #         if parsed_amount > self.MAX_WITHDRAW_AMOUNT:
+    #             await ctx.send(f"❌ Maximum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_WITHDRAW_AMOUNT)}!")
+    #             return
+    #         formatted_amount = self.format_amount(parsed_amount)
+    #     except ValueError:
+    #         await ctx.send("❌ Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
+    #         return
 
-            # Check if user has enough balance
-            user_balance = await self.get_balance(str(ctx.author.id))
-            if user_balance < parsed_amount:
-                await ctx.send(f"❌ Insufficient balance! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(user_balance)}")
-                return
+    #     # Check if user has enough balance
+    #     user_balance = await self.get_balance(str(ctx.author.id))
+    #     if user_balance < parsed_amount:
+    #         await ctx.send(f"❌ Insufficient balance! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(user_balance)}")
+    #         return
 
-            # Get admin user
-            admin = self.bot.get_user(self.admin_id)
-            if not admin:
-                await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
-                return
+    #     try:
+    #         # Get admin user
+    #         admin = self.bot.get_user(self.admin_id)
+    #         if not admin:
+    #             await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
+    #             return
 
-            # Create embed for admin
-            admin_embed = discord.Embed(
-                title="💸 New Withdrawal Request",
-                color=discord.Color.red()
-            )
-            admin_embed.add_field(
-                name="User",
-                value=f"{ctx.author} (ID: {ctx.author.id})",
-                inline=False
-            )
-            admin_embed.add_field(
-                name="Amount",
-                value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
-                inline=False
-            )
-            admin_embed.add_field(
-                name="RSN",
-                value=rsn,
-                inline=False
-            )
-            admin_embed.add_field(
-                name="User's Balance",
-                value=f"<:goldpoints:1319902464115343473> {self.format_amount(user_balance)}",
-                inline=False
-            )
-            admin_embed.set_footer(text=f"Requested at {discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    #         # Create embed for admin
+    #         admin_embed = discord.Embed(
+    #             title="💸 New Withdrawal Request",
+    #             color=discord.Color.red()
+    #         )
+    #         admin_embed.add_field(
+    #             name="User",
+    #             value=f"{ctx.author} (ID: {ctx.author.id})",
+    #             inline=False
+    #         )
+    #         admin_embed.add_field(
+    #             name="Amount",
+    #             value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
+    #             inline=False
+    #         )
+    #         admin_embed.add_field(
+    #             name="RSN",
+    #             value=rsn,
+    #             inline=False
+    #         )
+    #         admin_embed.add_field(
+    #             name="User's Balance",
+    #             value=f"<:goldpoints:1319902464115343473> {self.format_amount(user_balance)}",
+    #             inline=False
+    #         )
+    #         admin_embed.set_footer(text=f"Requested at {discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
-            # Send DM to admin
-            try:
-                await admin.send(embed=admin_embed)
-            except discord.Forbidden:
-                await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
-                return
+    #         # Send DM to admin
+    #         try:
+    #             await admin.send(embed=admin_embed)
+    #         except discord.Forbidden:
+    #             await ctx.send("❌ Unable to process request at this time. Please contact an administrator.")
+    #             return
 
-            # Confirmation embed for user
-            user_embed = discord.Embed(
-                title="💸 Withdrawal Request Sent",
-                description="Your withdrawal request has been sent to an administrator.",
-                color=discord.Color.green()
-            )
-            user_embed.add_field(
-                name="Amount",
-                value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
-                inline=False
-            )
-            user_embed.add_field(
-                name="RSN",
-                value=rsn,
-                inline=False
-            )
-            user_embed.set_footer(text="Please wait for an administrator to process your request.")
+    #         # Confirmation embed for user
+    #         user_embed = discord.Embed(
+    #             title="💸 Withdrawal Request Sent",
+    #             description="Your withdrawal request has been sent to an administrator.",
+    #             color=discord.Color.green()
+    #         )
+    #         user_embed.add_field(
+    #             name="Amount",
+    #             value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
+    #             inline=False
+    #         )
+    #         user_embed.add_field(
+    #             name="RSN",
+    #             value=rsn,
+    #             inline=False
+    #         )
+    #         user_embed.set_footer(text="Please wait for an administrator to process your request.")
 
-            await ctx.send(embed=user_embed)
+    #         await ctx.send(embed=user_embed)
 
-        except Exception as e:
-            await ctx.send(f"❌ An error occurred: {str(e)}")
+    #     except Exception as e:
+    #         await ctx.send(f"❌ An error occurred: {str(e)}")
+    #         return
     
 
     @commands.command(name="pvpflip", aliases=["flip", "challenge", "cf"])
-
     @transaction_limit()
     async def pvpflip(self, ctx, opponent: discord.Member = None, bet: str = None):
         """Challenge another player to a coin flip"""
@@ -1450,7 +1563,7 @@ class Economy(commands.Cog):
             try:
                 bet_amount = self.parse_amount(bet)
             except ValueError:
-                await ctx.send("Invalid bet amount! Use numbers with K, M, B, or T (e.g., 1.5K, 2M, 3B, 1T)")
+                await ctx.send("Invalid bet amount! Use numbers with K, M, or B (e.g., 1.5K, 2M, 3B, 1T)")
                 return
 
             if bet_amount <= 0:
@@ -1708,9 +1821,8 @@ class Economy(commands.Cog):
 
     @commands.command(name="slots", aliases=["gamble", "slot"])
     @confirm_bet()
-
     @transaction_limit()
-    async def slots(self, ctx, amount: str = None):
+    async def slots(self, ctx, amount=None):
         # Define slot machine symbols with weights and multipliers (total weight = 100)
         symbols = self.symbols
         
@@ -1719,77 +1831,74 @@ class Economy(commands.Cog):
         for symbol, data in symbols.items():
             weighted_symbols.extend([symbol] * data["weight"])
 
-        user_id = ctx.author.id
-        initial_amount = amount         
         if amount is None:
-            # Help embed code
-            help_embed = discord.Embed(
-                title="<:gamba:1328512027282374718> Slot Machine Guide <:gamba:1328512027282374718>",
-                description="Bet your coins for a chance to win big!\nUse: `,slots <amount>`",
-                color=discord.Color.gold()
-            )
-            # Add symbol information
-            symbols_info = ""
-            for symbol, data in self.symbols.items():
-                multiplier = data["multiplier"]
-                chance = data["weight"]
-                symbols_info += f"{symbol} **{data['name']}** - {multiplier}x multiplier\n"
+                    # Help embed code
+                    help_embed = discord.Embed(
+                        title="<:gamba:1328512027282374718> Slot Machine Guide <:gamba:1328512027282374718>",
+                        description="Bet your coins for a chance to win big!\nUse: `,slots <amount>`",
+                        color=discord.Color.gold()
+                    )
+                    # Add symbol information
+                    symbols_info = ""
+                    for symbol, data in self.symbols.items():
+                        multiplier = data["multiplier"]
+                        chance = data["weight"]
+                        symbols_info += f"{symbol} **{data['name']}** - {multiplier}x multiplier\n"
 
-            help_embed.add_field(
-                name="Symbols & Multipliers",
-                value=symbols_info,
-                inline=False
-            )
-            help_embed.add_field(
-                name="Winning Combinations",
-                value=(
-                    "**Three of a kind:** Full multiplier payout\n"
-                    "**Two of a kind:** 40% of symbol multiplier\n"
-                    "**No matches:** Loss of bet\n"
-                    "\n*Note: A 5% tax is applied to all winnings*"
-                ),
-                inline=False
-            )
-            help_embed.add_field(
-                name="Example",
-                value=",gamble 5M - Bets 5,000,000 coins",
-                inline=False
-            )
-            await ctx.send(embed=help_embed)
-            return
+                    help_embed.add_field(
+                        name="Symbols & Multipliers",
+                        value=symbols_info,
+                        inline=False
+                    )
+                    help_embed.add_field(
+                        name="Winning Combinations",
+                        value=(
+                            "**Three of a kind:** Full multiplier payout\n"
+                            "**Two of a kind:** 40% of symbol multiplier\n"
+                            "**No matches:** Loss of bet\n"
+                            "\n*Note: A 5% tax is applied to all winnings*"
+                        ),
+                        inline=False
+                    )
+                    help_embed.add_field(
+                        name="Example",
+                        value=",gamble 5M - Bets 5,000,000 coins",
+                        inline=False
+                    )
+                    await ctx.send(embed=help_embed)
+                    return
 
         try:
-            # Parse bet amount and get balances
-            bet = self.parse_amount(amount)
+            # Get user and house info
             user_id = str(ctx.author.id)
             house_id = str(self.bot.user.id)
             user_balance = await self.get_balance(user_id)
+
             
             if house_id not in self.currency:
                 self.currency[house_id] = 0   
 
             # Validate bet and balances
-            if bet <= 0:
+            if amount <= 0:
                 await ctx.send("You must bet at least 1 coin!")
                 return
-                    
-            if bet > user_balance:
+                        
+            if amount > user_balance:
                 await ctx.send(f"You don't have enough coins! Your balance: {self.format_amount(user_balance)} <:goldpoints:1319902464115343473> ")
                 return
 
             # Check house balance
             house_balance = int(self.currency[house_id])
-            max_possible_win = bet * 30  # Maximum possible win (Diamond 30x)
+            max_possible_win = amount * 30  # Maximum possible win (Diamond 30x)
             if house_balance < max_possible_win:
                 await ctx.send("The house doesn't have enough balance to cover potential winnings! Please try a smaller bet.")
                 return
 
             # Deduct bet ONCE at the start
-            print(f"taking {bet} from {user_id}")
-            self.currency[user_id] -= bet
-            print(f"giving {bet} to house")
-            self.currency[house_id] += bet
+            self.currency[user_id] -= amount
+            self.currency[house_id] += amount
             while_betting_balance = await self.get_balance(user_id)
+
             # Create and send initial embed
             embed = discord.Embed(title="<:gamba:1328512027282374718> Slot Machine <:gamba:1328512027282374718>", color=discord.Color.gold())
             embed.add_field(name="Spinning...", value="| ❓ | ❓ | ❓ |")
@@ -1797,9 +1906,7 @@ class Economy(commands.Cog):
             msg = await ctx.send(embed=embed)
 
             # Generate final results
-
-            
-            guaranteed_match = random.random() < 0.1  # 15% chance for a guaranteed match
+            guaranteed_match = random.random() < 0.1  # 10% chance for a guaranteed match
             final_symbols = self.generate_symbols(guaranteed_match=guaranteed_match)
 
             # Spinning animation
@@ -1816,59 +1923,49 @@ class Economy(commands.Cog):
             if max_matches == 3:
                 symbol = max(symbol_counts, key=symbol_counts.get)
                 multiplier = symbols[symbol]["multiplier"]
-                gross_win = bet * multiplier
+                gross_win = amount * multiplier
                 tax_amount = int(gross_win * 0.05)
                 winnings = gross_win - tax_amount
-                win_amount = gross_win - tax_amount
                 
                 # Add winnings (bet already deducted)
-                print(f"adding {winnings} to {user_id} from a 3 of a kind!")
                 self.currency[user_id] += winnings
-                print(f"subtracting {winnings} from house")
                 self.currency[house_id] -= winnings
                 
                 # Get final balance after transaction
                 final_balance = int(self.currency[user_id])
                 
                 result = f"🎉 JACKPOT! Triple {symbols[symbol]['name']}! 🎉"
-                await self.log_transaction(ctx, self.parse_amount(amount), win_amount, final_balance, is_house=False)
+                await self.log_transaction(ctx, amount, winnings, final_balance, is_house=False)
                 
             elif max_matches == 2:
                 matching_symbol = [s for s, count in symbol_counts.items() if count == 2][0]
                 base_multiplier = symbols[matching_symbol]["multiplier"]
                 multiplier = base_multiplier * 0.4
-                gross_win = int(bet * multiplier)
+                gross_win = int(amount * multiplier)
                 tax_amount = int(gross_win * 0.05)
                 winnings = gross_win - tax_amount
-                win_amount = gross_win - tax_amount
                 
                 # Add winnings (bet already deducted)
-                print(f"adding {winnings} to {user_id} from a 2 of a kind!")
                 self.currency[user_id] += winnings
-                print(f"subtracting {winnings} from house")
                 self.currency[house_id] -= winnings
                 
                 # Get final balance after transaction
                 final_balance = int(self.currency[user_id])
                 
                 result = f"🎈 Double {symbols[matching_symbol]['name']}! 🎈"
-                await self.log_transaction(ctx, self.parse_amount(amount), win_amount, final_balance, is_house=False)
+                await self.log_transaction(ctx, amount, winnings, final_balance, is_house=False)
                 
             else:
                 winnings = 0
                 # Get final balance after bet was deducted
                 final_balance = int(self.currency[user_id])
-                bet_amount = self.parse_amount(amount)
                 tax_amount = 0
                 result = "No match!"
-                print(f"house wins! house keeps the {bet_amount} gp!")
-                await self.log_transaction(ctx, bet_amount, -bet_amount, final_balance, is_house=False)
-                # No need to do anything here, bet was already deducted
+                await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
 
             # Update stats and save
-            self.update_stats(user_id, bet, winnings)
+            self.update_stats(user_id, amount, winnings)
             self.save_currency()
-
 
             # Create result embed
             result_embed = discord.Embed(
@@ -1884,7 +1981,7 @@ class Economy(commands.Cog):
             
             result_embed.add_field(
                 name="Outcome",
-                value=f"Bet: {self.format_amount(bet)}\n"
+                value=f"Bet: {self.format_amount(amount)}\n"
                     f"Win: +{self.format_amount(winnings)}\n"
                     f"Tax: {self.format_amount(tax_amount)}",
                 inline=False
@@ -1897,19 +1994,20 @@ class Economy(commands.Cog):
             await msg.edit(embed=result_embed)
 
         except Exception as e:
-            print(f"Error: {e}")
-            await ctx.send("An error occurred while processing your bet.")
+            print(f"Error in slots: {str(e)}")
+            await ctx.send("❌ An error occurred while processing your bet.")
 
 
 
 
     @commands.command(aliases=["stake", "flowers"])
-
-    @transaction_limit()
     @confirm_bet()
-    async def flower(self, ctx, bet_amount: str = None):
+    @transaction_limit()
+    async def flower(self, ctx, bet_amount: str):
+        
         user_id = ctx.author.id
-        initial_amount = self.parse_amount(bet_amount)
+        
+        
         if bet_amount is None:
             # Create an embed for the flower command help/info
             help_embed = discord.Embed(
@@ -1956,6 +2054,15 @@ class Economy(commands.Cog):
 
         # If bet_amount is provided, continue with the existing game logic
         try:
+            print(f"Raw bet_amount: {bet_amount!r}")
+            
+            # Make sure bet_amount is a string and strip any whitespace
+            bet_amount = str(bet_amount).strip()
+            print(f"Processed bet_amount: {bet_amount!r}")
+            
+            # Try to parse the amount
+            amount = self.parse_amount(bet_amount)
+            print(f"Parsed amount: {amount}")
 
                      
             # Flowers with their values and weights (odds)
@@ -1972,7 +2079,7 @@ class Economy(commands.Cog):
             }
 
             # Validate bet amount first
-            amount = self.parse_amount(bet_amount)
+
             if amount <= 0:
                 await ctx.send("Please enter a valid bet amount!")
                 return
@@ -2410,18 +2517,10 @@ class Economy(commands.Cog):
 
         # Parse amounts (supporting k, m, b notation)
         try:
-            def parse_amount(amount_str):
-                amount_str = amount_str.lower().strip('$,')
-                if 'k' in amount_str:
-                    return float(amount_str.replace('k', '')) * 1000
-                elif 'm' in amount_str:
-                    return float(amount_str.replace('m', '')) * 1000000
-                elif 'b' in amount_str:
-                    return float(amount_str.replace('b', '')) * 1000000000
-                return float(amount_str)
 
-            new_min = parse_amount(min_amount)
-            new_max = parse_amount(max_amount)
+
+            new_min = self.parse_amount(min_amount)
+            new_max = self.parse_amount(max_amount)
 
             # Validation
             if new_min <= 0 or new_max <= 0:
@@ -2455,55 +2554,69 @@ class Economy(commands.Cog):
 
     @commands.command(name="setbalance", aliases=["setbal", "set"])
     @commands.is_owner() 
-    async def set_balance(self, ctx, member: discord.Member, amount: str):
-        """Set a user's balance to a specific amount"""
+    async def set_balance(self, ctx, target: typing.Union[discord.Member, str], amount: str):
+        """Set a user's balance or all users' balances to a specific amount"""
         try:
             # Parse the amount (supporting k, m, b notation)
-            def parse_amount(amount_str):
-                amount_str = amount_str.lower().strip('$,')
-                if 'k' in amount_str:
-                    return float(amount_str.replace('k', '')) * 1000
-                elif 'm' in amount_str:
-                    return float(amount_str.replace('m', '')) * 1000000
-                elif 'b' in amount_str:
-                    return float(amount_str.replace('b', '')) * 1000000000
-                elif 't' in amount_str:
-                    return float(amount_str.replace('t', '')) * 1000000000000
-                return float(amount_str)
 
-            new_balance = parse_amount(amount)
-            user_id = str(member.id)
-            old_balance = self.currency.get(user_id, 0)
+            new_balance = self.parse_amount(amount)
             
-            # Set the new balance
-            self.currency[user_id] = new_balance
-            self.save_currency()
+            if isinstance(target, str) and target.lower() == "all":
+                # Store old balances for the embed
+                old_balances = self.currency.copy()
+                
+                # Update all balances
+                for user_id in self.currency:
+                    self.currency[user_id] = new_balance
+                
+                self.save_currency()
 
-            # Create embed for response
-            embed = discord.Embed(
-                title="Balance Updated",
-                color=discord.Color.green() if new_balance >= 0 else discord.Color.red()
-            )
-            embed.add_field(
-                name="User", 
-                value=f"{member.mention}", 
-                inline=False
-            )
-            embed.add_field(
-                name="Old Balance", 
-                value=f"<:goldpoints:1319902464115343473> {self.format_amount(old_balance)}", 
-                inline=True
-            )
-            embed.add_field(
-                name="New Balance", 
-                value=f"<:goldpoints:1319902464115343473> {self.format_amount(new_balance)}", 
-                inline=True
-            )
+                # Create embed for response
+                embed = discord.Embed(
+                    title="All Balances Updated",
+                    description=f"Set {len(self.currency)} user balances to {self.format_amount(new_balance)}",
+                    color=discord.Color.green() if new_balance >= 0 else discord.Color.red()
+                )
+                embed.add_field(
+                    name="Sample Changes",
+                    value="\n".join([
+                        f"<@{user_id}>: {self.format_amount(old_balances[user_id])} → {self.format_amount(new_balance)}"
+                        for user_id in list(old_balances.keys())[:5]  # Show first 5 users as examples
+                    ]) + ("\n..." if len(old_balances) > 5 else ""),
+                    inline=False
+                )
+
+            else:
+                # Original single-user logic
+                user_id = str(target.id)
+                old_balance = self.currency.get(user_id, 0)
+                
+                # Set the new balance
+                self.currency[user_id] = new_balance
+                self.save_currency()
+
+                # Create embed for response
+                embed = discord.Embed(
+                    title="Balance Updated",
+                    color=discord.Color.green() if new_balance >= 0 else discord.Color.red()
+                )
+                embed.add_field(
+                    name="User", 
+                    value=f"{target.mention}", 
+                    inline=False
+                )
+                embed.add_field(
+                    name="Old Balance", 
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(old_balance)}", 
+                    inline=True
+                )
+                embed.add_field(
+                    name="New Balance", 
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(new_balance)}", 
+                    inline=True
+                )
 
             await ctx.send(embed=embed)
-            
-            # Log the transaction
-
 
         except ValueError:
             await ctx.send("❌ Invalid amount format! Use numbers with optional k, m, or b suffix (e.g., 500k, 1m)")
@@ -2515,7 +2628,7 @@ class Economy(commands.Cog):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("❌ You need administrator permissions to set balances!")
         elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("❌ Usage: ,setbalance <@user> <amount>")
+            await ctx.send("❌ Usage: ,setbalance <@user|all> <amount>")
         elif isinstance(error, commands.MemberNotFound):
             await ctx.send("❌ Could not find that user!")
 
