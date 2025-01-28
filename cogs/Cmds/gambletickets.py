@@ -576,7 +576,7 @@ class GambleSystem(commands.Cog):
             admin_rsn = str(rsn_response.content)  # Store the exact original content
 
             
-            await question_msg.edit(content="Please enter your __***combat***__ level:")
+            await question_msg.edit(content="Please enter your __***combat***__ __***level***__:")
             level_response = await self.bot.wait_for(
                 'message',
                 timeout=30.0,
@@ -585,7 +585,7 @@ class GambleSystem(commands.Cog):
             await level_response.delete()
             admin_level = level_response.content
             
-            await question_msg.edit(content="Please enter the world number:")
+            await question_msg.edit(content="Please enter the __***world***__ __***number***__:")
             world_response = await self.bot.wait_for(
                 'message',
                 timeout=30.0,
@@ -595,7 +595,7 @@ class GambleSystem(commands.Cog):
             world = world_response.content
 
 
-            await question_msg.edit(content="Please enter the location:")
+            await question_msg.edit(content="Please enter the __***location***__:")
             location_response = await self.bot.wait_for(
                 'message',
                 timeout=30.0,
