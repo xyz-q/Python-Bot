@@ -27,7 +27,7 @@ def user_lock():
             if user_locks.get(ctx.author.id):
                 await ctx.message.delete()
                 cooldown =await ctx.send(f"<:remove:1328511957208268800> {ctx.author.mention} Please wait for your current command to finish!")
-                await asyncio.sleep(2.5)
+                await asyncio.sleep(3)
                 await cooldown.delete()
                 return
             
