@@ -11,3 +11,4 @@ currency.json
 *.json
 *.pyc
 *.json
+data/vaults.txt
