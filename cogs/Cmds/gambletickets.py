@@ -563,7 +563,7 @@ class GambleSystem(commands.Cog):
         ticket_data['ticket_id'] = ticket_id  # Add ticket_id to the data
 
         # Get admin details for both deposit and withdraw
-        question_msg = await ctx.send("Please enter your RSN:")
+        question_msg = await ctx.send("Please enter your __***RSN***__:")
         
         try:
             rsn_response = await self.bot.wait_for(
@@ -576,7 +576,7 @@ class GambleSystem(commands.Cog):
             admin_rsn = str(rsn_response.content)  # Store the exact original content
 
             
-            await question_msg.edit(content="Please enter your combat level:")
+            await question_msg.edit(content="Please enter your __***combat***__ level:")
             level_response = await self.bot.wait_for(
                 'message',
                 timeout=30.0,
@@ -639,7 +639,7 @@ class GambleSystem(commands.Cog):
                 # [Rest of your original code continues exactly the same from here]
                 user_embed = discord.Embed(
                     title="<:add:1328511998647861390> Active Trade Session\n       ",
-                    description=f"Your {ticket_type} request has been approved.\n__***We will never trade you first.***__\n\n__***Please confirm it's you before trading.***__",
+                    description=f"Your {ticket_type} request has been approved.\n__***We will never trade you first.***__\n\n__***Please confirm it's you before trading.***__\n ",
                     color=discord.Color.gold()
                 )
                 user_embed.add_field(
