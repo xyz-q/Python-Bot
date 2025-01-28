@@ -1326,6 +1326,82 @@ class Economy(commands.Cog):
             await ctx.send(f"An error occurred: {str(e)}")
 
 
+    @commands.command(name='cleartransactions', aliases=['cleartrans'])
+    @commands.has_permissions(administrator=True)
+    async def clear_transactions(self, ctx, target: typing.Optional[discord.Member] = None, option: str = None):
+        """Clear transaction logs for a user or all users"""
+        
+        try:
+            with open('logs/transactions.json', 'r') as f:
+                logs = json.load(f)
+        except FileNotFoundError:
+            return await ctx.send("No transaction logs found.")
+
+        if not logs.get("users"):
+            return await ctx.send("No transactions to clear.")
+
+        # If "all" option is specified, ask for confirmation
+        if option and option.lower() == 'all':
+            confirm_msg = await ctx.send("⚠️ Are you sure you want to clear ALL transaction logs for ALL users? This cannot be undone!\n"
+                                    "React with ✅ to confirm or ❌ to cancel.")
+            await confirm_msg.add_reaction('✅')
+            await confirm_msg.add_reaction('❌')
+
+            def check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in ['✅', '❌'] and reaction.message == confirm_msg
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+                
+                if str(reaction.emoji) == '✅':
+                    # Clear all transactions but keep the structure
+                    logs["users"] = {}
+                    with open('logs/transactions.json', 'w') as f:
+                        json.dump(logs, f, indent=2)
+                    await ctx.send("✅ Cleared all transaction logs for all users.")
+                else:
+                    await ctx.send("❌ Operation cancelled.")
+                return
+                
+            except asyncio.TimeoutError:
+                await ctx.send("❌ Confirmation timed out. Operation cancelled.")
+                return
+
+        # If no target specified, default to command user
+        if not target:
+            target = ctx.author
+
+        user_id = str(target.id)
+        
+        if user_id not in logs["users"]:
+            return await ctx.send(f"No transactions found for {target.display_name}.")
+
+        # Ask for confirmation for individual user clear
+        confirm_msg = await ctx.send(f"⚠️ Are you sure you want to clear all transaction logs for {target.display_name}?\n"
+                                "React with ✅ to confirm or ❌ to cancel.")
+        await confirm_msg.add_reaction('✅')
+        await confirm_msg.add_reaction('❌')
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ['✅', '❌'] and reaction.message == confirm_msg
+
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            
+            if str(reaction.emoji) == '✅':
+                # Remove user's transactions
+                del logs["users"][user_id]
+                with open('logs/transactions.json', 'w') as f:
+                    json.dump(logs, f, indent=2)
+                await ctx.send(f"✅ Cleared all transaction logs for {target.display_name}.")
+            else:
+                await ctx.send("❌ Operation cancelled.")
+                
+        except asyncio.TimeoutError:
+            await ctx.send("❌ Confirmation timed out. Operation cancelled.")
+
+
+
 
 
     @commands.command()
@@ -2840,6 +2916,14 @@ class Economy(commands.Cog):
                 inline=True
             )
             
+            final_balance = self.currency[user_id]  # Vault balance after deposit
+            await self.log_transaction(
+                ctx=ctx,
+                bet_amount=0,
+                win_amount=amount,  # Amount deposited
+                final_balance=final_balance,
+                transaction_type="vault_deposit"
+            )            
             await ctx.send(embed=embed)
                 
         except Exception as e:
@@ -2925,7 +3009,15 @@ class Economy(commands.Cog):
                 value=f"<:goldpoints:1319902464115343473> {self.format_amount(self.currency[user_id])}",
                 inline=True
             )
-            
+
+            final_balance = self.currency[user_id]  # Wallet balance after withdrawal
+            await self.log_transaction(
+                ctx=ctx,
+                bet_amount=0,
+                win_amount=-amount,  # Negative amount for withdrawal
+                final_balance=final_balance,
+                transaction_type="vault_withdraw"
+            )            
             await ctx.send(embed=embed)
                 
         except Exception as e:

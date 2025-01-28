@@ -446,24 +446,42 @@ class GambleSystem(commands.Cog):
             color=discord.Color.gold()
         )
         
-        embed.add_field(
-            name="User Commands",
-            value="`,ticket list` - View your tickets\n"
-                  "`,ticket cancel <ticket_id>` - Cancel your ticket",
-            inline=False
-        )
+        # Get all commands from the cog
+        user_commands = []
+        admin_commands = []
         
-        if str(ctx.author.id) in map(str, self.admin_ids):
+        # Iterate through all commands in the cog
+        for command in ctx.command.walk_commands():
+            # Get the command signature and help text
+            signature = f",ticket {command.name} {command.signature}".strip()
+            help_text = command.help or "No description available"
+            command_text = f"`{signature}` - {help_text}"
+            
+            # Check if it's an admin command (you might want to adjust this logic)
+            if command.name in ['accept', 'decline', 'admin']:
+                admin_commands.append(command_text)
+            else:
+                user_commands.append(command_text)
+        
+        # Add user commands field if there are any
+        if user_commands:
+            embed.add_field(
+                name="User Commands",
+                value="\n".join(user_commands),
+                inline=False
+            )
+        
+        # Add admin commands field if user is admin and there are admin commands
+        if str(ctx.author.id) in map(str, self.admin_ids) and admin_commands:
             embed.add_field(
                 name="Admin Commands",
-                value="`,ticket admin [deposit/withdraw]` - View all pending tickets\n"
-                      "`,ticket accept <ticket_id>` - Accept a ticket\n"
-                      "`,ticket decline <ticket_id>` - Decline a ticket",
+                value="\n".join(admin_commands),
                 inline=False
             )
         
         embed.set_footer(text="Use ,deposit <amount> <rsn> or ,withdraw <amount> <rsn> to create new tickets")
         await ctx.send(embed=embed)
+
 
     @ticket.command(name="list")
     async def ticket_list(self, ctx, type=None):
@@ -495,7 +513,7 @@ class GambleSystem(commands.Cog):
     @ticket.command(name="admin")
     async def admin_list(self, ctx, type=None):
         await ctx.message.delete()
-        """List all pending tickets (Admin only)"""
+        """List all pending tickets"""
         if str(ctx.author.id) not in map(str, self.admin_ids):
             await ctx.send("<:remove:1328511957208268800> You don't have permission to use this command!")
             return
@@ -522,7 +540,7 @@ class GambleSystem(commands.Cog):
 
     @ticket.command(name="accept")
     async def accept_ticket(self, ctx, ticket_id: str):
-        """Accept a ticket (Admin only)"""
+        """Accept a ticket"""
         await ctx.message.delete()
         
         if str(ctx.author.id) not in map(str, self.admin_ids):
@@ -716,7 +734,7 @@ class GambleSystem(commands.Cog):
 
     @ticket.command(name="decline")
     async def decline_ticket(self, ctx, ticket_id: str, *, reason: str):
-        """Decline a ticket with a reason (Admin only)"""
+        """Decline a ticket with a reason"""
         if str(ctx.author.id) not in map(str, self.admin_ids):
             await ctx.send("<:remove:1328511957208268800> You don't have permission to use this command!")
             return
