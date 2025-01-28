@@ -585,7 +585,7 @@ class GambleSystem(commands.Cog):
             await level_response.delete()
             admin_level = level_response.content
             
-            await question_msg.edit(content="Please enter the __***world***__ __***number***__:")
+            await question_msg.edit(content="Please enter the __***world***__:")
             world_response = await self.bot.wait_for(
                 'message',
                 timeout=30.0,
@@ -616,7 +616,7 @@ class GambleSystem(commands.Cog):
             await asyncio.sleep(0.5)
             summary4 = await ctx.send(f"Location: {location}")
             await asyncio.sleep(2)
-            confirm_msg = await ctx.send("Type 'confirm' to submit or 'decline' to cancel")
+            confirm_msg = await ctx.send("__***confirm***__' to submit or '__***decline***__' to cancel")
 
             try:
                 confirmation = await self.bot.wait_for(
