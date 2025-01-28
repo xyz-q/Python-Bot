@@ -187,17 +187,17 @@ class TicketPaginationView(View):
 class GambleSystem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.admin_ids = [110927272210354176, 311612585524854805]  # Replace with actual admin IDs
+        self.admin_ids = [110927272210354176, 311612585524854805]  
         self.tickets_file = ".json/tickets.json"
         self.load_tickets()
         self.message = None
         self.active_timers = {}
         self.currency = {}
-        self.currency_file = ".json/currency.json"  # Adjust path as needed
+        self.currency_file = ".json/currency.json" 
         self.load_currency()
-        self.MIN_DEPOSIT = 5_000_000  # 1M minimum
-        self.MAX_DEPOSIT = 5_000_000_000  # 1T maximum
-        self.MIN_WITHDRAW = 10_000_000  # 1M minimum
+        self.MIN_DEPOSIT = 5_000_000  
+        self.MAX_DEPOSIT = 750_000_000  
+        self.MIN_WITHDRAW = 10_000_000  
         self.MAX_WITHDRAW = 250_000_000
         self.active_sessions = {}
 
