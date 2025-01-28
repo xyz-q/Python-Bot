@@ -639,7 +639,7 @@ class GambleSystem(commands.Cog):
                 # [Rest of your original code continues exactly the same from here]
                 user_embed = discord.Embed(
                     title="<:add:1328511998647861390> Active Trade Session\n       ",
-                    description=f"Your {ticket_type} request has been approved.\n__***We will never trade you first.***__\n\nPlease confirm it's you before trading.",
+                    description=f"Your {ticket_type} request has been approved.\n__***We will never trade you first.***__\n\n__***Please confirm it's you before trading.***__",
                     color=discord.Color.gold()
                 )
                 user_embed.add_field(
