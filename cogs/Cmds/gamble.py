@@ -18,8 +18,26 @@ from datetime import datetime, timedelta
 import copy
 import typing
 
-
-
+user_locks = {}
+def user_lock():
+    """Prevents a user from running multiple commands at once"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(self, ctx, *args, **kwargs):
+            if user_locks.get(ctx.author.id):
+                await ctx.message.delete()
+                cooldown =await ctx.send(f"<:remove:1328511957208268800> {ctx.author.mention} Please wait for your current command to finish!")
+                await asyncio.sleep(2.5)
+                await cooldown.delete()
+                return
+            
+            try:
+                user_locks[ctx.author.id] = True
+                return await func(self, ctx, *args, **kwargs)
+            finally:
+                user_locks[ctx.author.id] = False
+        return wrapper
+    return decorator
 
 
 class GambleLimits:
@@ -510,7 +528,7 @@ class Economy(commands.Cog):
 
 
 
-
+    @user_lock()
     @commands.command(name="transactions", aliases=['history', 'past'])
     async def view_transactions(self, ctx, user: typing.Union[discord.Member, str] = None):
         """View recent transactions for a user or house"""
@@ -860,7 +878,7 @@ class Economy(commands.Cog):
   
 
 
-
+    @user_lock()
     @commands.command(aliases=['balances', 'bals'])
     @commands.has_permissions(administrator=True)
     async def balancelist(self, ctx):
@@ -971,7 +989,7 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
-
+    @user_lock()
     @commands.command(aliases=['give'])
     @commands.is_owner()
     async def add(self, ctx, *, args=None):
@@ -1079,7 +1097,7 @@ class Economy(commands.Cog):
             
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
-
+    @user_lock()
     @commands.command()
     @commands.is_owner()
     async def remove(self, ctx, *, args=None):
@@ -1190,7 +1208,7 @@ class Economy(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
 
-
+    @user_lock()
     @commands.command(aliases=['send'])
 
     async def transfer(self, ctx, *, args=None):
@@ -1325,7 +1343,7 @@ class Economy(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
 
-
+    @user_lock()
     @commands.command(name='cleartransactions', aliases=['cleartrans'])
     @commands.has_permissions(administrator=True)
     async def clear_transactions(self, ctx, target: typing.Optional[discord.Member] = None, option: str = None):
@@ -1403,7 +1421,7 @@ class Economy(commands.Cog):
 
 
 
-
+    @user_lock()
     @commands.command()
     async def staking(self, ctx):
         await ctx.message.delete()
@@ -1641,7 +1659,7 @@ class Economy(commands.Cog):
     #         await ctx.send(f"<:remove:1328511957208268800> An error occurred: {str(e)}")
     #         return
     
-
+    @user_lock()
     @commands.command(name="pvpflip", aliases=["flip", "challenge", "cf"])
     @transaction_limit()
     async def pvpflip(self, ctx, opponent: discord.Member = None, bet: str = None):
@@ -1919,6 +1937,7 @@ class Economy(commands.Cog):
     @commands.command(name="slots", aliases=["gamble", "slot"])
     @confirm_bet()
     @transaction_limit()
+    @user_lock()
     async def slots(self, ctx, amount=None):
         # Define slot machine symbols with weights and multipliers (total weight = 100)
         symbols = self.symbols
@@ -2100,6 +2119,7 @@ class Economy(commands.Cog):
     @commands.command(aliases=["stake", "flowers"])
     @confirm_bet()
     @transaction_limit()
+    @user_lock()
     async def flower(self, ctx, bet_amount: str):
         
         user_id = ctx.author.id
