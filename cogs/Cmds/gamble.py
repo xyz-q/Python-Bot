@@ -528,7 +528,7 @@ class Economy(commands.Cog):
 
 
 
-    @user_lock()
+    
     @commands.command(name="transactions", aliases=['history', 'past'])
     async def view_transactions(self, ctx, user: typing.Union[discord.Member, str] = None):
         """View recent transactions for a user or house"""
@@ -878,7 +878,7 @@ class Economy(commands.Cog):
   
 
 
-    @user_lock()
+    
     @commands.command(aliases=['balances', 'bals'])
     @commands.has_permissions(administrator=True)
     async def balancelist(self, ctx):
@@ -989,7 +989,7 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
-    @user_lock()
+
     @commands.command(aliases=['give'])
     @commands.is_owner()
     async def add(self, ctx, *, args=None):
@@ -1097,7 +1097,7 @@ class Economy(commands.Cog):
             
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
-    @user_lock()
+
     @commands.command()
     @commands.is_owner()
     async def remove(self, ctx, *, args=None):
@@ -1208,9 +1208,8 @@ class Economy(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
 
-    @user_lock()
-    @commands.command(aliases=['send'])
 
+    @commands.command(aliases=['send'])
     async def transfer(self, ctx, *, args=None):
         """Transfer currency to another user"""
         try:
@@ -1343,7 +1342,6 @@ class Economy(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
 
-    @user_lock()
     @commands.command(name='cleartransactions', aliases=['cleartrans'])
     @commands.has_permissions(administrator=True)
     async def clear_transactions(self, ctx, target: typing.Optional[discord.Member] = None, option: str = None):
@@ -1421,7 +1419,6 @@ class Economy(commands.Cog):
 
 
 
-    @user_lock()
     @commands.command()
     async def staking(self, ctx):
         await ctx.message.delete()
@@ -1659,9 +1656,10 @@ class Economy(commands.Cog):
     #         await ctx.send(f"<:remove:1328511957208268800> An error occurred: {str(e)}")
     #         return
     
-    @user_lock()
+
     @commands.command(name="pvpflip", aliases=["flip", "challenge", "cf"])
     @transaction_limit()
+    @user_lock()
     async def pvpflip(self, ctx, opponent: discord.Member = None, bet: str = None):
         """Challenge another player to a coin flip"""
         try:
