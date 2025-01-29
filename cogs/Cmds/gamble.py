@@ -1013,6 +1013,7 @@ class Economy(commands.Cog):
     @commands.command(aliases=['balances', 'bals'])
     @commands.has_permissions(administrator=True)
     async def balancelist(self, ctx):
+        await asyncio.sleep(0.5)
         await ctx.message.delete()
         if not self.currency:
             await ctx.send("No balances found!")
