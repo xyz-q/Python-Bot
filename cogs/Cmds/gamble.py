@@ -986,6 +986,7 @@ class Economy(commands.Cog):
                 description=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)}",
                 color=discord.Color.gold()
             )
+            embed.set_footer(text=f"Use ,vault to see more")
             await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
@@ -3191,7 +3192,7 @@ class Economy(commands.Cog):
                     "• Lock duration cannot be shortened once set\n\n"
                     "Choose your lock duration:"
                 ),
-                color=discord.Color.blue()
+                color=discord.Color.gold()
             )
 
             class LockDurationView(discord.ui.View):
@@ -3396,13 +3397,6 @@ class Economy(commands.Cog):
             print(f"Unlock error: {e}")
             await ctx.send(f"An error occurred: {str(e)}")
 
-
-
-
-
-
-
-
     def save_vault_data(self, data):
         """Save vault data to JSON file"""
         with open('.json/vaults.json', 'w') as f:
@@ -3415,6 +3409,8 @@ class Economy(commands.Cog):
                 return json.load(f)
         except FileNotFoundError:
             return {}
+
+
 
 
 

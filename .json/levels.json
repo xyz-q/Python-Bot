@@ -1,0 +1,69 @@
+{
+    "levels": {
+        "0": {
+            "required_wagered": 0,
+            "icon": "<:pastel:1326018646098706564>",
+            "name": "Noob"
+        },
+        "1": {
+            "required_wagered": 75000000,
+            "icon": "<:red:1326018733826773023>",
+            "name": "Casual Staker"
+        },
+        "2": {
+            "required_wagered": 420000000,
+            "icon": "<:purple:1326018686817009734>",
+            "name": "Professional Staker"
+        },
+        "3": {
+            "required_wagered": 1500000000,
+            "icon": "<:white:1326018610719756340>",
+            "name": "Big Gamer"
+        },
+        "4": {
+            "required_wagered": 5000000000,
+            "icon": "<:Ice:1334013251117252650>",
+            "name": "Sweaty Gamer"
+        },
+        "5": {
+            "required_wagered": 25000000000,
+            "icon": "<:santahat:1328609689038225488>",
+            "name": "Degen"
+        },
+        "6": {
+            "required_wagered": 69000000000,
+            "icon": "<:hsr:1334012065337311285>",
+            "name": "True Degenerate"
+        },
+        "7": {
+            "required_wagered": 200000000000,
+            "icon": "<:winejug:1334028818947510343>",
+            "name": "Scammer"
+        },
+        "8": {
+            "required_wagered": 1000000000000,
+            "icon": "<:cracker:1334030225423470622>",
+            "name": "Market Manipulator"
+        },
+        "9": {
+            "required_wagered": 6900000000000,
+            "icon": "<:phatset:1334029280161828956>",
+            "name": "Gambling Enthusiast"
+        },
+        "-1": {
+            "required_wagered": 0,
+            "icon": "<:wphat:1333997477753520128>",
+            "name": "Owner"
+        },
+        "-2": {
+            "required_wagered": 0,
+            "icon": "<:steamhappy:1241480960047059106>",
+            "name": "VIP"
+        },
+        "-3": {
+            "required_wagered": 0,
+            "icon": "<a:MUGA:1178140574570790954>",
+            "name": "donator <3"
+        }
+    }
+}
