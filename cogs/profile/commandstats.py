@@ -55,9 +55,7 @@ class CommandStats(commands.Cog):
         """Format number to K/M/B format"""
         if number >= 10_000_000_000:  # 10 Billion and above
             return f"{number/1_000_000_000:.2f}B"
-        elif number >= 1_000_000_000:  # 1-9.9 Billion
-            return f"{number/1_000_000_000:.1f}B"
-        elif number >= 1_000_000:    # Millions
+        elif number >= 1_000_000:    # Millions (including 1-9.9B)
             return f"{int(number/1_000_000)}M"
         elif number >= 1_000:        # Thousands
             return f"{number/1_000:.1f}K"
