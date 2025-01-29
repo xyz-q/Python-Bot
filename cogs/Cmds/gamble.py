@@ -18,6 +18,44 @@ from datetime import datetime, timedelta
 import copy
 import typing
 
+
+
+def has_account():
+    async def predicate(ctx):
+        # Get the GambleSystem cog instance specifically
+        cog = ctx.bot.get_cog('GambleSystem')  # Change this line
+        user_id = str(ctx.author.id)
+        
+        # Check if user exists in currency system
+        if user_id not in cog.currency:
+            embed = discord.Embed(
+                title="You haven't read the terms of service yet!",
+                description="",
+                color=discord.Color.red()
+            )
+            embed.add_field(
+                name="Terms & Conditions",
+                value="1. You must be __**18**__ **years** or older to use our services.\n"
+                    "2. ***ANY*** form of exploitation will result in a __**PERMANENT**__ suspension.\n"
+                    "3. This is for entertainment purposes only.\n"
+                    "4. ***ALL*** transactions are final.\n"
+
+            )
+            embed.add_field(
+                name="Privacy Notice",
+                value="• We track gambling statistics and transaction history\n"
+                    "• Data is used for monitoring responsible gaming\n"
+                    "• Your activity may be logged for security purposes\n\n"
+                    "   Please use ,accept if you agree to these.",                    
+                inline=False
+            )
+            await ctx.send(embed=embed)
+            return False
+        return True
+    return commands.check(predicate)
+
+
+
 user_locks = {}
 def user_lock():
     """Prevents a user from running multiple commands at once"""
@@ -526,10 +564,45 @@ class Economy(commands.Cog):
 
         self.save_stats()
 
+    @commands.command(name="accept")
+    async def create_account(self, ctx):
+        """Create a new account"""
+        user_id = str(ctx.author.id)
+        
+        # Check if user already has an account
+        if user_id in self.currency:
+            await ctx.send("You have already accepted the TOS!")
+            return
+            
+        # Create new account with 0 balance
+        self.currency[user_id] = 0
+        self.save_currency()
+        
+        # Create welcome embed
+        embed = discord.Embed(
+            title="<:add:1328511998647861390> Account Created!",
+            description="Welcome to the staking community!",
+            color=discord.Color.green()
+        )
+        embed.add_field(
+            name="",
+            value="Here are some commands to get you started:\n"
+                "• `,balance` - Check your balance\n"
+                "• `,slots` - Spin away!\n"
+                "• `,staking` - See all staking commands\n"
+                "• `,vault` - Deposit/withdraw from the vault\n"
+                "• `,stats` - View your gambling statistics\n",
+
+
+            inline=False
+        )
+        
+        await ctx.send(embed=embed)
 
 
     
     @commands.command(name="transactions", aliases=['history', 'past'])
+    
     async def view_transactions(self, ctx, user: typing.Union[discord.Member, str] = None):
         """View recent transactions for a user or house"""
         try:
@@ -810,39 +883,61 @@ class Economy(commands.Cog):
             raise ValueError("Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B, 1T)")
 
     def format_amount(self, amount):
+        # For amounts >= 100T
+        if amount >= 100000000000000:  # 100T+
+            trillions = amount / 1000000000000
+            return f"{int(trillions)}T"
+            
+        # For amounts >= 10T
+        elif amount >= 10000000000000:  # 10T+
+            trillions = amount / 1000000000000
+            return f"{trillions:.1f}T"
+            
         # For amounts >= 1T
-        if amount >= 1000000000000:  # 1T+
-            if amount >= 10000000000000:  # 10T+
-                trillions = amount / 1000000000000
-                return f"{int(trillions):,}T"
-            else:
-                billions = amount / 1000000000
-                return f"{int(billions):,}B"
-                
+        elif amount >= 1000000000000:  # 1T+
+            billions = amount / 1000000000
+            return f"{int(billions):,}B"  # Added comma
+            
+        # For amounts >= 100B
+        elif amount >= 100000000000:  # 100B+
+            billions = amount / 1000000000
+            return f"{int(billions)}B"
+            
+        # For amounts >= 10B
+        elif amount >= 10000000000:  # 10B+
+            billions = amount / 1000000000
+            return f"{billions:.2f}B"
+            
         # For amounts >= 1B
         elif amount >= 1000000000:  # 1B+
-            if amount >= 10000000000:  # 10B+
-                billions = amount / 1000000000
-                return f"{int(billions):,}B"
-            else:
-                millions = amount / 1000000
-                return f"{int(millions):,}M"
-                
+            millions = amount / 1000000
+            return f"{int(millions):,}M"  # Added comma
+            
+        # For amounts >= 100M
+        elif amount >= 100000000:  # 100M+
+            millions = amount / 1000000
+            return f"{int(millions)}M"
+            
+        # For amounts >= 10M
+        elif amount >= 10000000:  # 10M+
+            millions = amount / 1000000
+            return f"{millions:.1f}M"
+            
         # For amounts >= 1M
         elif amount >= 1000000:  # 1M+
-            if amount >= 10000000:  # 10M+
-                millions = amount / 1000000
-                return f"{int(millions):,}M"
-            else:
-                thousands = amount / 1000
-                return f"{int(thousands):,}K"
-                
-        # For amounts >= 1K
-        elif amount >= 1000:
             thousands = amount / 1000
-            return f"{int(thousands):,}K"
-        
-        return f"{int(amount):,}"
+            return f"{int(thousands):,}K"  # Added comma
+            
+        # For amounts >= 100K
+        elif amount >= 100000:  # 100K+
+            thousands = amount / 1000
+            return f"{int(thousands)}K"
+            
+        # For amounts < 100K
+        else:
+            return f"{int(amount):,}"
+
+
 
 
 
@@ -963,6 +1058,7 @@ class Economy(commands.Cog):
     
 
     @commands.command(aliases=['bal'])
+    @has_account()
     async def balance(self, ctx, *, user: typing.Optional[typing.Union[discord.Member, str]] = None):
         """Check your balance or someone else's balance"""
         try:
@@ -1377,11 +1473,11 @@ class Economy(commands.Cog):
                         json.dump(logs, f, indent=2)
                     await ctx.send("✅ Cleared all transaction logs for all users.")
                 else:
-                    await ctx.send("❌ Operation cancelled.")
+                    await ctx.send("<:remove:1328511957208268800>  Operation cancelled.")
                 return
                 
             except asyncio.TimeoutError:
-                await ctx.send("❌ Confirmation timed out. Operation cancelled.")
+                await ctx.send("<:remove:1328511957208268800> Confirmation timed out. Operation cancelled.")
                 return
 
         # If no target specified, default to command user
@@ -2119,10 +2215,8 @@ class Economy(commands.Cog):
     @confirm_bet()
     @transaction_limit()
     @user_lock()
-    async def flower(self, ctx, bet_amount: str):
-        
+    async def flower(self, ctx, bet_amount: typing.Optional[str] = None):
         user_id = ctx.author.id
-        
         
         if bet_amount is None:
             # Create an embed for the flower command help/info
@@ -2205,8 +2299,11 @@ class Economy(commands.Cog):
   
 
 
-            max_possible_win = amount * 2  # Assuming bet is already parsed
+            max_possible_win = amount  
             if int(self.currency[house_id]) < max_possible_win:
+                print(f"House balance: {self.currency[house_id]}")
+                print(f"amount: {amount}")
+                print(f"Max possible win: {max_possible_win}")
                 await ctx.send("The house doesn't have enough balance to cover potential winnings! Please try a smaller bet.")
                 return             
 
@@ -2543,11 +2640,19 @@ class Economy(commands.Cog):
                 winnings = amount * 2
                 tax_amount = int(winnings * 0.05)
                 net_winnings = winnings - tax_amount
+                print(f"Player's balance before: {self.currency[user_id]}")
                 self.currency[user_id] += net_winnings
                 self.update_stats(user_id, amount, net_winnings)
+                print(f"Tax amount: {tax_amount}")
+                print(f"Net winnings: {net_winnings}")
+                print(f"House's balance before: {self.currency[house_id]}")
+                
                 print(f"Player wins {winnings} GP, tax: {tax_amount}, net: {net_winnings}")
                 self.currency[house_id] -= winnings
+                print(f"House's balance after loss {self.currency[house_id]}")
                 self.currency[house_id] += tax_amount
+                print(f"House's balance after tax: {self.currency[house_id]}")
+                print(f"Player's balance after: {self.currency[user_id]}")
                 
                 final_balance = await self.get_balance(user_id)
                 await self.log_transaction(ctx, amount, net_winnings, final_balance, is_house=False)
@@ -3183,7 +3288,6 @@ class Economy(commands.Cog):
                 description=(
                     "Locking your vault prevents withdrawals until the lock expires.\n\n"
                     "**Benefits:**\n"
-                    "• Protect your money from theft\n"
                     "• Earn interest while locked\n"
                     "• Force yourself to save\n\n"
                     "**Warning:**\n"
@@ -3275,7 +3379,7 @@ class Economy(commands.Cog):
                 await message.edit(embed=success_embed, view=None)
             else:
                 cancel_embed = discord.Embed(
-                    title="❌ Lock Cancelled",
+                    title="<:remove:1328511957208268800>  Lock Cancelled",
                     description="Your vault remains unlocked.",
                     color=discord.Color.red()
                 )
@@ -3380,7 +3484,7 @@ class Economy(commands.Cog):
                 await message.edit(embed=success_embed, view=None)
             elif view.value is False:
                 cancel_embed = discord.Embed(
-                    title="❌ Unlock Cancelled",
+                    title="<:remove:1328511957208268800>  Unlock Cancelled",
                     description="Your vault remains locked.",
                     color=discord.Color.red()
                 )

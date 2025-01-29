@@ -2,6 +2,8 @@ import json
 import discord
 from discord.ext import commands
 import os
+from cogs.Cmds.gamble import has_account
+
 
 class LevelSystem(commands.Cog):
     def __init__(self, bot):
@@ -98,6 +100,7 @@ class LevelSystem(commands.Cog):
         filled = int((percent/100) * length)
         return '█' * filled + '░' * (length - filled)
     
+    @has_account()
     @commands.command()
     async def level(self, ctx, member: discord.Member = None):
         """Show level for yourself or another user"""
@@ -144,7 +147,7 @@ class LevelSystem(commands.Cog):
 
         await ctx.send(embed=embed)
 
-
+    @has_account()
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def addlevel(self, ctx, level: int, required_wagered: int, icon: str, *, name: str):
@@ -158,6 +161,7 @@ class LevelSystem(commands.Cog):
             json.dump(self.levels_data, f, indent=4)
         await ctx.send(f"Level {level} ({name}) has been added/modified successfully!")
 
+    @has_account()
     @commands.command()
     async def levels(self, ctx):
         embed = discord.Embed(title="Gambling Levels", color=discord.Color.gold())
@@ -183,6 +187,7 @@ class LevelSystem(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @has_account()
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def addspeciallevel(self, ctx, level_number: int, icon: str, *, name: str):
@@ -200,6 +205,7 @@ class LevelSystem(commands.Cog):
             json.dump(self.levels_data, f, indent=4)
         await ctx.send(f"Special level {name} added successfully!")
 
+    @has_account()
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def assignspecial(self, ctx, user: discord.Member, level_number: int):
@@ -221,6 +227,7 @@ class LevelSystem(commands.Cog):
             
         await ctx.send(f"Assigned special level {level_number} to {user.name}")
 
+    @has_account()
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def removespecial(self, ctx, user: discord.Member):
@@ -239,6 +246,7 @@ class LevelSystem(commands.Cog):
         except FileNotFoundError:
             await ctx.send("No special levels have been assigned yet")
 
+    @has_account()
     @commands.command()
     async def showspecials(self, ctx):
         """Show all special levels"""

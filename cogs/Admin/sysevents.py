@@ -193,7 +193,7 @@ class SystemEvents(commands.Cog):
 
             else:
                 # Handle any unhandled errors
-                warning = await ctx.send(f"⚠️ An unexpected error occurred: {str(error)}")
+                warning = print(f"⚠️ An unexpected error occurred: {str(error)}")
                 
             # Clean up error messages after delay
             try:

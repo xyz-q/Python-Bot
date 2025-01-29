@@ -8,6 +8,9 @@ import asyncio
 from discord.ui import Modal, TextInput
 import typing
 import os
+from cogs.Cmds.gamble import has_account
+import asyncio
+import asyncio
 
 class AdminTicketView(View):
     def __init__(self, bot, user_id, timer_msg, ticket_data, public_msg, cog, ticket_type, user_timer, dm_timer, user_embed, admin_embed):
@@ -27,17 +30,20 @@ class AdminTicketView(View):
     @discord.ui.button(label="Complete", style=discord.ButtonStyle.green)
     async def complete_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user = self.bot.get_user(int(self.user_id))
-        if user in self.cog.active_sessions:
-            del self.cog.active_sessions[user]
+        # Clear active session first
+        if str(self.user_id) in self.cog.active_sessions:
+            del self.cog.active_sessions[str(self.user_id)]
             print("Deleted active session")
+        
         timer_id = f"{interaction.user.id}_{self.user_id}"
         self.cog.active_timers[timer_id] = False        
+        
         if user:
             await self.user_timer.edit(content="<:add:1328511998647861390> Trade completed! Thank you for using our services!")
             await asyncio.sleep(2)
             await user.send("<:add:1328511998647861390> Your ticket has been closed.")
             await self.user_embed.delete()
-
+        
         # Delete public messages
         await self.public_msg.delete()
         await self.timer_msg.delete()
@@ -45,7 +51,6 @@ class AdminTicketView(View):
         # Update DM messages
         await self.admin_embed.delete()
         await self.dm_timer.edit(content="<:add:1328511998647861390> Trade completed!")
-        
 
         # Remove ticket
         if self.ticket_data['ticket_id'] in self.cog.tickets[self.ticket_type]:
@@ -54,14 +59,18 @@ class AdminTicketView(View):
         
         self.stop()
 
+
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user = self.bot.get_user(int(self.user_id))
-        if user in self.cog.active_sessions:
-            del self.cog.active_sessions[user]
+        # Clear active session first
+        if str(self.user_id) in self.cog.active_sessions:
+            del self.cog.active_sessions[str(self.user_id)]
             print("Deleted active session")
+        
         timer_id = f"{interaction.user.id}_{self.user_id}"
         self.cog.active_timers[timer_id] = False
+        
         if user:
             await self.user_timer.edit(content="<:remove:1328511957208268800> Trade cancelled by the admin.")
             await asyncio.sleep(2)
@@ -75,7 +84,6 @@ class AdminTicketView(View):
         # Update DM messages
         await self.admin_embed.delete()
         await self.dm_timer.edit(content="<:remove:1328511957208268800> Trade cancelled!")
-        
 
         # Remove ticket
         if self.ticket_data['ticket_id'] in self.cog.tickets[self.ticket_type]:
@@ -83,6 +91,7 @@ class AdminTicketView(View):
             self.cog.save_tickets()
         
         self.stop()
+
 
 
 
@@ -364,9 +373,9 @@ class GambleSystem(commands.Cog):
                         self.save_tickets()
 
                     # Clean up active session
-                    if user in self.active_sessions:
+                    if str(customer_id) in self.active_sessions:
                         # Notify both user and admin about session end
-                        session = self.active_sessions[str(user.id)]
+                        session = self.active_sessions[str(customer_id)]
                         admin = self.bot.get_user(int(session['admin_id']))
                         
                         if user:
@@ -381,8 +390,14 @@ class GambleSystem(commands.Cog):
                             except:
                                 pass
                                 
-                        del self.active_sessions[str(user.id)]
-                        print("Deleted active session")
+                        # Clear the active session
+                        del self.active_sessions[str(customer_id)]
+                        print(f"Deleted active session for user {customer_id} due to timer expiration")
+
+                    # Clear the timer
+                    if timer_id in self.active_timers:
+                        del self.active_timers[timer_id]
+                        print(f"Deleted active timer {timer_id} due to expiration")
 
                     break
 
@@ -406,12 +421,21 @@ class GambleSystem(commands.Cog):
                 
                 await asyncio.sleep(13)
 
-            # Clean up timer reference
+            # Clean up timer reference if loop breaks
             if timer_id in self.active_timers:
                 del self.active_timers[timer_id]
 
         except Exception as e:
             print(f"Error in update_timer_message: {e}")
+            # Attempt to clean up on error
+            try:
+                if str(customer_id) in self.active_sessions:
+                    del self.active_sessions[str(customer_id)]
+                if timer_id in self.active_timers:
+                    del self.active_timers[timer_id]
+            except:
+                pass
+
 
 
 
@@ -616,7 +640,7 @@ class GambleSystem(commands.Cog):
             await asyncio.sleep(0.5)
             summary4 = await ctx.send(f"Location: {location}")
             await asyncio.sleep(2)
-            confirm_msg = await ctx.send("__***confirm***__' to submit or '__***decline***__' to cancel")
+            confirm_msg = await ctx.send("__'**confirm**__' to submit or '__**decline**__' to cancel")
 
             try:
                 confirmation = await self.bot.wait_for(
@@ -840,7 +864,7 @@ class GambleSystem(commands.Cog):
     def generate_ticket_id(self):
         self.last_ticket_id += 1
         return str(self.last_ticket_id)    
-
+    @has_account()
     @commands.command()
     async def deposit(self, ctx, amount=None, *, rsn=None):
         """Create a deposit request"""
@@ -930,7 +954,7 @@ class GambleSystem(commands.Cog):
                     await admin.send(embed=admin_embed)
                 except discord.Forbidden:
                     continue
-
+    @has_account()                
     @commands.command()                  
     async def withdraw(self, ctx, amount=None, *, rsn=None):
         """Create a withdrawal request"""
@@ -1131,5 +1155,7 @@ class GambleSystem(commands.Cog):
             return                
 
 async def setup(bot):
+    await asyncio.sleep(5)
+    print("GambleTickets loaded")
     await bot.add_cog(GambleSystem(bot))
 
