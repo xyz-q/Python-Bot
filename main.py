@@ -10,18 +10,13 @@ import asyncio
 from discord import app_commands, Interaction, Object
 from discord.ui import Button, View
 
-
-
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-
 intents = discord.Intents.all()
 intents.message_content = True
 intents.dm_messages = True
 intents.members = True
 bot = commands.Bot(command_prefix=',', intents=intents)
-
-
 
 class Client(commands.Bot):
     def __init__(self):
@@ -46,28 +41,6 @@ class Client(commands.Bot):
         print(prfx + " Discord Version " + Fore.YELLOW + discord.__version__)
         print(prfx + " Python Version " + Fore.YELLOW + str(platform.python_version()))
 
-    async def on_message(self, message):
-        if message.author.bot:
-            return  
-    
-
-    
-        if message.channel.name != 'admin-commands':
-            return
-
-        if message.author.id == 110927272210354176:
-            return
-
-        trusted_role = discord.utils.get(message.guild.roles, name='.trusted')
-        if trusted_role not in message.author.roles:
-            print(f"Unauthorized user {message.author} tried to use command: {message.content}")
-            await message.delete()
-            bot_response = await message.channel.send(f"{message.author.mention}, you are not authorized to use commands in this channel.")
-            await asyncio.sleep(4)
-            await bot_response.delete()
-            return
-    
-        await self.process_commands(message)
 
 client = Client()
 async def main():

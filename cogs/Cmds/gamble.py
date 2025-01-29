@@ -1063,7 +1063,6 @@ class Economy(commands.Cog):
         """Check your balance or someone else's balance"""
         try:
             if user is None:
-                # Check own balance
                 if self.is_house_name(ctx.author.name):
                     await ctx.send("Error: Cannot check balance for users with 'house' in their name.")
                     return
@@ -1079,13 +1078,17 @@ class Economy(commands.Cog):
             
             embed = discord.Embed(
                 title=f"{user_name}'s Balance",
-                description=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)}",
+                description=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)} gp\n\n"
+                        f"**Commands:**\n"
+                        f"`,withdraw <amount>` - Withdraw gold\n"
+                        f"`,deposit <amount>` - Deposit gold",
                 color=discord.Color.gold()
             )
-            embed.set_footer(text=f"Use ,vault to see more")
+            embed.set_footer(text="Use ,vault to see more")
             await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
+
 
     @commands.command(aliases=['give'])
     @commands.is_owner()
@@ -1175,6 +1178,38 @@ class Economy(commands.Cog):
                         final_balance=final_balance,
                         transaction_type="add"
                     )
+                # Add this after the transaction is completed but before the final confirmation message
+                if isinstance(user, discord.Member):  # Only send DM if it's a Discord member (not house)
+                    try:
+                        dm_embed = discord.Embed(
+                            title="Your deposit has been completed!",
+                            description=f"An admin has added currency to your balance.",
+                            color=discord.Color.green()
+                        )
+                        dm_embed.add_field(
+                            name="Amount Added",
+                            value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}",
+                            inline=False
+                        )
+                        dm_embed.add_field(
+                            name="New Balance",
+                            value=f"<:goldpoints:1319902464115343473> {self.format_amount(final_balance)}",
+                            inline=False
+                        )
+                        dm_embed.add_field(
+                            name="Added By",
+                            value=f"{ctx.author.mention}",
+                            inline=False
+                        )
+                        dm_embed.set_footer(text=f"Transaction ID: {ctx.message.id}")
+                        
+                        await user.send(embed=dm_embed)
+                    except discord.Forbidden:
+                        # If user has DMs closed
+                        await ctx.send(f"Note: Couldn't send DM to {user.name} (DMs might be closed)")
+                    except Exception as e:
+                        # Handle any other potential errors
+                        await ctx.send(f"Note: Couldn't send DM to {user.name} ({str(e)})")
               
                 
                 # Create success embed
@@ -1287,6 +1322,40 @@ class Economy(commands.Cog):
                         transaction_type="remove"
                     )            
                 
+
+                if isinstance(user, discord.Member):  # Only send DM if it's a Discord member (not house)
+                    try:
+                        dm_embed = discord.Embed(
+                            title="Your withdrawal has been completed!",
+                            description=f"An admin has removed currency from your balance.",
+                            color=discord.Color.red()
+                        )
+                        dm_embed.add_field(
+                            name="Amount Withdrawn",
+                            value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}",
+                            inline=False
+                        )
+                        dm_embed.add_field(
+                            name="New Balance",
+                            value=f"<:goldpoints:1319902464115343473> {self.format_amount(final_balance)}",
+                            inline=False
+                        )
+                        dm_embed.add_field(
+                            name="Removed By",
+                            value=f"{ctx.author.mention}",
+                            inline=False
+                        )
+                        dm_embed.set_footer(text=f"Transaction ID: {ctx.message.id}")
+                        
+                        await user.send(embed=dm_embed)
+                    except discord.Forbidden:
+                        # If user has DMs closed
+                        await ctx.send(f"Note: Couldn't send DM to {user.name} (DMs might be closed)")
+                    except Exception as e:
+                        # Handle any other potential errors
+                        await ctx.send(f"Note: Couldn't send DM to {user.name} ({str(e)})")
+
+
                 # Create success embed
                 embed = discord.Embed(
                     title="Removal Successful!",

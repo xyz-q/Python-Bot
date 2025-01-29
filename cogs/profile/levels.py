@@ -266,6 +266,75 @@ class LevelSystem(commands.Cog):
         
         await ctx.send(embed=embed)
 
+
+    @has_account()
+    @commands.command()
+    async def alllevels(self, ctx, page: int = 1):
+        """Show all users and their current levels (with pagination)"""
+        try:
+            with open(self.gambling_stats_file, 'r') as f:
+                stats = json.load(f)
+            
+            try:
+                with open(self.special_levels_file, 'r') as f:
+                    special_levels = json.load(f)
+            except FileNotFoundError:
+                special_levels = {}
+
+            embed = discord.Embed(title="All Users' Levels", color=discord.Color.gold())
+            
+            # Get and sort all users
+            all_users = []
+            for user_id, user_stats in stats.items():
+                try:
+                    member = await ctx.guild.fetch_member(int(user_id))
+                    if member:
+                        total_wagered = user_stats.get('total_wagered', 0)
+                        level_number, level_data = await self.get_user_level(user_id, total_wagered)
+                        
+                        all_users.append({
+                            'name': member.name,
+                            'level_number': int(level_number),
+                            'level_name': level_data['name'],
+                            'level_icon': level_data['icon'],
+                            'total_wagered': total_wagered
+                        })
+                except discord.NotFound:
+                    continue
+
+            # Sort users
+            all_users.sort(key=lambda x: (-x['level_number'], -x['total_wagered']))
+
+            # Pagination
+            users_per_page = 10
+            total_pages = max(1, (len(all_users) + users_per_page - 1) // users_per_page)
+            
+            # Validate page number
+            page = max(1, min(page, total_pages))
+            
+            start_idx = (page - 1) * users_per_page
+            end_idx = min(start_idx + users_per_page, len(all_users))
+            
+            page_text = ""
+            for i, user in enumerate(all_users[start_idx:end_idx], start=start_idx + 1):
+                wagered_formatted = self.format_number(user['total_wagered'])
+                page_text += f"**{i}. {user['name']}**\n"
+                page_text += f"{user['level_icon']} Level {user['level_number']} - {user['level_name']}\n"
+                page_text += f"Total Wagered: ${wagered_formatted}\n\n"
+
+            if not page_text:
+                page_text = "No users found!"
+
+            embed.description = page_text
+            embed.set_footer(text=f"Page {page}/{total_pages} • Total Users: {len(all_users)}")
+
+            await ctx.send(embed=embed)
+
+        except Exception as e:
+            await ctx.send(f"An error occurred: {str(e)}")
+
+
+
 async def setup(bot):
     await bot.add_cog(LevelSystem(bot))
 

@@ -662,7 +662,7 @@ class GambleSystem(commands.Cog):
 
                 # [Rest of your original code continues exactly the same from here]
                 user_embed = discord.Embed(
-                    title="<:add:1328511998647861390> Active Trade Session\n       ",
+                    title=f"<:add:1328511998647861390> Active {ticket_type} \n       ",
                     description=f"Your {ticket_type} request has been approved.\n__***We will never trade you first.***__\n\n__***Please confirm it's you before trading.***__\n ",
                     color=discord.Color.gold()
                 )
@@ -949,7 +949,7 @@ class GambleSystem(commands.Cog):
                     value=f"#{ticket_id}",
                     inline=False
                 )
-                admin_embed.set_footer(text="Use ,ticket accept/decline to process this request")
+
                 try:
                     await admin.send(embed=admin_embed)
                 except discord.Forbidden:
@@ -1040,7 +1040,7 @@ class GambleSystem(commands.Cog):
                     value=f"#{ticket_id}",
                     inline=False
                 )
-                admin_embed.set_footer(text="Use ,ticket accept/decline to process this request")
+
                 try:
                     await admin.send(embed=admin_embed)
                 except discord.Forbidden:
@@ -1155,7 +1155,7 @@ class GambleSystem(commands.Cog):
             return                
 
 async def setup(bot):
-    await asyncio.sleep(5)
+    await asyncio.sleep(0.1)
     print("GambleTickets loaded")
     await bot.add_cog(GambleSystem(bot))
 

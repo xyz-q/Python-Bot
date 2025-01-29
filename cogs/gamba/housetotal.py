@@ -96,8 +96,8 @@ class HouseProfits(commands.Cog):
 
         embed.add_field(
             name="Profit Analysis",
-            value=f"Profit/Loss: {results['profit_or_loss']}\n"
-                  f"Gain/Loss: {results['gain_loss_percentage']}",
+            value=f"<:goldpoints:1319902464115343473> {results['profit_or_loss']}\n"
+                  f"<:margin:1320185569703100470> {results['gain_loss_percentage']}",
             inline=False
         )
 
