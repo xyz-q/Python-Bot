@@ -55,11 +55,7 @@ class SystemEvents(commands.Cog):
             details = []
 
             # Check if we lost connection due to heartbeat timeout
-            if self.last_heartbeat:
-                time_since_heartbeat = (current_time - self.last_heartbeat).total_seconds()
-                if time_since_heartbeat > 41.25:  # Discord heartbeat interval is 41.25 seconds
-                    disconnect_reason = "Heartbeat Timeout"
-                    details.append(f"Last heartbeat was {time_since_heartbeat:.2f} seconds ago")
+
 
             # Check bot's latency before disconnect
             if self.bot.latency:
@@ -124,19 +120,7 @@ class SystemEvents(commands.Cog):
         try:
             print("\033[92mConnection Resumed\033[0m")
             
-            # Update the last disconnect message if it exists
-            if hasattr(self, 'last_disconnect_message'):
-                try:
-                    embed = self.last_disconnect_message.embeds[0]
-                    embed.add_field(
-                        name="Reconnected",
-                        value=f"Bot reconnected at {discord.utils.utcnow().strftime('%H:%M:%S UTC')}",
-                        inline=False
-                    )
-                    embed.color = discord.Color.orange()
-                    await self.last_disconnect_message.edit(embed=embed)
-                except Exception as e:
-                    print(f"\033[91mError updating disconnect message: {str(e)}\033[0m")
+
 
             # Send new reconnect message
             channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
