@@ -1112,25 +1112,51 @@ class Economy(commands.Cog):
 
             balance = await self.get_balance(user_id)
             
-            if balance == 0:
+            # Get vault balance
+            vault_balance = 0
+            if hasattr(self, 'vaults') and user_id in self.vaults:
+                vault_data = self.vaults[user_id]
+                vault_balance = vault_data.get('balance', 0)
+            
+            if balance == 0 and vault_balance == 0:
                 embed = discord.Embed(
                     title="Empty Balance!",
                     description=f"You have no gp!\nUse `,deposit <amount> <rsn>` to get started!",
-                    color=discord.Color.red()  # Changed color to red for empty balance
+                    color=discord.Color.red()
                 )
             else:
                 embed = discord.Embed(
-                    title=f"{user_name}'s Balance",
-                    description=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)} gp\n\n"
-                            f"**Commands:**\n"
-                            f"`,withdraw <amount>` - `,deposit <amount>`",
+                    title=f"🏦 {user_name}'s Balance",
                     color=discord.Color.gold()
                 )
-                embed.set_footer(text="Use ,vault to see more")
-            
+                
+                # Wallet balance (left side)
+                embed.add_field(
+                    name="Wallet Balance",
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)} gp",
+                    inline=True
+                )
+                
+                # Vault balance (right side)
+                embed.add_field(
+                    name="Vault Balance",
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_balance)} gp",
+                    inline=True
+                )
+                embed.add_field(
+                    name=" ",
+                    value=f"`,withdraw or ,deposit <gp> <rsn>`",
+                    inline=False
+                )                
+                # Add the commands as description
+                embed.set_footer(text="Use ,staking to see more commands.")
+
             await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
+
+
+
 
 
 
