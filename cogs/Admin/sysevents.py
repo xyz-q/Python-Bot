@@ -12,6 +12,7 @@ class SystemEvents(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.admin_ids = [110927272210354176, 311612585524854805]
+
     @commands.Cog.listener()
     async def on_ready(self):
         try:
@@ -46,7 +47,7 @@ class SystemEvents(commands.Cog):
     @commands.Cog.listener()
     async def on_disconnect(self):
         try:
-            self.disconnect_count += 1
+
             current_time = discord.utils.utcnow()
             
             # Determine disconnect reason
@@ -62,7 +63,7 @@ class SystemEvents(commands.Cog):
 
             # Check bot's latency before disconnect
             if self.bot.latency:
-                details.append(f"Last known latency: {self.bot.latency * 1000:.2f}ms")
+                print(f"Last known latency: {self.bot.latency * 1000:.2f}ms")
 
             # Check if we have any websocket close code
             if hasattr(self.bot, '_connection') and hasattr(self.bot._connection, '_ws'):
@@ -92,10 +93,10 @@ class SystemEvents(commands.Cog):
                     }
                     close_code = ws.close_code
                     disconnect_reason = code_meanings.get(close_code, f"Unknown close code: {close_code}")
-                    details.append(f"Close code: {close_code}")
+                    print(f"Close code: {close_code}")
 
             # Log disconnect details
-            print(f"\033[93mBot Disconnect #{self.disconnect_count}\033[0m")
+            print(f"\033[93mBot Disconnect \033[0m")
             print(f"\033[93mReason: {disconnect_reason}\033[0m")
             for detail in details:
                 print(f"\033[93m- {detail}\033[0m")
@@ -104,20 +105,10 @@ class SystemEvents(commands.Cog):
             channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
             if channel:
                 try:
-                    embed = discord.Embed(
-                        title="🔴 Bot Disconnected",
-                        color=discord.Color.red(),
-                        timestamp=current_time
-                    )
-                    embed.add_field(
-                        name="Disconnect Info",
-                        value=f"**Reason:** {disconnect_reason}\n" +
-                            "\n".join([f"• {detail}" for detail in details])
-                    )
-                    embed.set_footer(text=f"Disconnect #{self.disconnect_count}")
+                    await channel.send("🟢 Connection Resumed!")
                     
                     # Store message for potential reconnect update
-                    self.last_disconnect_message = await channel.send(embed=embed)
+
                     
                 except Exception as e:
                     print(f"\033[91mError sending disconnect message: {str(e)}\033[0m")
@@ -159,11 +150,6 @@ class SystemEvents(commands.Cog):
             print(f"\033[91mError in on_resumed: {str(e)}\033[0m")
             traceback.print_exc()
 
-    @commands.Cog.listener()
-    async def on_socket_raw_receive(self, msg):
-        # Track last heartbeat acknowledgment
-        if msg and 'heartbeat_ack' in str(msg):
-            self.last_heartbeat = discord.utils.utcnow()    
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -219,8 +205,7 @@ class SystemEvents(commands.Cog):
             elif isinstance(error, commands.RoleNotFound):
                 warning = await ctx.send("❌ Could not find that role!")
                 
-            elif isinstance(error, commands.CheckFailure):
-                warning = await ctx.send("❌ You don't have permission to use this command!")
+
 
             else:
                 # Handle any unhandled errors

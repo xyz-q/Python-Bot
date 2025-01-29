@@ -7,36 +7,7 @@ class RoleCmds(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="jail", description="Banish a member to jail.")
-    async def jail(self, ctx, member: discord.Member):
-        global previous_roles
-        jail_role = discord.utils.get(ctx.guild.roles, name=".jail")
-        if not jail_role:
-            await ctx.send("The .jail role does not exist.")
-            return
-
-        previous_roles[member.id] = [role.id for role in member.roles]
-        await member.edit(roles=[jail_role])
-        if jail_role in member.roles:
-            await ctx.send(f"{member.display_name} has been banished.")
-        else:
-            await ctx.send(f"Failed to banish {member.display_name}.")
-
-    @commands.command(name="release", description="Release a member from jail.")
-    async def release(self, ctx, member: discord.Member):
-        global previous_roles
-        jail_role = discord.utils.get(ctx.guild.roles, name=".jail")
-        if not jail_role:
-            await ctx.send("The .jail role does not exist.")
-            return
-
-        await member.remove_roles(jail_role)
-        roles_to_add = [ctx.guild.get_role(role_id) for role_id in previous_roles.get(member.id, [])]
-        if roles_to_add:
-            await member.edit(roles=roles_to_add)
-            await ctx.send(f"{member.display_name} has been released from jail. Their previous roles have been restored.")
-        else:
-            await ctx.send("Failed to restore previous roles.")
+ 
 
 
     @commands.command(name="role", description="Add or remove a role from a member.")
@@ -120,9 +91,14 @@ class RoleCmds(commands.Cog):
 
     @commands.command(name="roles", description="List all roles and their IDs.")
     async def roles(self, ctx):
-        roles = ctx.guild.roles
-        role_list = "\n".join([f"{role.name}: {role.id}" for role in roles])
+        # Get all roles and sort them by position in descending order (highest to lowest)
+        roles = sorted(ctx.guild.roles, key=lambda x: x.position, reverse=True)
+        
+        # Filter out @everyone role and create the role list
+        role_list = "\n".join([f"{role.name}: {role.id}" for role in roles if role.name != "@everyone"])
+        
         await ctx.send(f"Roles in this server:\n{role_list}")
+
 
 async def setup(bot):
     await bot.add_cog(RoleCmds(bot))
