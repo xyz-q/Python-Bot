@@ -200,7 +200,7 @@ def confirm_bet():
             print(f"User balance: {balance}")
             if amount > balance:
                 await ctx.message.delete()
-                await ctx.send(f"<:remove:1328511957208268800> Confirmation error: Insufficient balance! Your balance <:goldpoints:1319902464115343473> {self.format_amount(balance)}", delete_after=10)
+                await ctx.send(f"<:remove:1328511957208268800> Insufficient balance! Your balance <:goldpoints:1319902464115343473> {self.format_amount(balance)}\n\n Use ,deposit <amount> <rsn> to add more.", delete_after=10)
                 return None
             # Step 3: If the amount exceeds the threshold, trigger the confirmation
             if amount >= self.CONFIRMATION_THRESHOLD:
@@ -1473,7 +1473,7 @@ class Economy(commands.Cog):
                 return
 
             if sender_balance < amount:
-                await ctx.send(f"You don't have enough balance! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(sender_balance)}")
+                await ctx.send(f"You don't have enough balance!\n Your balance: <:goldpoints:1319902464115343473> {self.format_amount(sender_balance)}\n\n Use ,deposit <amount> <rsn> to add more.")
                 return
 
             # Create confirmation view
@@ -1911,7 +1911,7 @@ class Economy(commands.Cog):
 
             # Verify both players have enough balance
             if challenger_balance < bet_amount:
-                await ctx.send(f"You don't have enough balance! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(challenger_balance)}")
+                await ctx.send(f"You don't have enough balance! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(challenger_balance)}\n\n Use ,deposit <amount> <rsn> to add more.")
                 return
 
             if opponent_balance < bet_amount:
@@ -2429,7 +2429,7 @@ class Economy(commands.Cog):
            # If they dont, tell them they dont have enough balance
             
             if self.currency[user_id] < amount:
-                await ctx.send(f"You don't have enough balance for this bet! Your balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>")
+                await ctx.send(f"You don't have enough balance for this bet! Your balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>\n\n Use ,deposit <amount> <rsn> to add more.")
                 return
 
             print(f"taking {amount} from {user_id} for flower game")
