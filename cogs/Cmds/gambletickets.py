@@ -663,7 +663,7 @@ class GambleSystem(commands.Cog):
                 # [Rest of your original code continues exactly the same from here]
                 user_embed = discord.Embed(
                     title=f"<:add:1328511998647861390> Active {ticket_type} \n       ",
-                    description=f"Your {ticket_type} request has been approved.\n__***We will never trade you first.***__\n\n__***Please confirm it's you before trading.***__\n ",
+                    description=f"Your {ticket_type} request has been approved.\n__***We will never trade you first.***__\n\n__***Please confirm it's you before trading.***__\n\nYou can message the bot to talk with an admin. ",
                     color=discord.Color.gold()
                 )
                 user_embed.add_field(
@@ -869,9 +869,11 @@ class GambleSystem(commands.Cog):
     async def deposit(self, ctx, amount=None, *, rsn=None):
         """Create a deposit request"""
         if not amount or not rsn:
-            await ctx.send("<:remove:1328511957208268800> Please use the correct format: `,deposit <amount> <rsn>`\nExample: `,deposit 100M Zezima`")
+            await ctx.send("<:remove:1328511957208268800> Please use the correct format\nExample: `,deposit 100M Zezima`")
             return
-
+        if any(c.isalpha() and c.upper() not in ['M', 'B', 'K'] for c in amount):
+            await ctx.send("<:remove:1328511957208268800> Please use the correct format\nExample: `,deposit 100M Zezima`")
+            return
         formatted_amount = self.parse_amount(amount)
         if formatted_amount < self.MIN_DEPOSIT:
             await ctx.send(f"<:remove:1328511957208268800> Minimum deposit amount is {self.format_amount2(self.MIN_DEPOSIT)} <:goldpoints:1319902464115343473>")
@@ -959,7 +961,10 @@ class GambleSystem(commands.Cog):
     async def withdraw(self, ctx, amount=None, *, rsn=None):
         """Create a withdrawal request"""
         if not amount or not rsn:
-            await ctx.send("<:remove:1328511957208268800> Please use the correct format: `,withdraw <amount> <rsn>`\nExample: `,withdraw 100M Zezima`")
+            await ctx.send("<:remove:1328511957208268800> Please use the correct format\nExample: `,withdraw 100M Zezima`")
+            return
+        if any(c.isalpha() and c.upper() not in ['M', 'B', 'K'] for c in amount):
+            await ctx.send("<:remove:1328511957208268800> Please use the correct format\nExample: `,withdraw 100M Zezima`")
             return
 
         formatted_amount = self.parse_amount(amount)
@@ -1155,7 +1160,7 @@ class GambleSystem(commands.Cog):
             return                
 
 async def setup(bot):
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0.5)
     print("GambleTickets loaded")
     await bot.add_cog(GambleSystem(bot))
 

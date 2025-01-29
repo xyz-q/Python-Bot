@@ -22,37 +22,46 @@ import typing
 
 def has_account():
     async def predicate(ctx):
-        # Get the GambleSystem cog instance specifically
-        cog = ctx.bot.get_cog('GambleSystem')  # Change this line
+        # Get the cog by name only
+        cog = ctx.bot.get_cog('GambleSystem')
         user_id = str(ctx.author.id)
         
-        # Check if user exists in currency system
-        if user_id not in cog.currency:
-            embed = discord.Embed(
-                title="You haven't read the terms of service yet!",
-                description="",
-                color=discord.Color.red()
-            )
-            embed.add_field(
-                name="Terms & Conditions",
-                value="1. You must be __**18**__ **years** or older to use our services.\n"
-                    "2. ***ANY*** form of exploitation will result in a __**PERMANENT**__ suspension.\n"
-                    "3. This is for entertainment purposes only.\n"
-                    "4. ***ALL*** transactions are final.\n"
-
-            )
-            embed.add_field(
-                name="Privacy Notice",
-                value="• We track gambling statistics and transaction history\n"
-                    "• Data is used for monitoring responsible gaming\n"
-                    "• Your activity may be logged for security purposes\n\n"
-                    "   Please use ,accept if you agree to these.",                    
-                inline=False
-            )
-            await ctx.send(embed=embed)
-            return False
-        return True
+        # Force reload currency data before checking
+        if cog:
+            cog.load_currency()  # Reload currency data each time
+            
+        # Check if cog exists and user has an account
+        if cog and hasattr(cog, 'currency') and user_id in cog.currency:
+            return True
+            
+        # If no account, show terms
+        embed = discord.Embed(
+            title="You haven't read the terms of service yet!",
+            description="",
+            color=discord.Color.red()
+        )
+        embed.add_field(
+            name="Terms & Conditions",
+            value="1. You must be __**18**__ **years** or older to use our services.\n"
+                "2. ***ANY*** form of exploitation will result in a __**PERMANENT**__ suspension.\n"
+                "3. This is for entertainment purposes only.\n"
+                "4. ***ALL*** transactions are final.\n"
+        )
+        embed.add_field(
+            name="Privacy Notice",
+            value="• We track gambling statistics and transaction history\n"
+                "• Data is used for monitoring responsible gaming\n"
+                "• Your activity may be logged for security purposes\n\n"
+                "   Please use ,accept if you agree to these.",                    
+            inline=False
+        )
+        await ctx.send(embed=embed)
+        return False
+            
     return commands.check(predicate)
+
+
+
 
 
 
@@ -600,7 +609,7 @@ class Economy(commands.Cog):
         await ctx.send(embed=embed)
 
 
-    
+    @has_account()
     @commands.command(name="transactions", aliases=['history', 'past'])
     
     async def view_transactions(self, ctx, user: typing.Union[discord.Member, str] = None):
@@ -642,6 +651,33 @@ class Economy(commands.Cog):
             await ctx.send("Error retrieving transactions.")
             print(f"Error: {e}")
 
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def clearcurrency(self, ctx):
+        confirm_msg = await ctx.send("⚠️ Are you sure you want to clear all currency data? This action cannot be undone!\nReact with ✅ to confirm or ❌ to cancel.")
+        
+        await confirm_msg.add_reaction("✅")
+        await confirm_msg.add_reaction("❌")
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["✅", "❌"] and reaction.message == confirm_msg
+
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            
+            if str(reaction.emoji) == "✅":
+                with open('./.json/currency.json', 'w') as f:
+                    json.dump({}, f, indent=4)
+                await ctx.send("✅ Currency data has been cleared successfully!")
+            else:
+                await ctx.send("❌ Operation cancelled.")
+                
+        except asyncio.TimeoutError:
+            await ctx.send("❌ Operation timed out.")
+        except Exception as e:
+            await ctx.send(f"❌ An error occurred while clearing the currency data: {str(e)}")
+
+    @has_account()
     @commands.command(name="resetstats")
     async def reset_stats(self, ctx, target: typing.Union[discord.Member, str] = None):
         """Reset statistics for a user or all users"""
@@ -724,7 +760,7 @@ class Economy(commands.Cog):
         elif isinstance(error, commands.BadUnionArgument):
             await ctx.send("<:remove:1328511957208268800> Invalid target! Use either a user mention or 'all'")
 
-
+    @has_account()
     @commands.command(name="stats")
     async def show_stats(self, ctx, user: discord.Member = None):
         user = user or ctx.author
@@ -752,7 +788,7 @@ class Economy(commands.Cog):
         await ctx.send(embed=embed)
 
 
-
+    @has_account()
     @commands.command(name="housestats")
     @commands.has_permissions(administrator=True)
     async def house_stats(self, ctx):
@@ -1076,18 +1112,26 @@ class Economy(commands.Cog):
 
             balance = await self.get_balance(user_id)
             
-            embed = discord.Embed(
-                title=f"{user_name}'s Balance",
-                description=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)} gp\n\n"
-                        f"**Commands:**\n"
-                        f"`,withdraw <amount>` - Withdraw gold\n"
-                        f"`,deposit <amount>` - Deposit gold",
-                color=discord.Color.gold()
-            )
-            embed.set_footer(text="Use ,vault to see more")
+            if balance == 0:
+                embed = discord.Embed(
+                    title="Empty Balance!",
+                    description=f"You have no gp!\nUse `,deposit <amount> <rsn>` to get started!",
+                    color=discord.Color.red()  # Changed color to red for empty balance
+                )
+            else:
+                embed = discord.Embed(
+                    title=f"{user_name}'s Balance",
+                    description=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)} gp\n\n"
+                            f"**Commands:**\n"
+                            f"`,withdraw <amount>` - `,deposit <amount>`",
+                    color=discord.Color.gold()
+                )
+                embed.set_footer(text="Use ,vault to see more")
+            
             await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
+
 
 
     @commands.command(aliases=['give'])
@@ -1374,7 +1418,7 @@ class Economy(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
 
-
+    @has_account()
     @commands.command(aliases=['send'])
     async def transfer(self, ctx, *, args=None):
         """Transfer currency to another user"""
@@ -1508,6 +1552,7 @@ class Economy(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
 
+    
     @commands.command(name='cleartransactions', aliases=['cleartrans'])
     @commands.has_permissions(administrator=True)
     async def clear_transactions(self, ctx, target: typing.Optional[discord.Member] = None, option: str = None):
@@ -1584,7 +1629,7 @@ class Economy(commands.Cog):
 
 
 
-
+    @has_account()
     @commands.command()
     async def staking(self, ctx):
         await ctx.message.delete()
@@ -1822,7 +1867,7 @@ class Economy(commands.Cog):
     #         await ctx.send(f"<:remove:1328511957208268800> An error occurred: {str(e)}")
     #         return
     
-
+    @has_account()
     @commands.command(name="pvpflip", aliases=["flip", "challenge", "cf"])
     @transaction_limit()
     @user_lock()
@@ -2097,7 +2142,7 @@ class Economy(commands.Cog):
         return result
 
 
-
+    @has_account()
     @commands.command(name="slots", aliases=["gamble", "slot"])
     @confirm_bet()
     @transaction_limit()
@@ -2279,7 +2324,7 @@ class Economy(commands.Cog):
 
 
 
-
+    @has_account()
     @commands.command(aliases=["stake", "flowers"])
     @confirm_bet()
     @transaction_limit()
@@ -2791,7 +2836,7 @@ class Economy(commands.Cog):
 
 
 
-    
+
     @commands.command(name="limits")
     @commands.has_permissions(administrator=True)  # Only admins can change limits
     async def set_limits(self, ctx, min_amount: str = None, max_amount: str = None):
@@ -2922,6 +2967,7 @@ class Economy(commands.Cog):
         elif isinstance(error, commands.MemberNotFound):
             await ctx.send("<:remove:1328511957208268800> Could not find that user!")
 
+    @has_account()
     @commands.group(invoke_without_command=True, aliases=["vaults"])
     async def vault(self, ctx):
         """Shows all vault commands"""
@@ -2954,7 +3000,7 @@ class Economy(commands.Cog):
         embed.set_footer(text="Keep your wealth secure!")
         
         await ctx.send(embed=embed)
-
+    @has_account()
     def get_vault_balance(self, user_id):
         """Get vault balance with accumulated interest"""
         try:
@@ -2984,7 +3030,7 @@ class Economy(commands.Cog):
             print(f"Balance calculation error: {e}")
             return 0
 
-
+    @has_account()
     @vault.command(name="balance", aliases=["bal"])
     async def vault_balance(self, ctx):
         """Check your vault balance"""
