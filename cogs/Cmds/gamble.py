@@ -1143,6 +1143,7 @@ class Economy(commands.Cog):
 
             balance = await self.get_balance(user_id)
             USD = balance * GP_TO_USD_RATE
+            
             # Get vault balance
             user_id = str(ctx.author.id)
             vault_data = self.load_vault_data()
@@ -1150,6 +1151,8 @@ class Economy(commands.Cog):
             vault_balance = user_vault.get("balance", 0)
             print(f"Current vault balance: ${vault_balance:,}")
             vaultplusbalance = vault_balance + balance
+            VAULT_USD = vault_balance * GP_TO_USD_RATE
+            total_usd = vaultplusbalance * GP_TO_USD_RATE
 
 
 
@@ -1176,17 +1179,17 @@ class Economy(commands.Cog):
                 # Vault balance (right side)
                 embed.add_field( 
                     name="Vault Balance",
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_balance)} GP\n\nTotal {self.format_amount(vaultplusbalance)} GP ",
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_balance)} GP\n\n<:cash:1328609314411384893> ${VAULT_USD:.2f} USD ",
                     inline=True,
                 )
 
                 embed.add_field(
                     name=" ",
-                    value=f"`,withdraw or ,deposit <gp> <rsn>`",
+                    value=f"`,withdraw or ,deposit <gp> <rsn>`\n`,staking to see more commands.`",
                     inline=False
                 )                
                 # Add the commands as description
-                embed.set_footer(text="Use ,staking to see more commands.")
+                embed.set_footer(text=f"Total balance {self.format_amount(vaultplusbalance)} GP / {total_usd:.2f} USD")
 
             await ctx.send(embed=embed)
         except Exception as e:
