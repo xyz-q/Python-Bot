@@ -652,7 +652,7 @@ class Economy(commands.Cog):
             print(f"Error: {e}")
 
     @commands.command()
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def clearcurrency(self, ctx):
         confirm_msg = await ctx.send("⚠️ Are you sure you want to clear all currency data? This action cannot be undone!\nReact with ✅ to confirm or ❌ to cancel.")
         
@@ -825,7 +825,7 @@ class Economy(commands.Cog):
         try:
             # Handle "house" keyword to return bot's ID
             if isinstance(user, str) and user.lower().strip() == "house":
-                return str(self.bot.user.id), "🏦 House", True
+                return str(self.bot.user.id), "House", True
             
             # Handle discord Member
             if isinstance(user, discord.Member):
@@ -1097,6 +1097,7 @@ class Economy(commands.Cog):
     @commands.command(aliases=['bal'])
     @has_account()
     async def balance(self, ctx, *, user: typing.Optional[typing.Union[discord.Member, str]] = None):
+        GP_TO_USD_RATE = 0.0000000264
         """Check your balance or someone else's balance"""
         try:
             if user is None:
@@ -1112,7 +1113,7 @@ class Economy(commands.Cog):
                     return
 
             balance = await self.get_balance(user_id)
-            
+            USD = balance * GP_TO_USD_RATE
             # Get vault balance
             vault_balance = 0
             if hasattr(self, 'vaults') and user_id in self.vaults:
@@ -1134,16 +1135,17 @@ class Economy(commands.Cog):
                 # Wallet balance (left side)
                 embed.add_field(
                     name="Wallet Balance",
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)} gp",
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)} GP\n\n<:cash:1328609314411384893> ${USD:.2f} USD ",
                     inline=True
                 )
                 
                 # Vault balance (right side)
                 embed.add_field(
                     name="Vault Balance",
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_balance)} gp",
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_balance)} GP",
                     inline=True
                 )
+
                 embed.add_field(
                     name=" ",
                     value=f"`,withdraw or ,deposit <gp> <rsn>`",
@@ -1581,7 +1583,7 @@ class Economy(commands.Cog):
 
     
     @commands.command(name='cleartransactions', aliases=['cleartrans'])
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def clear_transactions(self, ctx, target: typing.Optional[discord.Member] = None, option: str = None):
         """Clear transaction logs for a user or all users"""
         
@@ -1663,7 +1665,7 @@ class Economy(commands.Cog):
 
         # Get commands from multiple cogs
         commands_list = []
-        cogs_to_include = ['Economy', 'GambleSystem']  # Add the names of cogs you want to include
+        cogs_to_include = ['Economy', 'GambleSystem', 'LevelSystem', 'Profile']  # Add the names of cogs you want to include
         
         for cog_name in cogs_to_include:
             cog = self.bot.get_cog(cog_name)
@@ -2865,7 +2867,7 @@ class Economy(commands.Cog):
 
 
     @commands.command(name="limits")
-    @commands.has_permissions(administrator=True)  # Only admins can change limits
+    @commands.is_owner()  # Only admins can change limits
     async def set_limits(self, ctx, min_amount: str = None, max_amount: str = None):
         """Set minimum and maximum gambling limits"""
         

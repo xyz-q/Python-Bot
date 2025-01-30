@@ -6,7 +6,7 @@ class SyncGuild(commands.Cog):
         self.bot = bot
 
     @commands.command(name="syncguild", description="Sync slash commands to a specific guild.")
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def sync_guild(self, ctx, guild_id_or_name: str, test: bool = False):
         try:
             guild = self.bot.get_guild(int(guild_id_or_name))
@@ -30,7 +30,7 @@ class SyncGuild(commands.Cog):
             await ctx.send(f"Failed to sync/test slash commands: {e}")
 
     @commands.command(name="clearcache", description="Clear the slash command cache.")
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def clear_cache(self, ctx):
         try:
             registered_commands = await self.bot.tree.fetch_commands()

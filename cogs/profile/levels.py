@@ -149,7 +149,7 @@ class LevelSystem(commands.Cog):
 
     @has_account()
     @commands.command()
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def addlevel(self, ctx, level: int, required_wagered: int, icon: str, *, name: str):
         """Add or modify a level (Admin only)"""
         self.levels_data["levels"][str(level)] = {
@@ -189,7 +189,7 @@ class LevelSystem(commands.Cog):
 
     @has_account()
     @commands.command()
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def addspeciallevel(self, ctx, level_number: int, icon: str, *, name: str):
         """Add a special level (Admin only)"""
         if level_number >= 0:
@@ -207,7 +207,7 @@ class LevelSystem(commands.Cog):
 
     @has_account()
     @commands.command()
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def assignspecial(self, ctx, user: discord.Member, level_number: int):
         """Assign a special level to a user (Admin only)"""
         if level_number >= 0:
@@ -229,7 +229,7 @@ class LevelSystem(commands.Cog):
 
     @has_account()
     @commands.command()
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def removespecial(self, ctx, user: discord.Member):
         """Remove special level from a user (Admin only)"""
         try:

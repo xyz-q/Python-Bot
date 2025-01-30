@@ -64,7 +64,7 @@ class MerchantUpdater(commands.Cog):
         await self.update_merchant_stock()
 
     @commands.command(name="stockupdate", aliases=['merchupdate'])
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def update_merchant_command(self, ctx):
         """Manually update the merchant stock data"""
         await ctx.send("Updating merchant stock data...")

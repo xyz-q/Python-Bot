@@ -75,7 +75,7 @@ class TravellingMerchant(commands.Cog):
             json.dump(self.user_preferences, f)
 
     @commands.command(name="merch")
-    @commands.has_permissions(administrator=True) 
+    @commands.is_owner() 
     async def toggle_notifications(self, ctx, user: discord.User = None):
         """
         Toggle daily merchant notifications for yourself or another user.
@@ -498,7 +498,7 @@ class TravellingMerchant(commands.Cog):
                 print(f"Failed to send notification to channel {channel_id}: {e}")
 
     @commands.command(name="testmerchant")
-    @commands.has_permissions(administrator=True)  # Only admins can use this
+    @commands.is_owner()  # Only admins can use this
     async def test_merchant(self, ctx):
         """Test command to manually trigger the merchant notification to all subscribed channels"""
         try:
@@ -598,7 +598,7 @@ class TravellingMerchant(commands.Cog):
             await ctx.send(f"This channel is not subscribed!")
 
     @commands.command(name="listsubscribed")
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def list_subscribed(self, ctx):
         """List all subscribed channels"""
         if not self.subscribed_channels:

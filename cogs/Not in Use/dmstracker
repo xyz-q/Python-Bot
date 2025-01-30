@@ -13,7 +13,7 @@ class DMTracker(commands.Cog):
             self.bot.private_channels.add(message.channel)
 
     @commands.command(name='dmlist')
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def list_dm_users(self, ctx):
         """Lists all users who have DMed the bot"""
         dm_users = set()  # Use a set to avoid duplicates
