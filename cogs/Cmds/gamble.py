@@ -1684,7 +1684,7 @@ class Economy(commands.Cog):
 
         # Split into pages (5 commands per page)
         pages = []
-        page_size = 5
+        page_size = 7
         for i in range(0, len(command_descriptions), page_size):
             page = "\n".join(command_descriptions[i:i + page_size])
             pages.append(page)
