@@ -94,10 +94,46 @@ class LevelSystem(commands.Cog):
 
 
 
-    def create_progress_bar(self, percent, length=10):
-        """Create a progress bar - can be called from other cogs"""
-        filled = int((percent/100) * length)
-        return '█' * filled + '░' * (length - filled)
+    def create_progress_bar(self, percent, total_segments=7):
+        """Create a progress bar with 1 start, 1 end, and 6 inside emojis"""
+        
+        # Determine how many segments should be filled
+        filled_segments = int((percent / 100) * 6)  # Only the 6 inside emojis
+        
+        # Emojis for start, middle, and end
+        emojis = {
+            "empty_start": "<:proem1:1334607797995966554>",  # Empty start (left)
+            "empty_end": "<:proem3:1334607901402075168>",  # Empty end (right)
+            "empty_middle": "<:proem2:1334607862370140200>",  # Empty middle
+            "full_start": "<:profu1:1334607942556848168>",  # Full start (left)
+            "full_end": "<:profu3:1334608009069854812>",  # Full end (right)
+            "full_middle": "<:profu2:1334607976610267257>"   # Full middle
+        }
+        
+        # Build the progress bar with start, middle, and end
+        progress = []
+        
+        # Start section
+        if filled_segments > 0:
+            progress.append(emojis["full_start"])
+        else:
+            progress.append(emojis["empty_start"])
+
+        # Inside section (6 emojis)
+        for i in range(6):
+            if filled_segments > i:
+                progress.append(emojis["full_middle"])  # Full inside
+            else:
+                progress.append(emojis["empty_middle"])  # Empty inside
+
+        # End section
+        if filled_segments == 6:
+            progress.append(emojis["full_end"])
+        else:
+            progress.append(emojis["empty_end"])
+
+        return ''.join(progress)
+
     
     @has_account()
     @commands.command()

@@ -1,19 +1,13 @@
-import json
+import math
 
-# Exchange rate: 1 GP = 0.000000025 USD
-GP_TO_USD_RATE = 0.0000000264
+def create_circular_progress_bar(self, percent, radius=5):
+    """Create a circular progress bar using ASCII art."""
+    percent = max(0, min(100, percent))  # Clamp between 0 and 100
+    angle = 2 * math.pi * (percent / 100)  # Angle based on percent
+    filled = int(angle // (math.pi / 2))  # Determine the filled quadrants
+    empty = 4 - filled
+    return f"[{'■' * filled}{'□' * empty}]"
 
-# Load the JSON file
-with open(".json/currency.json", "r") as file:
-    currency_data = json.load(file)
-
-# Convert each balance from GP to USD
-usd_values = {user_id: gp_balance * GP_TO_USD_RATE for user_id, gp_balance in currency_data.items()}
-
-# Print results
-for user, usd in usd_values.items():
-    print(f"User {user}: {usd:.2f} USD")
-
-# (Optional) Save the converted values to a new JSON file
-with open("currency_usd.json", "w") as file:
-    json.dump(usd_values, file, indent=4)
+# Example of usage:
+print(create_circular_progress_bar(None, 50))
+# Output: [■■□□]

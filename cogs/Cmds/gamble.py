@@ -1177,14 +1177,14 @@ class Economy(commands.Cog):
                 # Wallet balance (left side)
                 embed.add_field(
                     name="Wallet Balance",
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)} GP\n\n<:cash:1328609314411384893> ${USD:.2f} USD ",
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)} GP",
                     inline=True
                 )
                 
                 # Vault balance (right side)
                 embed.add_field( 
                     name="Vault Balance",
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_balance)} GP\n\n<:cash:1328609314411384893> ${VAULT_USD:.2f} USD ",
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_balance)} GP",
                     inline=True,
                 )
 
