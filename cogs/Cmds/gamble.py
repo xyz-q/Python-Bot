@@ -3146,7 +3146,7 @@ class Economy(commands.Cog):
                     value=f"Locked until {lock_until.strftime('%Y-%m-%d %H:%M')}",
                     inline=False
                 )
-            
+            embed.set_footer(text=f"Use ',vault lock' to lock it and gain interest!")
             await ctx.send(embed=embed)
             
         except Exception as e:
