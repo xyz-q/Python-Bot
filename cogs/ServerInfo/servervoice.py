@@ -76,7 +76,7 @@ class ServerVoiceJoin(commands.Cog):
 
             embed = discord.Embed(
                 title=f"Voice Channels in {guild.name}",
-                color=discord.Color.blue()
+                color=discord.Color.gold()
             )
 
             # Get all voice channels and their members

@@ -70,7 +70,7 @@ class CommandStats(commands.Cog):
             return
 
         embed = discord.Embed(title=f"Command Stats for {ctx.author.name}",
-                            color=discord.Color.blue())
+                            color=discord.Color.gold())
         
         # Add total commands used
         total_commands = self.get_total_commands(ctx.author.id)

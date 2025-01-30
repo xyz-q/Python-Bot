@@ -28,7 +28,7 @@ class InfoCog(commands.Cog):
         embed = discord.Embed(
             title="List of Every Single Command",
             description="\n".join(formatted_commands),
-            color=discord.Color.blue()
+            color=discord.Color.gold()
         )
 
         # Send the embed and delete it after 60 seconds

@@ -52,9 +52,7 @@ class VCTicket(commands.Cog):
         await ctx.send("Opening voice channel ticket...")
         await ctx.send(f"Voice channel ticket command executed by {ctx.author}")
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("VCTicketCog is ready.")
+
 
     async def send_voice_request_message(self, member: discord.Member, guild: discord.Guild):
         me = await self.bot.fetch_user(110927272210354176)

@@ -393,7 +393,7 @@ class TravellingMerchant(commands.Cog):
         
         embed = discord.Embed(
             title=f"Emojis in {ctx.guild.name}",
-            color=discord.Color.blue()
+            color=discord.Color.gold()
         )
 
         # Add fields for each chunk
@@ -607,7 +607,7 @@ class TravellingMerchant(commands.Cog):
         
         embed = discord.Embed(
             title="Subscribed Channels",
-            color=discord.Color.blue()
+            color=discord.Color.gold()
         )
         
         for channel_id in self.subscribed_channels:

@@ -22,9 +22,7 @@ class PriceChecker(commands.Cog):
 
         }
         
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("PriceChecker cog is ready")
+
 
     from difflib import get_close_matches
     

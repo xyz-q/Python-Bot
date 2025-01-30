@@ -48,7 +48,10 @@ class DayInput(discord.ui.Modal, title="Custom Time Input"):
             
         except ValueError:
             await interaction.response.send_message("Please enter a valid number!", ephemeral=True)
+            
 def has_account():
+    message_sent = set()  # Track if we've sent a message for this command invocation
+    
     async def predicate(ctx):
         # Get the cog by name only
         cog = ctx.bot.get_cog('GambleSystem')
@@ -56,37 +59,49 @@ def has_account():
         
         # Force reload currency data before checking
         if cog:
-            cog.load_currency()  # Reload currency data each time
+            cog.load_currency()
             
         # Check if cog exists and user has an account
         if cog and hasattr(cog, 'currency') and user_id in cog.currency:
             return True
             
-        # If no account, show terms
-        embed = discord.Embed(
-            title="You haven't read the terms of service yet!",
-            description="",
-            color=discord.Color.red()
-        )
-        embed.add_field(
-            name="Terms & Conditions",
-            value="1. You must be __**18**__ **years** or older to use our services.\n"
-                "2. ***ANY*** form of exploitation will result in a __**PERMANENT**__ suspension.\n"
-                "3. This is for entertainment purposes only.\n"
-                "4. ***ALL*** transactions are final.\n"
-        )
-        embed.add_field(
-            name="Privacy Notice",
-            value="• We track gambling statistics and transaction history\n"
-                "• Data is used for monitoring responsible gaming\n"
-                "• Your activity may be logged for security purposes\n\n"
-                "   Please use ,accept if you agree to these.",                    
-            inline=False
-        )
-        await ctx.send(embed=embed)
+        # Create unique key for this command invocation
+        message_key = f"{ctx.message.id}"
+        
+        # Only send message if we haven't sent one for this command invocation
+        if message_key not in message_sent:
+            message_sent.add(message_key)
+            # If no account, show terms
+            embed = discord.Embed(
+                title="You haven't read the terms of service yet!",
+                description="",
+                color=discord.Color.red()
+            )
+            embed.add_field(
+                name="Terms & Conditions",
+                value="1. You must be __**18**__ **years** or older to use our services.\n"
+                    "2. ***ANY*** form of exploitation will result in a __**PERMANENT**__ suspension.\n"
+                    "3. This is for entertainment purposes only.\n"
+                    "4. ***ALL*** transactions are final.\n"
+            )
+            embed.add_field(
+                name="Privacy Notice",
+                value="• We track gambling statistics and transaction history\n"
+                    "• Data is used for monitoring responsible gaming\n"
+                    "• Your activity may be logged for security purposes\n\n"
+                    "   Please use ,accept if you agree to these.",                    
+                inline=False
+            )
+            await ctx.send(embed=embed)
+            await asyncio.sleep(3)
+            
+            # Clean up after a delay
+            message_sent.discard(message_key)
+            
         return False
             
     return commands.check(predicate)
+
 
 
 

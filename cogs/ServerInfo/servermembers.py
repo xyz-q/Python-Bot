@@ -21,7 +21,7 @@ class ServerMembers(commands.Cog):
             # Create initial embed for server information
             embed = discord.Embed(
                 title=f"Server Information - {server.name}",
-                color=discord.Color.blue()
+                color=discord.Color.gold()
             )
             
             # Add member count
@@ -92,7 +92,7 @@ class ServerMembers(commands.Cog):
                     member_embed = discord.Embed(
                         title=f"Regular Members (Part {i+1})",
                         description="\n".join(chunk),
-                        color=discord.Color.blue()
+                        color=discord.Color.gold()
                     )
                     await ctx.send(embed=member_embed)
 

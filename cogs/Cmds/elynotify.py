@@ -66,14 +66,14 @@ class ElyNotify(commands.Cog):
 
     def load_alerts(self):
         """Load alerts from JSON file"""
-        print("\nLoading saved alerts...")
+        
         try:
             if os.path.exists(self.alerts_file):
                 with open(self.alerts_file, 'r') as f:
                     # Convert string keys back to integers
                     data = json.load(f)
                     self.price_alerts = {int(k): v for k, v in data.items()}
-                print(f"Loaded {len(self.price_alerts)} users' alerts")
+                
             else:
                 print("No saved alerts found")
         except Exception as e:
@@ -389,5 +389,5 @@ class ElyNotify(commands.Cog):
         self.save_alerts()
 
 async def setup(bot):
-    print("\nSetting up ElyNotify cog")
+    
     await bot.add_cog(ElyNotify(bot))

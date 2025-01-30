@@ -1,5 +1,6 @@
 from discord.ext import commands, tasks
 import discord
+import asyncio
 
 default_status = discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/jJ8QcTB3")
 dnd_activity = discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/VGucfdymCm")
@@ -65,6 +66,7 @@ class StatusCommands(commands.Cog):
     async def on_ready(self):
         if self.is_dnd:
             await self.bot.change_presence(status=discord.Status.dnd, activity=dnd_activity)
+            await asyncio.sleep(1)
             print("\033[91mBot is now in Do Not Disturb mode.\033[0m")
 
 async def setup(bot):

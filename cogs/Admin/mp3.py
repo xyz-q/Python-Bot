@@ -143,7 +143,7 @@ class Mp3(commands.Cog):
         if not sound_files:
             await ctx.send("No .mp3 files found in the '.mp3' folder.")
             return
-        embed = discord.Embed(title="Available MP3 Files", color=discord.Color.blue())
+        embed = discord.Embed(title="Available MP3 Files", color=discord.Color.gold())
         song_list = "\n".join(sound_files)
         embed.description = song_list
         await ctx.send(embed=embed)

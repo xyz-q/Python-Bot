@@ -50,10 +50,10 @@ class Client(commands.Bot):
         if message.author.bot:
             return  
     
-        
+
+     
     
-        if message.channel.name != 'admin-commands':
-            return
+
 
         if message.author.id == 110927272210354176:
             return
@@ -66,7 +66,15 @@ class Client(commands.Bot):
             await asyncio.sleep(4)
             await bot_response.delete()
             return
-    
+
+        blacklist_cog = self.bot.get_cog('Blacklist')    
+        if blacklist_cog and message.author.id in blacklist_cog.blacklisted_users:
+            # If the message starts with your command prefix
+            if message.content.startswith(","):
+                
+                return
+            return   
+        
         await self.process_commands(message)
 
 client = Client()

@@ -239,7 +239,7 @@ class GambleSystem(commands.Cog):
             if os.path.exists(self.currency_file):
                 with open(self.currency_file, 'r') as f:
                     self.currency = json.load(f)
-                    print(f"Currency loaded successfully from {self.currency_file}")
+                    
             else:
                 print(f"Currency file not found at {self.currency_file}")
         except Exception as e:
@@ -1161,6 +1161,6 @@ class GambleSystem(commands.Cog):
 
 async def setup(bot):
     await asyncio.sleep(0.5)
-    print("GambleTickets loaded")
+    
     await bot.add_cog(GambleSystem(bot))
 

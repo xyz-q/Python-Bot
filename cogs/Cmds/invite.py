@@ -18,7 +18,7 @@ class InviteCommand(commands.Cog):
         embed = discord.Embed(
             title="Bot Invite Link",
             description="Click the button below to invite the bot to your server.",
-            color=discord.Color.blue()
+            color=discord.Color.gold()
         )
 
         button = discord.ui.Button(label="Invite Bot", url=oauth2_url)

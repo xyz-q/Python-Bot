@@ -54,7 +54,7 @@ class MerchantUpdater(commands.Cog):
                     with open('merchant_stock.py', 'w') as f:
                         f.write(f"stock = {repr(stock)}\n")
                     
-                    print(f"Updated merchant stock data at {datetime.utcnow().isoformat()}")
+                    
 
     @update_merchant_stock.before_loop
     async def before_update(self):

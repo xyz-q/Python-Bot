@@ -13,10 +13,39 @@ class SystemEvents(commands.Cog):
         self.bot = bot
         self.admin_ids = [110927272210354176, 311612585524854805]
 
+
+    async def get_or_create_trusted_role(self, guild):  # Add self parameter here
+        await asyncio.sleep(0.1)  # Give Discord API time to be ready
+        
+        # Try to get the existing role
+        trusted_role = discord.utils.get(guild.roles, name='.trusted')
+        
+        # If role doesn't exist, create it
+        if trusted_role is None:
+            print("Can't find trusted role...")
+            try:
+                # Create the role with specific permissions
+                print(f"Creating .trusted role in {guild.name}")
+                trusted_role = await guild.create_role(
+                    name='.trusted',
+                    color=discord.Color.blue(),
+                    reason="Required for bot command permissions"
+                )
+                print(f"Created .trusted role in {guild.name}")
+            except discord.Forbidden:
+                print(f"Bot doesn't have permission to create roles in {guild.name}")
+                return None
+            except Exception as e:
+                print(f"Error creating role: {e}")
+                return None
+                
+        return trusted_role
+
     @commands.Cog.listener()
     async def on_ready(self):
         try:
-            print("\033[93mBot is now operational.\033[0m")
+            
+            
             print("\033[90mLogged in as {0}\033[0m".format(self.bot.user))
 
             print("\033[0;32mGuilds:\033[0m")
@@ -25,7 +54,7 @@ class SystemEvents(commands.Cog):
                     "\033[92m" + str(guild.id) + "\033[0m",
                     "\033[92m" + guild.name + "\033[0m"
                 ))
-
+                await self.get_or_create_trusted_role(guild)
             channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
             if channel:
                 try:
@@ -209,11 +238,25 @@ class SystemEvents(commands.Cog):
             traceback.print_exc()
 
 
+
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author == self.bot.user:
             return
+            
+        blacklist_cog = self.bot.get_cog('Blacklist')
         
+        # Check if user is blacklisted
+        if blacklist_cog and message.author.id in blacklist_cog.blacklisted_users:
+            # If the message starts with your command prefix
+            if message.content.startswith(","):
+                blacklist = await message.channel.send("❌ You are blacklisted from using this bot.")
+                await message.delete()
+                await asyncio.sleep(4)
+                await blacklist.delete()
+                return
+            
+
 
         try:
             # Handle DMs
@@ -226,21 +269,23 @@ class SystemEvents(commands.Cog):
                     return
 
 
-            allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send', ',cf', ',pvpflip', ',ticket', ',vault', ',accept', ',profile', ',history', ',transactions', ',')
+            allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send', ',cf', ',pvpflip', ',ticket', ',vault', ',accept', ',profile', ',history', ',transactions')
 
             # Only process commands that start with ','
             if not message.content.startswith(','):
                 return
-            if message.content.startswith(', '):
+
+            if message.content.startswith(','):
                 message.content = message.content.lower()
                 print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
                 
+
+            
             # Allow admin to use any command anywhere
             if message.author.id == 110927272210354176:
                 await self.bot.process_commands(message)
                 print(f"\033[0;32mOwner Command: {message.content} by {message.author}\033[0m")
                 return
-
             # If in admin-commands channel, let the normal command handler process it
             if message.channel.name == 'admin-commands':
                 return  # Let the normal command handler handle it
@@ -252,14 +297,18 @@ class SystemEvents(commands.Cog):
                 return
 
             # If it's not an allowed command and not in admin-commands, warn the user
+
             try:
                 warning = await message.channel.send("❌ Please use commands in #admin-commands")
                 print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
-                await asyncio.sleep(7)
                 await message.delete()
+                await asyncio.sleep(7)
+                
                 await warning.delete()
             except Exception as e:
                 print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
+            
+ 
 
         except Exception as e:
             print(f"\033[91mError in on_message: {str(e)}\033[0m")

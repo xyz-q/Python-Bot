@@ -35,7 +35,7 @@ class DMTracker(commands.Cog):
         # Create embed with user list
         embed = discord.Embed(
             title="Users who have DMed the bot", 
-            color=discord.Color.blue(),
+            color=discord.Color.gold(),
             description=f"Total users: {len(dm_users)}"
         )
 
@@ -52,7 +52,7 @@ class DMTracker(commands.Cog):
                 await ctx.send(embed=embed)
                 embed = discord.Embed(
                     title="Users who have DMed the bot (Continued)", 
-                    color=discord.Color.blue()
+                    color=discord.Color.gold()
                 )
 
         # Send the final embed
