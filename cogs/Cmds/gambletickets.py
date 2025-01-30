@@ -663,7 +663,7 @@ class GambleSystem(commands.Cog):
                 # [Rest of your original code continues exactly the same from here]
                 user_embed = discord.Embed(
                     title=f"<:add:1328511998647861390> Active {ticket_type} \n       ",
-                    description=f"Your {ticket_type} request has been approved.\n__***We will never trade you first.***__\n\n__***Please confirm it's you before trading.***__\n\n**You can message the bot to talk with an admin.**\n ",
+                    description=f"Your {ticket_type} request has been approved.\n\n__***We will never trade you first.***__\n\n__***Please confirm it's you before trading.***__\n\n__***You can message the bot to talk with an admin.***__\n\n ",
                     color=discord.Color.gold()
                 )
                 user_embed.add_field(
