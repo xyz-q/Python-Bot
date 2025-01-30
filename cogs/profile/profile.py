@@ -102,7 +102,7 @@ class Profile(commands.Cog):
             return
 
         # Add level information
-        level_text = f"{gambling_data['level_icon']} Level - {gambling_data['level_name']}"
+        level_text = f"{gambling_data['level_icon']} {gambling_data['level_name']}"
         embed.add_field(name="Staking Rank", value=level_text, inline=False)
 
         # Get net worth
