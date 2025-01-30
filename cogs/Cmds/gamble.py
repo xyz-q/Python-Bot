@@ -1144,11 +1144,16 @@ class Economy(commands.Cog):
             balance = await self.get_balance(user_id)
             USD = balance * GP_TO_USD_RATE
             # Get vault balance
-            vault_balance = 0
-            if hasattr(self, 'vaults') and user_id in self.vaults:
-                vault_data = self.vaults[user_id]
-                vault_balance = vault_data.get('balance', 0)
-            
+            user_id = str(ctx.author.id)
+            vault_data = self.load_vault_data()
+            user_vault = vault_data.get(user_id, {"balance": 0})
+            vault_balance = user_vault.get("balance", 0)
+            print(f"Current vault balance: ${vault_balance:,}")
+            vaultplusbalance = vault_balance + balance
+
+
+
+
             if balance == 0 and vault_balance == 0:
                 embed = discord.Embed(
                     title="Empty Balance!",
@@ -1169,10 +1174,10 @@ class Economy(commands.Cog):
                 )
                 
                 # Vault balance (right side)
-                embed.add_field(
+                embed.add_field( 
                     name="Vault Balance",
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_balance)} GP",
-                    inline=True
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_balance)} GP\n\nTotal {self.format_amount(vaultplusbalance)} GP ",
+                    inline=True,
                 )
 
                 embed.add_field(
