@@ -247,7 +247,7 @@ def confirm_bet():
                     print(f"Error deleting message: {e}")
 
                 if view.value is None:
-                    await ctx.send("⚠️ Warning timed out!", delete_after=10)
+                    await ctx.send("⚠️ Confirmation timed out!", delete_after=10)
                     return None
                 elif view.value is False:
                     await ctx.send("<:remove:1328511957208268800> Cancelled!", delete_after=10)
@@ -625,7 +625,7 @@ class Economy(commands.Cog):
             name="",
             value="Here are some commands to get you started:\n"
                 "• `,balance` - Check your balance\n"
-                "• `,slots` - Spin away!\n"
+                "• `,flower <bet>` - Flower Baccarat!\n"
                 "• `,staking` - See all staking commands\n"
                 "• `,vault` - Deposit/withdraw from the vault\n"
                 "• `,stats` - View your gambling statistics\n",
@@ -1126,7 +1126,7 @@ class Economy(commands.Cog):
     @commands.command(aliases=['bal'])
     @has_account()
     async def balance(self, ctx, *, user: typing.Optional[typing.Union[discord.Member, str]] = None):
-        GP_TO_USD_RATE = 0.0000000264
+        GP_TO_USD_RATE = 0.0000000247
         """Check your balance or someone else's balance"""
         try:
             if user is None:
