@@ -412,6 +412,17 @@ class PaginationView(discord.ui.View):
         super().__init__(timeout=30)
         self.embeds = embeds
         self.current_page = 0
+        self.message = None
+
+    async def on_timeout(self):
+        """Deletes the message when the view times out (like 'Close' button)."""
+        if self.message:  # ✅ Ensure the message exists
+            try:
+                await self.message.delete()  # ✅ Deletes the message after timeout
+            except discord.NotFound:
+                pass  # Message was already deleted
+            except discord.HTTPException:
+                pass  # Some other error (bot lacks permission, etc.)
 
     @discord.ui.button(label="Previous", style=discord.ButtonStyle.gray)
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1114,13 +1125,7 @@ class Economy(commands.Cog):
         view.message = message  # Store message reference for timeout handling
         
         # Wait 20 seconds then delete the message
-        await asyncio.sleep(20)
-        try:
-            await message.delete()
-        except discord.NotFound:
-            pass  # Message was already deleted
-        except discord.Forbidden:
-            pass
+
     
 
     @commands.command(aliases=['bal'])
@@ -1739,200 +1744,11 @@ class Economy(commands.Cog):
 
         # Send message with pagination
         view = PaginationView(embeds)
-        await ctx.send(embed=embeds[0], view=view)
+        message = await ctx.send(embed=embeds[0], view=view)
+        view.message = message
+        
 
 
-    # @commands.command()
-    # async def deposit(self, ctx, *, args=None):
-    #     """Handle deposits with proper input validation"""
-    #     # Check if args is missing
-    #     if not args:
-    #         await ctx.send("<:remove:1328511957208268800> Please provide both amount and RSN!\nUsage: `,deposit <amount> <rsn>`\nExample: `,deposit 100M Zezima`")
-    #         return
-
-    #     # Split args into amount and RSN
-    #     try:
-    #         amount, rsn = args.split(' ', 1)
-    #     except ValueError:
-    #         await ctx.send("<:remove:1328511957208268800> Please provide both amount and RSN!\nUsage: `,deposit <amount> <rsn>`\nExample: `,deposit 100M Zezima`")
-    #         return
-
-    #     # Try to parse the amount
-    #     try:
-    #         parsed_amount = self.parse_amount(amount)
-    #         # Add minimum and maximum limit checks
-    #         if parsed_amount < self.MIN_TRANSACTION_AMOUNT:
-    #             await ctx.send(f"<:remove:1328511957208268800> Minimum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
-    #             return
-    #         if parsed_amount > self.MAX_DEPOSIT_AMOUNT:
-    #             await ctx.send(f"<:remove:1328511957208268800> Maximum deposit amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_DEPOSIT_AMOUNT)}!")
-    #             return
-    #         formatted_amount = self.format_amount(parsed_amount)
-    #     except ValueError:
-    #         await ctx.send("<:remove:1328511957208268800> Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
-    #         return
-
-    #     try:
-    #         # Get admin user
-    #         admin = self.bot.get_user(self.admin_id)
-    #         if not admin:
-    #             await ctx.send("<:remove:1328511957208268800> Unable to process request at this time. Please contact an administrator.")
-    #             return
-
-    #         # Create embed for admin
-    #         admin_embed = discord.Embed(
-    #             title="💰 New Deposit Request",
-    #             color=discord.Color.green()
-    #         )
-    #         admin_embed.add_field(
-    #             name="User",
-    #             value=f"{ctx.author} (ID: {ctx.author.id})",
-    #             inline=False
-    #         )
-    #         admin_embed.add_field(
-    #             name="Amount",
-    #             value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
-    #             inline=False
-    #         )
-    #         admin_embed.add_field(
-    #             name="RSN",
-    #             value=rsn,
-    #             inline=False
-    #         )
-    #         admin_embed.set_footer(text=f"Requested at {discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-
-    #         # Send DM to admin
-    #         try:
-    #             await admin.send(embed=admin_embed)
-    #         except discord.Forbidden:
-    #             await ctx.send("<:remove:1328511957208268800> Unable to process request at this time. Please contact an administrator.")
-    #             return
-
-    #         # Confirmation embed for user
-    #         user_embed = discord.Embed(
-    #             title="💰 Deposit Request Sent",
-    #             description="Your deposit request has been sent to an administrator.",
-    #             color=discord.Color.green()
-    #         )
-    #         user_embed.add_field(
-    #             name="Amount",
-    #             value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
-    #             inline=False
-    #         )
-    #         user_embed.add_field(
-    #             name="RSN",
-    #             value=rsn,
-    #             inline=False
-    #         )
-    #         user_embed.set_footer(text="Please wait for an administrator to process your request.")
-
-    #         await ctx.send(embed=user_embed)
-
-    #     except Exception as e:
-    #         await ctx.send(f"<:remove:1328511957208268800> An error occurred: {str(e)}")
-    #         return
-
-    # @commands.command()
-    # async def withdraw(self, ctx, *, args=None):
-    #     """Handle withdrawals with proper input validation"""
-    #     # Check if args is missing
-    #     if not args:
-    #         await ctx.send("<:remove:1328511957208268800> Please provide both amount and RSN!\nUsage: `,withdraw <amount> <rsn>`\nExample: `,withdraw 100M Zezima`")
-    #         return
-
-    #     # Split args into amount and RSN
-    #     try:
-    #         amount, rsn = args.split(' ', 1)
-    #     except ValueError:
-    #         await ctx.send("<:remove:1328511957208268800> Please provide both amount and RSN!\nUsage: `,withdraw <amount> <rsn>`\nExample: `,withdraw 100M Zezima`")
-    #         return
-
-    #     # Try to parse the amount
-    #     try:
-    #         parsed_amount = self.parse_amount(amount)
-    #         # Add minimum and maximum limit checks
-    #         if parsed_amount < self.MIN_TRANSACTION_AMOUNT:
-    #             await ctx.send(f"<:remove:1328511957208268800> Minimum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MIN_TRANSACTION_AMOUNT)}!")
-    #             return
-    #         if parsed_amount > self.MAX_WITHDRAW_AMOUNT:
-    #             await ctx.send(f"<:remove:1328511957208268800> Maximum withdrawal amount is <:goldpoints:1319902464115343473> {self.format_amount(self.MAX_WITHDRAW_AMOUNT)}!")
-    #             return
-    #         formatted_amount = self.format_amount(parsed_amount)
-    #     except ValueError:
-    #         await ctx.send("<:remove:1328511957208268800> Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)")
-    #         return
-
-    #     # Check if user has enough balance
-    #     user_balance = await self.get_balance(str(ctx.author.id))
-    #     if user_balance < parsed_amount:
-    #         await ctx.send(f"<:remove:1328511957208268800> Insufficient balance! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(user_balance)}")
-    #         return
-
-    #     try:
-    #         # Get admin user
-    #         admin = self.bot.get_user(self.admin_id)
-    #         if not admin:
-    #             await ctx.send("<:remove:1328511957208268800> Unable to process request at this time. Please contact an administrator.")
-    #             return
-
-    #         # Create embed for admin
-    #         admin_embed = discord.Embed(
-    #             title="💸 New Withdrawal Request",
-    #             color=discord.Color.red()
-    #         )
-    #         admin_embed.add_field(
-    #             name="User",
-    #             value=f"{ctx.author} (ID: {ctx.author.id})",
-    #             inline=False
-    #         )
-    #         admin_embed.add_field(
-    #             name="Amount",
-    #             value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
-    #             inline=False
-    #         )
-    #         admin_embed.add_field(
-    #             name="RSN",
-    #             value=rsn,
-    #             inline=False
-    #         )
-    #         admin_embed.add_field(
-    #             name="User's Balance",
-    #             value=f"<:goldpoints:1319902464115343473> {self.format_amount(user_balance)}",
-    #             inline=False
-    #         )
-    #         admin_embed.set_footer(text=f"Requested at {discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-
-    #         # Send DM to admin
-    #         try:
-    #             await admin.send(embed=admin_embed)
-    #         except discord.Forbidden:
-    #             await ctx.send("<:remove:1328511957208268800> Unable to process request at this time. Please contact an administrator.")
-    #             return
-
-    #         # Confirmation embed for user
-    #         user_embed = discord.Embed(
-    #             title="💸 Withdrawal Request Sent",
-    #             description="Your withdrawal request has been sent to an administrator.",
-    #             color=discord.Color.green()
-    #         )
-    #         user_embed.add_field(
-    #             name="Amount",
-    #             value=f"<:goldpoints:1319902464115343473> {formatted_amount}",
-    #             inline=False
-    #         )
-    #         user_embed.add_field(
-    #             name="RSN",
-    #             value=rsn,
-    #             inline=False
-    #         )
-    #         user_embed.set_footer(text="Please wait for an administrator to process your request.")
-
-    #         await ctx.send(embed=user_embed)
-
-    #     except Exception as e:
-    #         await ctx.send(f"<:remove:1328511957208268800> An error occurred: {str(e)}")
-    #         return
-    
     @has_account()
     @commands.command(name="pvpflip", aliases=["flip", "challenge", "cf"])
     @transaction_limit()
