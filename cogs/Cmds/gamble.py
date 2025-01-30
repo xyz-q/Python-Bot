@@ -18,8 +18,36 @@ from datetime import datetime, timedelta
 import copy
 import typing
 
+class DayInput(discord.ui.Modal, title="Custom Time Input"):
+    days = discord.ui.TextInput(
+        label='Enter time in days',
+        placeholder='Enter a number between 1 and 25',
+        min_length=1,
+        max_length=2,
+        required=True
+    )
 
+    def __init__(self, view):
+        super().__init__()
+        self.view = view
 
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            days = float(self.days.value)
+            if days < 1:
+                await interaction.response.send_message("Time must be at least 1 day!", ephemeral=True)
+                return
+            if days > 25:
+                await interaction.response.send_message("Time cannot exceed 25 days!", ephemeral=True)
+                return
+            
+            self.view.value = timedelta(days=days)
+            self.view.disable_all_buttons()
+            await interaction.response.edit_message(view=self.view)
+            self.view.stop()
+            
+        except ValueError:
+            await interaction.response.send_message("Please enter a valid number!", ephemeral=True)
 def has_account():
     async def predicate(ctx):
         # Get the cog by name only
@@ -679,6 +707,7 @@ class Economy(commands.Cog):
 
     @has_account()
     @commands.command(name="resetstats")
+    @commands.is_owner()
     async def reset_stats(self, ctx, target: typing.Union[discord.Member, str] = None):
         """Reset statistics for a user or all users"""
         if target and not ctx.author.guild_permissions.administrator:
@@ -2226,6 +2255,8 @@ class Economy(commands.Cog):
             # Get user and house info
             user_id = str(ctx.author.id)
             house_id = str(self.bot.user.id)
+            print(f"User ID: {user_id}, House ID: {house_id}")
+        
             user_balance = await self.get_balance(user_id)
 
             
@@ -2437,6 +2468,7 @@ class Economy(commands.Cog):
                 await ctx.send("Please enter a valid bet amount!")
                 return
             house_id = str(self.bot.user.id)
+            print(f"House ID {house_id}")
             if house_id not in self.currency:
                 self.currency[house_id] = 0      
   
@@ -3086,7 +3118,7 @@ class Economy(commands.Cog):
             
             embed.add_field(
                 name="Interest Per Cycle",
-                value=f"<:goldpoints:1319902464115343473> +{self.format_amount(total_interest)} (1%)",
+                value=f"<:goldpoints:1319902464115343473> +{self.format_amount(total_interest)} (0.7%)",
                 inline=False
             )
             
@@ -3350,45 +3382,145 @@ class Economy(commands.Cog):
             await ctx.send(f"An error occurred: {str(e)}")
 
 
-
-    @tasks.loop(minutes=195)  # 3 hours and 15 minutes
-    async def interest_task(self):
+    def load_last_interest_time(self):
         try:
-            print("Interest loop running...")
+            # Check if the .json directory exists, if not create it
+            if not os.path.exists('.json'):
+                os.makedirs('.json')
+                
+            json_path = '.json/last_interest.json'
+            
+            # If file doesn't exist, create it with current time
+            if not os.path.exists(json_path):
+                current_time = datetime.now()
+                with open(json_path, 'w') as f:
+                    json.dump({'last_interest': current_time.timestamp()}, f)
+                return current_time
+                
+            # If file exists, read from it
+            with open(json_path, 'r') as f:
+                data = json.load(f)
+                return datetime.fromtimestamp(data['last_interest'])
+                
+        except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
+            print(f"Error loading last interest time: {e}")
+            current_time = datetime.now()
+            self.save_last_interest_time(current_time)
+            return current_time
+
+    def save_last_interest_time(self, timestamp):
+        with open('.json/last_interest.json', 'w') as f:
+            json.dump({'last_interest': timestamp.timestamp()}, f)
+
+    async def process_interest_payment(self, payment_time):
+        try:
+            print(" ")
+            print("=== Starting Interest Payment Process ===")
+            print(f"Processing interest payment for {payment_time}")
             vault_data = self.load_vault_data()
-            house_id = str(self.bot.user.id)
+            house_id = "1233966655923552370"  # Your house ID
             total_interest = 0
             
-            # Calculate total interest first to ensure house can afford it
+            print("\nChecking locked vaults...")
+            locked_count = 0
+            # First pass: Calculate total interest needed
             for user_id, data in vault_data.items():
-                if data.get("locked", False):  # Only apply interest to locked vaults
+                if data.get("locked", False):
+                    locked_count += 1
                     current_balance = data.get("balance", 0)
-                    interest = int(current_balance * 0.005)  
+                    interest = int(current_balance * 0.007)
                     total_interest += interest
+                    print(f"User {user_id}: Balance={current_balance}, Interest calculated={interest}")
 
-            # Check if house has enough to pay interest
-            house_balance = int(self.currency[house_id])
+            if locked_count == 0:
+                print("No locked vaults found!")
+                return False
+
+            # Debug house balance access
+
+            
+            # Check if house can afford interest
+            house_balance = int(self.currency.get(str(house_id), 0))  # Convert ID to string
+            print(f"House ID: {house_id}")
+            print(f"House balance found: {house_balance}")
+            
             if house_balance < total_interest:
-                print(f"House cannot afford interest payments! Need: {total_interest}, Have: {house_balance}")
-                return
+                print(f"WARNING: House cannot afford interest payments! Need: {total_interest}, Have: {house_balance}")
+                return False
 
-            # Apply interest if house can afford it
+            # Second pass: Apply interest to each locked vault
+            print("\nApplying interest payments...")
             for user_id, data in vault_data.items():
                 if data.get("locked", False):
                     current_balance = data.get("balance", 0)
-                    interest = int(current_balance * 0.01)  # 1% interest
-                    vault_data[user_id]["balance"] = current_balance + interest
-                    print(f"Paid {interest} interest to {user_id}")
+                    interest = int(current_balance * 0.007)
+                    new_balance = current_balance + interest
+                    vault_data[user_id]["balance"] = new_balance
+                    print(f"User {user_id}: Old balance={current_balance}, Interest={interest}, New balance={new_balance}")
 
-            # Deduct total interest from house account
-            self.currency[house_id] = house_balance - total_interest
+            # Update house balance and save everything
+            self.currency[str(house_id)] = house_balance - total_interest  # Convert ID to string
+            print(f"\nUpdating house balance: {house_balance} -> {self.currency[str(house_id)]}")
             
             self.save_vault_data(vault_data)
             self.save_currency()
-            print(f"Interest loop completed. Total interest paid: {total_interest}")
+            print(" ")
+            print("=== Interest Payment Completed ===")
+            return True
+
+        except Exception as e:
+            print(f"ERROR in interest payment for {payment_time}: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    @tasks.loop(minutes=97) 
+    async def interest_task(self):
+        await asyncio.sleep(5)
+        try:
+            print(" ")
+            print("\n=== Interest Task Check ===")
+            last_interest_time = self.load_last_interest_time()
+            now = datetime.now()
+            time_elapsed = now - last_interest_time
+            required_delay = timedelta(hours=3, minutes=15)
+
+            print(f"Last interest time: {last_interest_time}")
+            print(f"Current time: {now}")
+            print(f"Time elapsed: {time_elapsed}")
+            
+            # Calculate how many payments were missed
+            missed_payments = int(time_elapsed.total_seconds() // required_delay.total_seconds())
+            print(f"Missed payments: {missed_payments}")
+            
+            if missed_payments > 0:
+                print(f"Found {missed_payments} missed payment(s)")
+                
+                # Process each missed payment
+                for i in range(missed_payments):
+                    payment_time = last_interest_time + (required_delay * (i + 1))
+                    
+                    # Don't process future payments
+                    if payment_time > now:
+                        print(f"Skipping future payment time: {payment_time}")
+                        break
+                    
+                    print(f"\nProcessing payment {i+1}/{missed_payments} for timestamp: {payment_time}")
+                    if await self.process_interest_payment(payment_time):
+                        self.save_last_interest_time(payment_time)
+                        print(f"Successfully processed payment for {payment_time}")
+                    else:
+                        print(f"Failed to process payment for {payment_time}")
+                        break
+            else:
+                print("No interest payments due yet")
 
         except Exception as e:
             print(f"Interest task error: {e}")
+            import traceback
+            traceback.print_exc()
+
+
 
 
 
@@ -3448,22 +3580,22 @@ class Economy(commands.Cog):
                     super().__init__(timeout=30)
                     self.value = None
 
-                @discord.ui.button(label="1 Hour", style=discord.ButtonStyle.blurple)
+                @discord.ui.button(label="12 Hours", style=discord.ButtonStyle.blurple)
                 async def hour(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id != ctx.author.id:
                         await interaction.response.send_message("This is not your vault!", ephemeral=True)
                         return
-                    self.value = timedelta(hours=1)
+                    self.value = timedelta(hours=12)
                     self.disable_all_buttons()
                     await interaction.response.edit_message(view=self)
                     self.stop()
 
-                @discord.ui.button(label="1 Day", style=discord.ButtonStyle.blurple)
+                @discord.ui.button(label="3 Days", style=discord.ButtonStyle.blurple)
                 async def day(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id != ctx.author.id:
                         await interaction.response.send_message("This is not your vault!", ephemeral=True)
                         return
-                    self.value = timedelta(days=1)
+                    self.value = timedelta(days=3)
                     self.disable_all_buttons()
                     await interaction.response.edit_message(view=self)
                     self.stop()
@@ -3477,6 +3609,15 @@ class Economy(commands.Cog):
                     self.disable_all_buttons()
                     await interaction.response.edit_message(view=self)
                     self.stop()
+
+                @discord.ui.button(label="Custom Time", style=discord.ButtonStyle.gray)
+                async def custom(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id != ctx.author.id:
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        return
+                    
+                    modal = DayInput(self)
+                    await interaction.response.send_modal(modal)
 
                 @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
                 async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -3540,7 +3681,7 @@ class Economy(commands.Cog):
         try:
             user_id = str(ctx.author.id)
             vault_data = self.load_vault_data()
-            house_id = "1102678649257066507" 
+            house_id = "1233966655923552370" 
             # Check if user has a vault
             if user_id not in vault_data:
                 await ctx.send("You don't have a vault yet!")

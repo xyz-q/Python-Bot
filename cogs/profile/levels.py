@@ -16,8 +16,7 @@ class LevelSystem(commands.Cog):
     def load_levels(self):
         with open(self.levels_file, 'r') as f:
             self.levels_data = json.load(f)
-        print("Loaded levels data:")
-        print(json.dumps(self.levels_data, indent=2))
+
 
     async def get_user_data(self, user_id: str):
         """Get all level data for a user - can be called from other cogs"""
