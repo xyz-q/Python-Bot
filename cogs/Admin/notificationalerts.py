@@ -70,13 +70,14 @@ class NotificationSystem(commands.Cog):
         data = self.get_data()
         if data["message"] and str(message.author.id) not in data["readers"]:
             embed = discord.Embed(
-                title="A message from the developer.",
+                title="Notification!",
                 description="There's a new message out! Use `,notification`  and clear this message.",
                 color=discord.Color.gold()
             )
             
             try:
                 await asyncio.sleep(0.5)
+                embed.set_footer(text="Please use ,report to send any bugs my way!")
                 notif = await ctx.send(
                     embed=embed,
                     ephemeral=True
@@ -113,7 +114,8 @@ class NotificationSystem(commands.Cog):
             
             # Calculate reader number
             reader_number = len(data["readers"])
-            embed.set_footer(text=f"You are user #{reader_number} to read this alert")
+            embed.add_field(name=" ", value="Please use `,report` to send any bugs my way.", inline=False)
+            embed.set_footer(text=f"You were #{reader_number} to read this alert!")
 
         await ctx.send(embed=embed, ephemeral=True)
 
