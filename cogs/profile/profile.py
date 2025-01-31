@@ -125,7 +125,7 @@ class Profile(commands.Cog):
                 #f"Need: {self.format_number(progress['required_more'])} more for "
                 #f"{progress['next_level_name']} {progress['next_level_icon']}\n"
                 f"{gambling_data['level_icon']}        {progress['next_level_icon']}\n"
-                f"{gambling_data['level_icon']}                   {progress['next_level_icon']}\n"
+                
             )
             embed.add_field(name="Level Progress", value=progress_text, inline=False)
 
