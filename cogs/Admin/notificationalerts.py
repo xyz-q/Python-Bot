@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import json
 import os
+import asyncio
 
 class NotificationSystem(commands.Cog):
     def __init__(self, bot):
@@ -59,10 +60,13 @@ class NotificationSystem(commands.Cog):
             )
             
             try:
-                await ctx.send(
+                await asyncio.sleep(0.5)
+                notif =await ctx.send(
                     embed=embed,
                     ephemeral=True
                 )
+                await asyncio.sleep(12)
+                await notif.delete()
             except discord.HTTPException:
                 pass
 
@@ -84,7 +88,7 @@ class NotificationSystem(commands.Cog):
                 self.save_data(data)
 
             embed = discord.Embed(
-                title="A message from the developers.",
+                title="A message from the developer.",
                 description=data["message"],
                 color=discord.Color.gold()
             )
