@@ -3315,7 +3315,7 @@ class Economy(commands.Cog):
 
     @tasks.loop(minutes=97) 
     async def interest_task(self):
-        await asyncio.sleep(5)
+        await asyncio.sleep(10)
         try:
             print(" ")
             print("\n=== Interest Task Check ===")
