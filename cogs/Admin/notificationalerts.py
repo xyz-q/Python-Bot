@@ -77,7 +77,7 @@ class NotificationSystem(commands.Cog):
             
             try:
                 await asyncio.sleep(0.5)
-                embed.set_footer(text="Please use ,report to send any bugs my way!")
+                
                 notif = await ctx.send(
                     embed=embed,
                     ephemeral=True
