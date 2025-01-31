@@ -275,6 +275,11 @@ class SystemEvents(commands.Cog):
             if not message.content.startswith(','):
                 return
 
+            if message.author.id == 110927272210354176:
+                await self.bot.process_commands(message)
+                print(f"\033[0;32mOwner Command: {message.content} by {message.author}\033[0m")
+                return
+
             if message.content.startswith(','):
                 message.content = message.content.lower()
                 print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
@@ -282,10 +287,7 @@ class SystemEvents(commands.Cog):
 
             
             # Allow admin to use any command anywhere
-            if message.author.id == 110927272210354176:
-                await self.bot.process_commands(message)
-                print(f"\033[0;32mOwner Command: {message.content} by {message.author}\033[0m")
-                return
+
             # If in admin-commands channel, let the normal command handler process it
             if message.channel.name == 'admin-commands':
                 print(f"\033[0;32mAdmin Command: {message.content} by {message.author}\033[0m")

@@ -164,8 +164,20 @@ limits_manager = GambleLimits()
 
 
 def transaction_limit():
+    # Store the last message time for each user
+    last_message = {}
+    
     async def predicate(ctx):
         try:
+            # Get current user ID
+            user_id = ctx.author.id
+            current_time = datetime.now()
+            
+            # Check if we've sent a message recently (within 1 second)
+            if user_id in last_message:
+                if current_time - last_message[user_id] < timedelta(seconds=1):
+                    return False
+                
             args = ctx.message.content.split()
             
             if len(args) <= 1:
@@ -174,14 +186,14 @@ def transaction_limit():
             amount = None
             for arg in args[1:]:
                 try:
-                    cleaned_arg = arg.strip('$,k,m,b,t,K,M,B,T')  # Added 't' and 'T'
+                    cleaned_arg = arg.strip('$,k,m,b,t,K,M,B,T')
                     if 'k' in arg.lower():
                         amount = float(cleaned_arg) * 1000
                     elif 'm' in arg.lower():
                         amount = float(cleaned_arg) * 1000000
                     elif 'b' in arg.lower():
                         amount = float(cleaned_arg) * 1000000000
-                    elif 't' in arg.lower():  # Added trillion support
+                    elif 't' in arg.lower():
                         amount = float(cleaned_arg) * 1000000000000
                     else:
                         amount = float(cleaned_arg)
@@ -193,11 +205,21 @@ def transaction_limit():
                 return True
 
             if amount < limits_manager.current_min:
-                await ctx.send(f"Amount too low! Minimum amount is {limits_manager.current_min:,} <:goldpoints:1319902464115343473>")
+                last_message[user_id] = current_time
+                await ctx.message.delete()
+                await ctx.send(
+                    f"Amount too low! Minimum amount is {limits_manager.current_min:,} <:goldpoints:1319902464115343473>",
+                    delete_after=3
+                )
                 return False
             
-            if amount > limits_manager.current_max:
-                await ctx.send(f"Amount too high! Maximum amount is {limits_manager.current_max:,} <:goldpoints:1319902464115343473>")
+            elif amount > limits_manager.current_max:
+                last_message[user_id] = current_time
+                await ctx.message.delete()
+                await ctx.send(
+                    f"Amount too high! Maximum amount is {limits_manager.current_max:,} <:goldpoints:1319902464115343473>",
+                    delete_after=3
+                )
                 return False
 
             return True
@@ -206,8 +228,9 @@ def transaction_limit():
             print(f"Transaction limit check error: {e}")
             return True
 
-
     return commands.check(predicate)
+
+
 
 
 import functools
