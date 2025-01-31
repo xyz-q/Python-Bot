@@ -190,11 +190,11 @@ class Profile(commands.Cog):
         
         prestige_names = {
             0: " ",
-            1: "I Year",
-            2: "II Years",
-            3: "III Years",
-            4: "IV Years",
-            5: "V Years",
+            1: "1 Year",
+            2: "2 Years",
+            3: "3 Years",
+            4: "4 Years",
+            5: "5 Years",
         }
         
         # Get icon and name (default to highest tier if years > 5)
