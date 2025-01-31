@@ -248,12 +248,12 @@ class BugReport(commands.Cog):
             await interaction.response.edit_message(embed=embed, view=self)
 
 
-    @commands.command(name="bugreport", description="Open the bug report form")
+    @commands.command(name="bugreport", description="Open the bug report form", aliases=['report'])
     async def bugreport(self, ctx):
         view = self.BugReportButton()
         await ctx.send("Click the button below to report a bug!", view=view)
 
-    @commands.command(name="viewbugs", description="View all bug reports")
+    @commands.command(name="viewbugs", description="View all bug reports", aliases=['bugs'])
     @commands.is_owner()
     async def viewbugs(self, ctx):
         await ctx.message.delete()
