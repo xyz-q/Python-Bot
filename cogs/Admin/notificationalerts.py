@@ -9,6 +9,10 @@ class NotificationSystem(commands.Cog):
         self.bot = bot
         self.notifications_file = '.json/notifications.json'
         self.load_or_create_data()
+        # Add a dictionary to track message counts per user
+        self.message_counters = {}
+        # You can optionally add this to customize the interval
+        self.message_interval = 7
 
     def load_or_create_data(self):
         if not os.path.exists(self.notifications_file):
@@ -32,25 +36,37 @@ class NotificationSystem(commands.Cog):
         if message.author.bot:
             return
 
-        # Get the command context
         ctx = await self.bot.get_context(message)
         
-        # Only proceed if this is a valid command that exists
         if not ctx.valid or not ctx.command:
             return
             
-        # Don't send notification if they're using the notification command
         if ctx.command.name == "notification":
             return
 
-        # Check if the command can be executed
         try:
             if not await ctx.command.can_run(ctx):
                 return
         except commands.CommandError:
             return
 
-        # If we get here, it's a valid command that can be executed
+        # Update message counter for this user
+        user_id = str(message.author.id)
+        
+        # If this is the user's first message, initialize their counter to 1
+        if user_id not in self.message_counters:
+            self.message_counters[user_id] = 1
+            should_notify = True  # Always notify on first command
+        else:
+            self.message_counters[user_id] += 1
+            # After first message, only notify every 7th time
+            should_notify = (self.message_counters[user_id] - 1) % self.message_interval == 0
+
+        # Only proceed if it's the first message or every 7th after that
+        if not should_notify:
+            return
+
+        # If we get here, it's either the first command or every 7th after
         data = self.get_data()
         if data["message"] and str(message.author.id) not in data["readers"]:
             embed = discord.Embed(
@@ -61,7 +77,7 @@ class NotificationSystem(commands.Cog):
             
             try:
                 await asyncio.sleep(0.5)
-                notif =await ctx.send(
+                notif = await ctx.send(
                     embed=embed,
                     ephemeral=True
                 )
@@ -69,6 +85,8 @@ class NotificationSystem(commands.Cog):
                 await notif.delete()
             except discord.HTTPException:
                 pass
+
+
 
     @commands.command(name="notification", aliases=['notif'])
     async def notification(self, ctx):
