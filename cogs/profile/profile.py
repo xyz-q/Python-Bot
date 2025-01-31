@@ -102,7 +102,7 @@ class Profile(commands.Cog):
             return
 
         # Add level information
-        level_text = f"{gambling_data['level_icon']} {gambling_data['level_name']}"
+        level_text = f"{gambling_data['level_icon']} `{gambling_data['level_name']}`"
         embed.add_field(name="Rank", value=level_text, inline=False)
 
         # Get net worth
@@ -110,8 +110,8 @@ class Profile(commands.Cog):
         
         # Create combined field for wagered and net worth
         stats_text = (
-            f"<:goldpoints:1319902464115343473> Net Worth - {self.format_number(net_worth)} \n"
-            f"<:gamba:1328512027282374718> Total Wagered - {self.format_number(gambling_data['total_wagered'])} "
+            f"<:goldpoints:1319902464115343473> Net Worth - `{self.format_number(net_worth)}` \n"
+            f"<:gamba:1328512027282374718> Total Wagered - `{self.format_number(gambling_data['total_wagered'])}` "
         )
         embed.add_field(name="Staking Stats", value=stats_text, inline=False)
 
@@ -134,15 +134,15 @@ class Profile(commands.Cog):
         if not stats_data:
             embed.add_field(
                 name="Commands",
-                value="Total: 0\nFavorite: None",
+                value="Total - `0`\nFavorite - `None`",
                 inline=True
             )
             return
 
         # Format the commands section
         commands_text = (
-            f"Total: {self.format_number(stats_data['total'])}\n"  # Updated to use self.format_number
-            f"Favorite: {stats_data['favorite'] if stats_data['favorite'] else 'None'}"
+            f"Total - `{self.format_number(stats_data['total'])}`\n"  # Updated to use self.format_number
+            f"Favorite - `{stats_data['favorite'] if stats_data['favorite'] else 'None'}`"
         )
 
         embed.add_field(
@@ -162,7 +162,7 @@ class Profile(commands.Cog):
         
         if prestige_data['level'] > 0:
             prestige_text = (
-                f"{prestige_data['icon']} **{prestige_data['name']}**\n"
+                f"{prestige_data['icon']} __**{prestige_data['name']}**__\n"
                 
             )
             embed.add_field(

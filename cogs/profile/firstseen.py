@@ -80,5 +80,47 @@ class FirstSeen(commands.Cog):
         else:
             await ctx.send(f"{target_user.name} hasn't used any bot commands yet!")
 
+    @commands.command()
+    @commands.is_owner() # Only allows administrators to use this command
+    async def setfirstseen(self, ctx, member: discord.Member, *, date_str: str):
+        """Set a user's first seen date manually (Admin only)
+        Format: YYYY-MM-DD HH:MM:SS
+        Example: !setfirstseen @User 2023-01-01 12:00:00"""
+        try:
+            # Parse the provided date string
+            new_date = datetime.fromisoformat(date_str)
+            
+            # Update the first seen date for the user
+            self.first_seen[member.id] = new_date
+            self._save_data()  # Save the changes to file
+            
+            # Confirm the change with an embed
+            embed = discord.Embed(
+                title="First Seen Date Updated",
+                color=member.color,
+                description=f"Updated first seen date for {member.mention}"
+            )
+            embed.add_field(
+                name="New First Seen Date",
+                value=f"<t:{int(new_date.timestamp())}:F>",
+                inline=False
+            )
+            
+            await ctx.send(embed=embed)
+            
+        except ValueError:
+            await ctx.send("Invalid date format! Please use: YYYY-MM-DD HH:MM:SS")
+        except Exception as e:
+            await ctx.send(f"An error occurred: {str(e)}")
+
+    @setfirstseen.error
+    async def setfirstseen_error(self, ctx, error):
+        """Error handler for setfirstseen command"""
+        if isinstance(error, commands.MissingPermissions):
+            await ctx.send("You don't have permission to use this command! (Administrator required)")
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send("Please provide both a user and a date! Format: !setfirstseen @User YYYY-MM-DD HH:MM:SS")
+
+
 async def setup(bot):
     await bot.add_cog(FirstSeen(bot))
