@@ -71,7 +71,7 @@ class NotificationSystem(commands.Cog):
         if data["message"] and str(message.author.id) not in data["readers"]:
             embed = discord.Embed(
                 title="A message from the developer.",
-                description="There's a new message out! Use `,notification` to view it.",
+                description="There's a new message out! Use `,notification`  and clear this message.",
                 color=discord.Color.gold()
             )
             
