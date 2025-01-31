@@ -3,6 +3,7 @@ from discord.ext import commands
 import json
 from datetime import datetime
 import os
+import asyncio
 
 class BugReport(commands.Cog):
     def __init__(self, bot):
@@ -251,7 +252,9 @@ class BugReport(commands.Cog):
     @commands.command(name="bugreport", description="Open the bug report form", aliases=['report'])
     async def bugreport(self, ctx):
         view = self.BugReportButton()
-        await ctx.send("Click the button below to report a bug!", view=view)
+        bug = await ctx.send("Click the button below to report a bug!", view=view)
+        await asyncio.sleep(15)
+        await bug.delete()
 
     @commands.command(name="viewbugs", description="View all bug reports", aliases=['bugs'])
     @commands.is_owner()
