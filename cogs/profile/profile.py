@@ -103,15 +103,15 @@ class Profile(commands.Cog):
 
         # Add level information
         level_text = f"{gambling_data['level_icon']} {gambling_data['level_name']}"
-        embed.add_field(name="Staking Rank", value=level_text, inline=False)
+        embed.add_field(name="Rank", value=level_text, inline=False)
 
         # Get net worth
         net_worth = self.get_net_worth(gambling_data.get('user_id', 0))
         
         # Create combined field for wagered and net worth
         stats_text = (
-            f"Net Worth: {self.format_number(net_worth)}\n"
-            f"Total Wagered: {self.format_number(gambling_data['total_wagered'])}"
+            f"<:goldpoints:1319902464115343473> Net Worth - {self.format_number(net_worth)} \n"
+            f"<:gamba:1328512027282374718> Total Wagered - {self.format_number(gambling_data['total_wagered'])} "
         )
         embed.add_field(name="Staking Stats", value=stats_text, inline=False)
 
@@ -121,13 +121,13 @@ class Profile(commands.Cog):
             progress = gambling_data['progress_data']
             progress_bar = level_cog.create_progress_bar(progress['progress_percent'])
             progress_text = (
-                f"{progress_bar} {progress['progress_percent']:.1f}%\n"
-                #f"Need: {self.format_number(progress['required_more'])} more for "
+                f"{progress_bar} {progress['next_level_icon']} \n"
+                #f" You need {self.format_number(progress['required_total'])}"
                 #f"{progress['next_level_name']} {progress['next_level_icon']}\n"
-                f"{gambling_data['level_icon']}        {progress['next_level_icon']}\n"
+                #f"{gambling_data['level_icon']}        {progress['next_level_icon']}\n"
                 
             )
-            embed.add_field(name="Level Progress", value=progress_text, inline=False)
+            embed.add_field(name=f"Level Progress {progress['progress_percent']:.1f}%", value=progress_text, inline=False)
 
     def add_command_stats_fields(self, embed: discord.Embed, stats_data: Dict[str, Any]):
         """Add command statistics fields to embed"""

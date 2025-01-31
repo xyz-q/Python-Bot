@@ -37,11 +37,13 @@ class LevelSystem(commands.Cog):
                 next_level_data = self.levels_data["levels"][next_level]
                 required_more = next_level_data["required_wagered"] - total_wagered
                 progress = (total_wagered / next_level_data["required_wagered"]) * 100
+                required_total = next_level_data["required_wagered"]   
                 progress_data = {
                     "next_level_name": next_level_data['name'],
                     "next_level_icon": next_level_data['icon'],
                     "progress_percent": progress,
-                    "required_more": required_more
+                    "required_more": required_more,
+                    "required_total": required_total
                 }
 
         return {
@@ -161,9 +163,13 @@ class LevelSystem(commands.Cog):
         embed.set_thumbnail(url=target_user.display_avatar.url)
         
         # Display level info
+        next_level = str(int(level_number) + 1)
         level_display = f"{level_data['icon']} Level - {level_data['name']}"
+        next_level_data = self.levels_data["levels"][next_level]
+        required_total = next_level_data["required_wagered"]       
         embed.add_field(name="Current Level", value=level_display, inline=False)
-        embed.add_field(name="Total Wagered", value=self.format_number(total_wagered), inline=False)
+        embed.add_field(name="Total Wagered", value=self.format_number(total_wagered), inline=True)
+        embed.add_field(name="Total Needed", value=self.format_number(required_total), inline=True)
 
         # Only show progress for regular levels
         if int(level_number) >= 0:
@@ -171,6 +177,7 @@ class LevelSystem(commands.Cog):
             if next_level in self.levels_data["levels"]:
                 next_level_data = self.levels_data["levels"][next_level]
                 required_more = next_level_data["required_wagered"] - total_wagered
+                
                 progress = (total_wagered / next_level_data["required_wagered"]) * 100
                 progress_bar = self.create_progress_bar(progress)
                 
