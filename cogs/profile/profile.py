@@ -122,8 +122,10 @@ class Profile(commands.Cog):
             progress_bar = level_cog.create_progress_bar(progress['progress_percent'])
             progress_text = (
                 f"{progress_bar} {progress['progress_percent']:.1f}%\n"
-                f"Need: {self.format_number(progress['required_more'])} more for "
-                f"{progress['next_level_name']} {progress['next_level_icon']}"
+                #f"Need: {self.format_number(progress['required_more'])} more for "
+                #f"{progress['next_level_name']} {progress['next_level_icon']}\n"
+                f"{gambling_data['level_icon']}        {progress['next_level_icon']}\n"
+                f"{gambling_data['level_icon']}                   {progress['next_level_icon']}\n"
             )
             embed.add_field(name="Level Progress", value=progress_text, inline=False)
 
