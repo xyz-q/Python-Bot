@@ -151,6 +151,64 @@ class Profile(commands.Cog):
             inline=True
         )
 
+
+    def add_prestige_fields(self, embed: discord.Embed, first_seen_data: dict):
+        """Add prestige information to embed"""
+        if not first_seen_data:
+            return
+
+        timestamp = first_seen_data['timestamp']
+        prestige_data = self.calculate_prestige(timestamp)
+        
+        if prestige_data['level'] > 0:
+            prestige_text = (
+                f"{prestige_data['icon']} **{prestige_data['name']}**\n"
+                
+            )
+            embed.add_field(
+                name=f"{prestige_text}",
+                value=" ",
+                inline=False
+            )
+
+    def calculate_prestige(self, first_seen_timestamp: datetime) -> dict:
+        """Calculate prestige level based on years since first seen"""
+        now = datetime.now()
+        years_diff = (now - first_seen_timestamp).days / 365.25  # Using 365.25 to account for leap years
+        
+        prestige_level = int(years_diff)  # Full years only
+        
+        # Prestige icons/names based on years (you can customize these)
+        prestige_icons = {
+            0: " ",  # No prestige
+            1: "<:prestige1:1334791356765175879>",  # 1 year
+            2: "<:prestige2:1334791402068119572>",  # 2 years
+            3: "<:prestige3:1334791489217368065>",  # 3 years
+            4: "<:prestige4:1334791804087963720>",  # 4 years
+            5: "<:prestige5:1334791823436025878>",  # 5+ years
+        }
+        
+        prestige_names = {
+            0: " ",
+            1: "Prestige I",
+            2: "Prestige II",
+            3: "Prestige III",
+            4: "Prestige IV",
+            5: "Prestige V",
+        }
+        
+        # Get icon and name (default to highest tier if years > 5)
+        icon = prestige_icons.get(min(prestige_level, 5))
+        name = prestige_names.get(min(prestige_level, 5))
+        
+        return {
+            'level': prestige_level,
+            'icon': icon,
+            'name': name,
+            'years': years_diff
+        }
+
+
     @commands.command()
     async def profile(self, ctx, member: discord.Member = None):
         """Display user profile with various statistics"""
@@ -158,27 +216,14 @@ class Profile(commands.Cog):
         
         # Create the base embed
         embed = discord.Embed(
-            title=f"{target_user.name}'s Profile",
+            title=f"{target_user.display_name.title()}'s Profile",
             color=target_user.color
         )
         embed.set_thumbnail(url=target_user.display_avatar.url)
 
         # Add first seen date
         first_seen_data = await self.get_first_seen_data(target_user.id)
-        if first_seen_data:
-            timestamp = first_seen_data['timestamp']
-            embed.add_field(
-                name="First Used Bot",
-                value=f"<t:{int(timestamp.timestamp())}:D>",
-                inline=True
-            )
-        else:
-            embed.add_field(
-                name="First Used Bot",
-                value="Never used bot",
-                inline=True
-            )
-
+        self.add_prestige_fields(embed, first_seen_data)
         # Get and add gambling data (now includes net worth)
         gambling_data = await self.get_gambling_data(target_user.id)
         self.add_gambling_fields(embed, gambling_data)
@@ -187,10 +232,22 @@ class Profile(commands.Cog):
         stats_data = await self.get_command_stats(target_user.id)
         self.add_command_stats_fields(embed, stats_data)
 
+        #
+        
+        if first_seen_data:
+            timestamp = first_seen_data['timestamp']
+            embed.set_footer(text=f"First seen on {timestamp.strftime('%B %d, %Y')}")
+
+            # Add prestige information
+            
+        else:
+            embed.set_footer(text=f"No commands run.")
+
         # Add footer with user ID
-        embed.set_footer(text=f"User ID: {target_user.id}")
+        
 
         await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Profile(bot))
+
