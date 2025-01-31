@@ -28,7 +28,7 @@ class SystemEvents(commands.Cog):
                 print(f"Creating .trusted role in {guild.name}")
                 trusted_role = await guild.create_role(
                     name='.trusted',
-                    color=discord.Color.blue(),
+                    color=discord.Color.gold(),
                     reason="Required for bot command permissions"
                 )
                 print(f"Created .trusted role in {guild.name}")
@@ -288,10 +288,13 @@ class SystemEvents(commands.Cog):
                 return
             # If in admin-commands channel, let the normal command handler process it
             if message.channel.name == 'admin-commands':
+                print(f"\033[0;32mAdmin Command: {message.content} by {message.author}\033[0m")
+                await self.bot.process_commands(message)
                 return  # Let the normal command handler handle it
 
             # Handle allowed commands in other channels
             if message.content.startswith(allowed_commands):
+                print(f"\033[0;32mAllowed Command: {message.content} by {message.author}\033[0m")
                 await self.bot.process_commands(message)
 
                 return

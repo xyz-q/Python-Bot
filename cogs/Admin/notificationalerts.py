@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 import json
 import os
-import asyncio
 
 class NotificationSystem(commands.Cog):
     def __init__(self, bot):
@@ -55,26 +54,17 @@ class NotificationSystem(commands.Cog):
         if data["message"] and str(message.author.id) not in data["readers"]:
             embed = discord.Embed(
                 title="A message from the developer.",
-                description="There's a new update out! Use `,notification` to view it.",
+                description="There's a new message out! Use `,notification` to view it.",
                 color=discord.Color.gold()
             )
             
             try:
-                # Wait for bot's response to the command
-                def check(m):
-                    return m.author == self.bot.user and m.reference and m.reference.message_id == message.id
-                
-                # Wait for up to 2 seconds for the bot's response
-                bot_response = await self.bot.wait_for('message', check=check, timeout=2)
-                
-                # Send notification as reply to bot's response
-                await bot_response.reply(
+                await ctx.send(
                     embed=embed,
                     ephemeral=True
                 )
-            except (discord.HTTPException, asyncio.TimeoutError):
+            except discord.HTTPException:
                 pass
-
 
     @commands.command(name="notification")
     async def notification(self, ctx):
