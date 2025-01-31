@@ -70,7 +70,7 @@ class NotificationSystem(commands.Cog):
             except discord.HTTPException:
                 pass
 
-    @commands.command(name="notification")
+    @commands.command(name="notification", aliases=['notif'])
     async def notification(self, ctx):
         """View the current notification"""
         data = self.get_data()
@@ -99,7 +99,7 @@ class NotificationSystem(commands.Cog):
 
         await ctx.send(embed=embed, ephemeral=True)
 
-    @commands.command(name="setnotification")
+    @commands.command(name="setnotification", aliases=['setnotif', 'notifset'])
     @commands.is_owner()
     async def set_notification(self, ctx, *, message):
         """Set a new notification (Admin only)"""
@@ -118,7 +118,7 @@ class NotificationSystem(commands.Cog):
         
         await ctx.send(embed=embed, ephemeral=True)
 
-    @commands.command(name="clearnotification")
+    @commands.command(name="clearnotification", aliases=['clearnotif', 'notifclear'])
     @commands.is_owner()
     async def clear_notification(self, ctx):
         """Clear the current notification (Admin only)"""
