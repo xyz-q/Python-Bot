@@ -183,7 +183,7 @@ class Profile(commands.Cog):
             0: " ",  # No prestige
             1: "<:prestige1:1334791356765175879>",  # 1 year
             2: "<:prestige2:1334791402068119572>",  # 2 years
-            3: "<:prestige3:1334791489217368065>",  # 3 years
+            3: "<:prestige3:1334801979964129300>",  # 3 years
             4: "<:prestige4:1334791804087963720>",  # 4 years
             5: "<:prestige5:1334791823436025878>",  # 5+ years
         }
