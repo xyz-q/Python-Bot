@@ -1172,6 +1172,29 @@ class Economy(commands.Cog):
         GP_TO_USD_RATE = 0.0000000247
         """Check your balance or someone else's balance"""
         try:
+            # Check if user is specifically requesting house balance
+            if isinstance(user, str) and user.lower() == 'house':
+                house_balance = await self.get_balance('house')
+                house_usd = house_balance * GP_TO_USD_RATE
+                
+                embed = discord.Embed(
+                    title="🏦 House Balance",
+                    description="",
+                    color=discord.Color.purple()  # Using purple for house
+                )
+                
+                embed.add_field(
+                    name="Total House Balance",
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(house_balance)} GP",
+                    inline=False
+                )
+                
+                embed.set_footer(text=f"House Value - ${house_usd:.2f} USD")
+                await ctx.send(embed=embed)
+                return
+
+
+
             if user is None:
                 if self.is_house_name(ctx.author.name):
                     await ctx.send("Error: Cannot check balance for users with 'house' in their name.")
@@ -1208,7 +1231,7 @@ class Economy(commands.Cog):
                 )
             else:
                 embed = discord.Embed(
-                    title=f"🏦 {user_name}'s Balance",
+                    title=f"🏦 {ctx.author.display_name.title()}'s Balance",
                     color=discord.Color.gold()
                 )
                 
@@ -1232,7 +1255,7 @@ class Economy(commands.Cog):
                     inline=False
                 )                
                 # Add the commands as description
-                embed.set_footer(text=f"Total balance {self.format_amount(vaultplusbalance)} GP / {total_usd:.2f} USD")
+                embed.set_footer(text=f"Total balance {self.format_amount(vaultplusbalance)} GP / ${total_usd:.2f} USD")
 
             await ctx.send(embed=embed)
         except Exception as e:
