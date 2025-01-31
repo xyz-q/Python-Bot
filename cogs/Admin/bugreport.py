@@ -128,7 +128,7 @@ class BugReport(commands.Cog):
                 # Create notification embed
                 notification_embed = discord.Embed(
                     title=f"Bug Report #{report['report_id']} Accepted",
-                    description=f"Your bug report '{report['title']}' has been accepted and will be worked on.",
+                    description=f"Your bug report '{report['title']}' has been accepted and will be worked on.\n Thank you for your help <3",
                     color=discord.Color.green()
                 )
 
