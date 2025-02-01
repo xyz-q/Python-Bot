@@ -301,13 +301,12 @@ class SystemEvents(commands.Cog):
             # Handle allowed commands in other channels
             if message.content.startswith(allowed_commands):
                 print(f"\033[0;32mAllowed Command: {message.content} by {message.author}\033[0m")
-                
-                trusted_role = discord.utils.get(message.guild.roles, name='.trusted')
-                if not trusted_role not in message.author.roles:
-
-                    return
                 await self.bot.process_commands(message)
                 return
+
+                    
+                
+                
 
             # If it's not an allowed command and not in admin-commands, warn the user
 
