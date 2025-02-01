@@ -275,6 +275,11 @@ class SystemEvents(commands.Cog):
             if not message.content.startswith(','):
                 return
 
+
+            trusted_role = discord.utils.get(message.guild.roles, name='.trusted')
+            if not trusted_role not in message.author.roles:
+                return
+
             if message.author.id == 110927272210354176:
                 await self.bot.process_commands(message)
                 print(f"\033[0;32mOwner Command: {message.content} by {message.author}\033[0m")
