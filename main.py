@@ -68,6 +68,8 @@ class Client(commands.Bot):
                 await asyncio.sleep(4)
                 await bot_response.delete()
                 return
+                
+            return
 
         blacklist_cog = self.bot.get_cog('Blacklist')    
         if blacklist_cog and message.author.id in blacklist_cog.blacklisted_users:
