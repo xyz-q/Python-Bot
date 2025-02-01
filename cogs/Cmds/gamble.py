@@ -2758,7 +2758,7 @@ class Economy(commands.Cog):
                     inline=False
                 )
                 final_embed.set_footer(
-                    text=f"New Balance: {self.format_amount(final_balance)} GP"
+                    text=f"Balance is the same."
                 )
 
 
