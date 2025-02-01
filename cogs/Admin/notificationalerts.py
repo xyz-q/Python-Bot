@@ -44,6 +44,9 @@ class NotificationSystem(commands.Cog):
         if ctx.command.name == "notification":
             return
 
+        if not message.content.startswith(','):
+            return
+
         try:
             if not await ctx.command.can_run(ctx):
                 return
