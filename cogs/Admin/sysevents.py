@@ -294,6 +294,7 @@ class SystemEvents(commands.Cog):
             # If in admin-commands channel, let the normal command handler process it
             if message.channel.name == 'admin-commands':
                 print(f"\033[0;32mAdmin Command: {message.content} by {message.author}\033[0m")
+                await self.bot.process_commands(message)
                 return
                  
 
