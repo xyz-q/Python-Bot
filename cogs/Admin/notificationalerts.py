@@ -94,6 +94,7 @@ class NotificationSystem(commands.Cog):
 
     @commands.command(name="notification", aliases=['notif'])
     async def notification(self, ctx):
+        await ctx.message.delete()
         """View the current notification"""
         data = self.get_data()
         
@@ -120,7 +121,9 @@ class NotificationSystem(commands.Cog):
             embed.add_field(name=" ", value="Please use `,report` to send any bugs my way.", inline=False)
             embed.set_footer(text=f"You were #{reader_number} to read this alert!")
 
-        await ctx.send(embed=embed, ephemeral=True)
+        notifembed = await ctx.send(embed=embed, ephemeral=True)
+        await asyncio.sleep(25)
+        await notifembed.delete()
 
     @commands.command(name="setnotification", aliases=['setnotif', 'notifset'])
     @commands.is_owner()
