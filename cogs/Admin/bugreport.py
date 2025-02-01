@@ -251,6 +251,7 @@ class BugReport(commands.Cog):
 
     @commands.command(name="bugreport", description="Open the bug report form", aliases=['report'])
     async def bugreport(self, ctx):
+        await ctx.message.delete()
         view = self.BugReportButton()
         bug = await ctx.send("Click the button below to report a bug!", view=view)
         await asyncio.sleep(15)
