@@ -292,33 +292,33 @@ class SystemEvents(commands.Cog):
             # Allow admin to use any command anywhere
 
             # If in admin-commands channel, let the normal command handler process it
-            if message.channel.name == 'admin-commands':
-                print(f"\033[0;32mAdmin Command: {message.content} by {message.author}\033[0m")
-                await self.bot.process_commands(message)
-                return
+            # if message.channel.name == 'admin-commands':
+            #     print(f"\033[0;32mAdmin Command: {message.content} by {message.author}\033[0m")
+            #     await self.bot.process_commands(message)
+            #     return
                  
 
-            # Handle allowed commands in other channels
-            if message.content.startswith(allowed_commands):
-                print(f"\033[0;32mAllowed Command: {message.content} by {message.author}\033[0m")
-                await self.bot.process_commands(message)
-                return
+            # # Handle allowed commands in other channels
+            # if message.content.startswith(allowed_commands):
+            #     print(f"\033[0;32mAllowed Command: {message.content} by {message.author}\033[0m")
+            #     await self.bot.process_commands(message)
+            #     return
 
                     
                 
                 
 
-            # If it's not an allowed command and not in admin-commands, warn the user
+            # # If it's not an allowed command and not in admin-commands, warn the user
 
-            try:
-                warningmsg = await message.channel.send("❌ Please use commands in #admin-commands")
-                print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
-                await message.delete()
-                await asyncio.sleep(7)
+            # try:
+            #     warningmsg = await message.channel.send("❌ Please use commands in #admin-commands")
+            #     print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
+            #     await message.delete()
+            #     await asyncio.sleep(7)
                 
-                await warningmsg.delete()
-            except Exception as e:
-                print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
+            #     await warningmsg.delete()
+            # except Exception as e:
+            #     print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
             
  
 
