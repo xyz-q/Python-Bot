@@ -275,7 +275,7 @@ class SystemEvents(commands.Cog):
             if not message.content.startswith(','):
                 return
 
-
+            
 
 
             if message.author.id == 110927272210354176:
@@ -298,11 +298,11 @@ class SystemEvents(commands.Cog):
             #     return
                  
 
-            # # Handle allowed commands in other channels
-            # if message.content.startswith(allowed_commands):
-            #     print(f"\033[0;32mAllowed Command: {message.content} by {message.author}\033[0m")
-            #     await self.bot.process_commands(message)
-            #     return
+            # Handle allowed commands in other channels
+            if message.content.startswith(allowed_commands):
+                print(f"\033[0;32mAllowed Command: {message.content} by {message.author}\033[0m")
+                await self.bot.process_commands(message)
+                return
 
                     
                 
