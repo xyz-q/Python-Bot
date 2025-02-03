@@ -374,7 +374,7 @@ class TransactionPaginator(discord.ui.View):
             elif trans_type == "add":
                 emoji = "<:add:1328511998647861390>"
                 bet_str = ""
-                amount_str = f"Added: +{abs(amount):,} <:goldpoints:1319902464115343473>"
+                amount_str = f"Deposited: +{abs(amount):,} <:goldpoints:1319902464115343473>"
             elif trans_type == "remove":
                 emoji = "<:remove:1328511957208268800>"
                 bet_str = ""
@@ -1362,7 +1362,7 @@ class Economy(commands.Cog):
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
-                        transaction_type="deposit",
+                        transaction_type="add",
                         is_house=True
                     )
                 else:
@@ -1376,7 +1376,7 @@ class Economy(commands.Cog):
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
-                        transaction_type="deposit"
+                        transaction_type="add"
                     )
                 # Add this after the transaction is completed but before the final confirmation message
                 if isinstance(user, discord.Member):  # Only send DM if it's a Discord member (not house)
@@ -1508,7 +1508,7 @@ class Economy(commands.Cog):
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
-                        transaction_type="withdraw",
+                        transaction_type="remove",
                         is_house=True
                     )
                 else:
@@ -1522,7 +1522,7 @@ class Economy(commands.Cog):
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
-                        transaction_type="withdraw"
+                        transaction_type="remove"
                     )
          
                 
