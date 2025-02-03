@@ -2421,6 +2421,7 @@ class Economy(commands.Cog):
                 value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
                 inline=False
             )
+            embed.set_footer(text=f"For {ctx.author.display_name.title()}", icon_url=ctx.author.avatar.url)
 
             selection_message = await ctx.send(embed=embed, view=view)
 
