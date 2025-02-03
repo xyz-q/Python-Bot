@@ -2296,418 +2296,156 @@ class Economy(commands.Cog):
     @confirm_bet()
     @transaction_limit()
     @user_lock()
-    async def flower(self, ctx, bet_amount: typing.Optional[str] = None, side: str = "player"):
-        user_id = ctx.author.id
-        
-        # Validate the side parameter
-        side = side.lower()
-        if side not in ["player", "banker"]:
-            await ctx.send("Please choose either 'player' or 'banker' as your side!")
-            return
-        
-        if bet_amount is None:
-            help_embed = discord.Embed(
-                title="<:seeds:1326024477145956433> Flower Game Information",
-                description="Welcome to the Flower Staking Game!",
+    async def flower(self, ctx, bet_amount: typing.Optional[str] = None):
+        try:
+            if bet_amount is None:
+                help_embed = discord.Embed(
+                    title="<:seeds:1326024477145956433> Flower Game Information",
+                    description="Welcome to the Flower Staking Game!",
+                    color=discord.Color.gold()
+                )
+                
+                # Add fields explaining the flowers and their values
+                help_embed.add_field(
+                    name="Regular Flowers",
+                    value=(
+                        "<:rainbow:1326018658648195103> = 0\n"
+                        "<:pastel:1326018646098706564> = 0\n"
+                        "<:red:1326018733826773023> = 2\n"
+                        "<:purple:1326018686817009734> = 3\n"
+                        "<:yellow:1326018708136792085> = 4\n"
+                        "<:blue:1326018721730396190> = 5\n"
+                        "<:orange:1326018671763521557> = 6"
+                    ),
+                    inline=True
+                )
+                
+                help_embed.add_field(
+                    name="Special Flowers",
+                    value=(
+                        "<:white:1326018610719756340> = Instant Win!\n"
+                        "<:black:1326018632739721327> = Instant Loss!"
+                    ),
+                    inline=True
+                )
+                
+                help_embed.add_field(
+                    name="How to Play",
+                    value=(
+                        "• Use `,flower <bet amount>` to play!\n"
+                        "• Choose Player or Banker side\n"
+                        "• Get a higher total than the opponent to win!\n"
+                        "• Numbers over 10 reset (eg: 12 becomes 2)"
+                    ),
+                    inline=False
+                )
+                
+                await ctx.send(embed=help_embed)
+                return
+
+            # Create buttons for side selection
+            class SideButtons(discord.ui.View):
+                def __init__(self):
+                    super().__init__(timeout=30)
+                    self.value = None
+
+                @discord.ui.button(label="Player (2x)", style=discord.ButtonStyle.green)
+                async def player(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id == ctx.author.id:
+                        self.value = "player"
+                        self.stop()
+                        for item in self.children:
+                            item.disabled = True
+                        await interaction.response.edit_message(view=self)
+
+                @discord.ui.button(label="Banker (1.95x)", style=discord.ButtonStyle.red)
+                async def banker(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id == ctx.author.id:
+                        self.value = "banker"
+                        self.stop()
+                        for item in self.children:
+                            item.disabled = True
+                        await interaction.response.edit_message(view=self)
+
+            # Parse bet amount first
+            try:
+                amount = self.parse_amount(bet_amount)
+            except ValueError:
+                await ctx.send("Invalid bet amount! Use numbers with K, M, or B (e.g., 1.5K, 2M, 3B)")
+                return
+
+            # Create and send the side selection message with buttons
+            view = SideButtons()
+            embed = discord.Embed(
+                title="Choose Your Side",
+                description="Click a button to choose your side:",
                 color=discord.Color.gold()
             )
-            
-            # Add fields explaining the flowers and their values
-            help_embed.add_field(
-                name="Regular Flowers",
-                value=(
-                    "<:rainbow:1326018658648195103> = 0\n"
-                    "<:pastel:1326018646098706564> = 0\n"
-                    "<:red:1326018733826773023> = 2\n"
-                    "<:purple:1326018686817009734> = 3\n"
-                    "<:yellow:1326018708136792085> = 4\n"
-                    "<:blue:1326018721730396190> = 5\n"
-                    "<:orange:1326018671763521557> = 6"
-                ),
-                inline=True
-            )
-            
-            help_embed.add_field(
-                name="Special Flowers",
-                value=(
-                    "<:white:1326018610719756340> = Instant Win!\n"
-                    "<:black:1326018632739721327> = Instant Loss!"
-                ),
-                inline=True
-            )
-            
-            help_embed.add_field(
-                name="How to Play",
-                value=(
-                    "• Use `,flower <bet amount> player` to play as Player!\n"
-                    "• Use `,flower <bet amount> banker` to play as Banker!\n"
-                    "• Get a higher total than the opponent to win!\n"
-                    "• Numbers over 10 reset (eg: 12 becomes 2)"
-                ),
+            embed.add_field(
+                name="Bet Amount", 
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
                 inline=False
             )
             
-            await ctx.send(embed=help_embed)
-            return
-
-        # If bet_amount is provided, continue with the existing game logic
-        try:
-            print(f"Raw bet_amount: {bet_amount!r}")
+            selection_message = await ctx.send(embed=embed, view=view)
             
-            # Make sure bet_amount is a string and strip any whitespace
-            bet_amount = str(bet_amount).strip()
-            print(f"Processed bet_amount: {bet_amount!r}")
+            # Wait for button press
+            await view.wait()
             
-            # Try to parse the amount
-            amount = self.parse_amount(bet_amount)
-            print(f"Parsed amount: {amount}")
-
-                     
-            # Flowers with their values and weights (odds)
-            flowers = {
-                "<:rainbow:1326018658648195103>": {"value": 0, "weight": 12},    
-                "<:pastel:1326018646098706564>": {"value": 0, "weight": 12},    
-                "<:red:1326018733826773023>": {"value": 2, "weight": 15},    
-                "<:blue:1326018721730396190>": {"value": 5, "weight": 15},    
-                "<:yellow:1326018708136792085>": {"value": 4, "weight": 15},   
-                "<:purple:1326018686817009734>": {"value": 3, "weight": 15},    
-                "<:orange:1326018671763521557>": {"value": 6, "weight": 15},    
-                "<:white:1326018610719756340>": {"value": 69, "weight": 0.1},  
-                "<:black:1326018632739721327>": {"value": 420, "weight": 0.2}  
-            }
-
-            # Validate bet amount first
-
-            if amount <= 0:
-                await ctx.send("Please enter a valid bet amount!")
+            # If no button was pressed (timeout)
+            if view.value is None:
+                await selection_message.delete()
+                await ctx.send("Game cancelled - no side selected in time!")
                 return
-            house_id = str(self.bot.user.id)
-            print(f"House ID {house_id}")
-            if house_id not in self.currency:
-                self.currency[house_id] = 0      
-  
+                
+            side = view.value  # This will be either "player" or "banker"
 
-
-            max_possible_win = amount  
-            if int(self.currency[house_id]) < max_possible_win:
-                print(f"House balance: {self.currency[house_id]}")
-                print(f"amount: {amount}")
-                print(f"Max possible win: {max_possible_win}")
-                await ctx.send("The house doesn't have enough balance to cover potential winnings! Please try a smaller bet.")
-                return             
-
-            # Check if user has enough balance
+            # Get user and house info
             user_id = str(ctx.author.id)
-            if user_id not in self.currency:
-                self.currency[user_id] = 0
+            house_id = str(self.bot.user.id)
+            print(f"User ID: {user_id}, House ID: {house_id}")
+        
+            user_balance = await self.get_balance(user_id)
 
-           # If they dont, tell them they dont have enough balance
-            
-            if self.currency[user_id] < amount:
-                await ctx.send(f"You don't have enough balance for this bet! Your balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>\n\n Use ,deposit <amount> <rsn> to add more.")
+            if house_id not in self.currency:
+                self.currency[house_id] = 0   
+
+            # Validate bet and balances
+            if amount <= 0:
+                await ctx.send("You must bet at least 1 coin!")
+                return
+                        
+            if amount > user_balance:
+                await ctx.send(f"You don't have enough coins! Your balance: {self.format_amount(user_balance)} <:goldpoints:1319902464115343473> ")
                 return
 
-            print(f"taking {amount} from {user_id} for flower game")
+            # Check house balance
+            house_balance = int(self.currency[house_id])
+            max_possible_win = amount * 30  # Maximum possible win (Diamond 30x)
+            if house_balance < max_possible_win:
+                await ctx.send("The house doesn't have enough balance to cover potential winnings! Please try a smaller bet.")
+                return
+
+            # Deduct bet ONCE at the start
             self.currency[user_id] -= amount
-            print(f"giving {amount} to house")
-            self.currency[house_id] += amount 
-            self.save_currency()  
+            self.currency[house_id] += amount
+            while_betting_balance = await self.get_balance(user_id)
 
-  
-
-            def calculate_total(numbers):
-                """Calculate total, implementing the 10+ reset rule after the sum."""
-                print(f"Received numbers to calculate: {numbers}")  
-                total = sum(numbers) 
-                final_total = sum(numbers) % 10                
-                print(f"Running total (before mod 10): {total}")  
-                print(f"Final total: {final_total}")  
-                return total % 10   
-
-
-            def needs_third_card(total):
-                """Determine if a third card is needed (5 or below)"""
-                print(f"Checking if third card is needed for total: {total}")
-                return total <= 5
-                
-
-            def pick_flower():
-                """Pick a random flower based on weights"""
-                flower_list = list(flowers.keys())
-                weights = [flowers[f]["weight"] for f in flower_list]
-                chosen_flower = random.choices(flower_list, weights=weights, k=1)[0]
-                print(f"Picked flower: {chosen_flower} with value: {flowers[chosen_flower]['value']}")
-                return chosen_flower, flowers[chosen_flower]["value"]
-
-            # Initialize game state with placeholder seeds
-            player_hand = []
-            banker_hand = []
-            player_flowers = ["<:seeds:1326024477145956433>"] * 3  # 3 placeholder seeds
-            banker_flowers = ["<:seeds:1326024477145956433>"] * 3  # 3 placeholder seeds
-
-            # Create initial embed showing all placeholders
-            game_embed = discord.Embed(title="<:seeds:1326024477145956433> Flower Staking Game", color=discord.Color.gold())
-            game_embed.add_field(
+            # Create and send initial embed
+            embed = discord.Embed(title="<:seeds:1326024477145956433> Flower Staking Game", color=discord.Color.gold())
+            embed.add_field(
                 name="Your Bet", 
-                value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on {side.title()}", 
                 inline=False
             )
-            game_embed.add_field(
-                name="Player's Hand", 
-                value=f"{''.join(player_flowers)}", 
-                inline=False
-            )
-            game_embed.add_field(
-                name="Banker's Hand", 
-                value=f"{''.join(banker_flowers)}", 
-                inline=False
-            )
+            embed.add_field(name="Spinning...", value="| ❓ | ❓ | ❓ |")
+            embed.set_footer(text=f"Balance: {self.format_amount(while_betting_balance)} GP")
+            msg = await ctx.send(embed=embed)
+
+            # Rest of your existing game code here...
+            # (Keep all the flower generation, animation, and game logic the same)
             
-            game_message = await ctx.send(embed=game_embed)
-
-            # Player's first two cards
-            game_embed.add_field(name="Status", value="Drawing player's cards...", inline=False)
-            await game_message.edit(embed=game_embed)
-            await asyncio.sleep(1)
-
-            for i in range(2):
-                p_flower, p_value = pick_flower()
-                player_hand.append(p_value)
-                player_flowers[i] = p_flower
-
-                # Clear previous fields and update the embed
-                game_embed.clear_fields()
-                game_embed.add_field(
-                    name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
-                    inline=False
-                )
-                game_embed.add_field(
-                    name="Player's Hand", 
-                    value=f"{''.join(player_flowers)}", 
-                    inline=False
-                )
-                game_embed.add_field(
-                    name="Banker's Hand", 
-                    value=f"{''.join(banker_flowers)}", 
-                    inline=False
-                )
-                await game_message.edit(embed=game_embed)
-                await asyncio.sleep(1)
-
-                def check_special_flowers(hand_values, flowers_display):
-                    for value, flower in zip(hand_values, flowers_display):
-                        if value == 69:  # White Flower
-                            return "win", f"**WHITE FLOWER!** Instant Win! 💰\n", discord.Color.green()
-                        elif value == 420:  # Black Flower
-                            return "loss", "**BLACK FLOWER!** House Wins! 💀", discord.Color.red()
-                    return None, None, None
-
-                # Check player's hand for special flowers
-                result, message, color = check_special_flowers(player_hand, player_flowers)
-                if result:
-                    game_embed.color = color
-                    game_embed.add_field(
-                        name="Result", 
-                        value=message, 
-                        inline=False
-                    )
-                    await game_message.edit(embed=game_embed)
-                    
-                    if result == "win":
-                        winnings = amount * 2
-                        tax_amount = int(winnings * 0.05)
-                        net_winnings = winnings - tax_amount
-                        print(f"Player wins {winnings} GP, tax: {tax_amount}, net: {net_winnings} from a white flower!")
-                        self.currency[house_id] -= winnings
-                        self.currency[user_id] += net_winnings
-                        self.currency[house_id] += tax_amount
-                        self.update_stats(user_id, amount, net_winnings)
-                        final_balance = await self.get_balance(user_id)
-                        print(f"+{winnings} %{tax_amount} net +{net_winnings} ${final_balance}")
-
-
-                    else:
-                        self.update_stats(user_id, amount, amount)
-                        final_balance = await self.get_balance(user_id)
-            
-                        await self.log_transaction(ctx, amount, 0, final_balance, is_house=False)
-                        print(f"-{amount} ${final_balance} THIS IS A BLACK FLOWER")
-                    
-                    self.save_currency()
-                    return
-                
-
-                
-
-                
-                game_embed.clear_fields()
-                game_embed.add_field(
-                    name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
-                    inline=False
-                )
-                game_embed.add_field(
-                    name="Player's Hand", 
-                    value=f"{''.join(player_flowers)}", 
-                    inline=False
-                )
-                game_embed.add_field(
-                    name="Banker's Hand", 
-                    value=f"{''.join(banker_flowers)}", 
-                    inline=False
-                )
-
-                await game_message.edit(embed=game_embed)
-                await asyncio.sleep(1)
-
-
-            # Check if the player needs a third card
-            player_total = calculate_total(player_hand)
-            if needs_third_card(player_total):
-                game_embed.add_field(
-                    name="Status", 
-                    value="Drawing third card for player...", 
-                    inline=False
-                )
-                await game_message.edit(embed=game_embed)
-                await asyncio.sleep(1)
-
-                # Pick a new flower and value for the third card
-                p_flower, p_value = pick_flower()  # New card for third draw
-                player_hand.append(p_value)
-                player_flowers[2] = p_flower
-                player_total = sum(player_hand) % 10 
-                print(f"Player's hand after third card: {player_hand}")
-                print(f"Final total after third card: {player_total}")  # Assign the third card properly
-
-                # Update the embed with the new hand
-                game_embed.clear_fields()
-                game_embed.add_field(
-                    name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
-                    inline=False
-                )
-                game_embed.add_field(
-                    name="Player's Hand", 
-                    value=f"{''.join(player_flowers)} = {player_total}", 
-                    inline=False
-                )
-                game_embed.add_field(
-                    name="Banker's Hand", 
-                    value=f"{''.join(banker_flowers)}", 
-                    inline=False
-                )
-                await game_message.edit(embed=game_embed)
-                await asyncio.sleep(1)
-
-            # Now banker's turn
-            game_embed.add_field(name="Status", value="Drawing banker's cards...", inline=False)
-
-            await game_message.edit(embed=game_embed)
-            await asyncio.sleep(1)
-
-            # Banker's two cards
-            for i in range(2):
-                b_flower, b_value = pick_flower()
-                banker_hand.append(b_value)
-                banker_flowers[i] = b_flower  # Replace placeholder with actual flower
-                
-                game_embed.clear_fields()
-                game_embed.add_field(
-                    name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
-                    inline=False
-                )
-                game_embed.add_field(
-                    name="Player's Hand", 
-                    value=f"{''.join(player_flowers)} = {player_total}", 
-                    inline=False
-                )
-                game_embed.add_field(
-                    name="Banker's Hand", 
-                    value=f"{''.join(banker_flowers)}", 
-                    inline=False
-                )
-                await game_message.edit(embed=game_embed)
-                await asyncio.sleep(1)
-
-            # Check if banker needs third card
-            banker_total = calculate_total(banker_hand)
-            if needs_third_card(banker_total):
-                print(f"Banker's total: {banker_total}, needs third card")
-                game_embed.add_field(
-                    name="Status", 
-                    value="Drawing third card for banker...", 
-                    inline=False
-                )
-                await game_message.edit(embed=game_embed)
-                await asyncio.sleep(1)
-
-                b_flower, b_value = pick_flower()
-                banker_hand.append(b_value)
-                banker_flowers[2] = b_flower  # Replace third placeholder
-                banker_total = calculate_total(banker_hand)
-
-                game_embed.clear_fields()
-                game_embed.add_field(
-                    name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
-                    inline=False
-                )
-                game_embed.add_field(
-                    name="Player's Hand", 
-                    value=f"{''.join(player_flowers)} = {player_total}", 
-                    inline=False
-                )
-                game_embed.add_field(
-                    name="Banker's Hand", 
-                    value=f"{''.join(banker_flowers)} = {banker_total}", 
-                    inline=False
-                )
-                await game_message.edit(embed=game_embed)
-                await asyncio.sleep(1)
-
-            result, message, color = check_special_flowers(banker_hand, banker_flowers)
-            if result:
-                game_embed.color = color
-                game_embed.add_field(
-                    name="Result", 
-                    value=message, 
-                    inline=False
-                )
-                await game_message.edit(embed=game_embed)
-                
-                if result == "win":
-                    self.currency[user_id] += amount
-                    winnings = amount * 1.90
-                    self.update_stats(user_id, amount, winnings)
-                else:
-                    self.currency[user_id] += amount  # Player wins
-                
-                self.save_currency()
-                return
-
-            # Final result embed
-            final_embed = discord.Embed(title="<:seeds:1326024477145956433> Flower Staking Game", color=discord.Color.gold())
-            final_embed.add_field(
-                name="Your Bet", 
-                value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
-                inline=False
-            )
-            final_embed.add_field(
-                name="Player's Hand", 
-                value=f"{''.join(player_flowers)} = {player_total}", 
-                inline=False
-            )
-            final_embed.add_field(
-                name="Banker's Hand", 
-                value=f"{''.join(banker_flowers)} = {banker_total}", 
-                inline=False
-            )
-            #-------------------------------------------    
-    # Determine winner and update balances
-# Determine winner and update balances
+            # Just update the win conditions to use the selected side:
             if player_total == 9 and banker_total == 9:
                 # Tie on 9s, banker wins
                 if side == "banker":
