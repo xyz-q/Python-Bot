@@ -2335,8 +2335,7 @@ class Economy(commands.Cog):
             help_embed.add_field(
                 name="How to Play",
                 value=(
-                    "• Use `,flower <bet amount> player` to play as Player!\n"
-                    "• Use `,flower <bet amount> banker` to play as Banker!\n"
+                    "• Use `,flower <bet amount>` then pick a side to play!\n"
                     "• Get a higher total than the opponent to win!\n"
                     "• Numbers over 10 reset (eg: 12 becomes 2)"
                 ),
