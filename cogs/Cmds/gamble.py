@@ -2845,12 +2845,18 @@ class Economy(commands.Cog):
                         value=f"Banker wins! You win! <a:MUGA:1178140574570790954>\nWinnings: {self.format_amount(net_winnings)} (After 5% tax)", 
                         inline=False
                     )
+                    final_embed.set_footer(
+                        text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} ", icon_url=ctx.author.avatar.url
+                    )                    
                 else:
                     # Player bet on player and lost
                     final_embed.add_field(
                         name="Result", 
                         value="Banker wins! You lose! <a:xdd:1221066292631568456>", 
                         inline=False
+                    )
+                    final_embed.set_footer(
+                        text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} ", icon_url=ctx.author.avatar.url
                     )
                     self.update_stats(user_id, amount, 0)
                     final_balance = await self.get_balance(user_id)
