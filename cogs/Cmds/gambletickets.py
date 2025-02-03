@@ -881,7 +881,7 @@ class GambleSystem(commands.Cog):
             return
 
         if formatted_amount > self.USER_ID_LIMIT:
-            await ctx.send(f"<:remove:1328511957208268800> Maximum deposit amount is {self.format_amount2(self.MAX_DEPOSIT)} <:goldpoints:1319902464115343473>. Please make sure you are not using a @, or it will use the userid\nExample: `,deposit 100M Zezima`")
+            await ctx.send(f"<:remove:1328511957208268800> Please make sure you are not using a @, or it will use the userid \nExample: `,deposit 100M Zezima`")
             return
         if formatted_amount > self.MAX_DEPOSIT:
             await ctx.send(f"<:remove:1328511957208268800> Maximum deposit amount is {self.format_amount2(self.MAX_DEPOSIT)} <:goldpoints:1319902464115343473>. You tried to deposit {self.format_amount2(formatted_amount)} <:goldpoints:1319902464115343473>\nExample: `,deposit 100M Zezima`")
