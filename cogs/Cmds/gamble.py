@@ -1789,7 +1789,7 @@ class Economy(commands.Cog):
 
         # Get commands from multiple cogs
         commands_list = []
-        cogs_to_include = ['Economy', 'GambleSystem', 'LevelSystem', 'Profile']  # Add the names of cogs you want to include
+        cogs_to_include = ['Economy', 'GambleSystem', 'Profile']  # Add the names of cogs you want to include
         
         for cog_name in cogs_to_include:
             cog = self.bot.get_cog(cog_name)

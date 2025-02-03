@@ -69,7 +69,7 @@ class AdminCommands(commands.Cog):
     @commands.command()
     async def ping(self, ctx):
         bot_latency = round(self.bot.latency * 1000) 
-        embed = discord.Embed(title=" ", description=f"Pong! 🏓\nBot latency: {bot_latency} ms", color=discord.Color.blurple())
+        embed = discord.Embed(title=" ", description=f"Pong! 🏓\nBot latency: {bot_latency} ms", color=discord.Color.gold())
         await ctx.send(embed=embed)
 
     @commands.command()

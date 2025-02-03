@@ -302,12 +302,13 @@ class SystemEvents(commands.Cog):
 
             # If it fails these checks, check the context, or who/how you are using the command.
             try:
-                warningmsg = await message.channel.send("❌ Please use commands in #admin-commands")
+                warningmsg = await message.channel.send("❌ Please use commands in #admin-commands, see `,staking` for a list you can anywhere")
                 print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
                 await message.delete()
                 await asyncio.sleep(7)
                 
                 await warningmsg.delete()
+                return
             except Exception as e:
                 print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
             
