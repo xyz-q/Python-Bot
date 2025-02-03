@@ -271,59 +271,48 @@ class SystemEvents(commands.Cog):
                     print(f"\033[91mError handling DM: {str(e)}\033[0m")
                     return
 
-
             allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send', ',cf', ',pvpflip', ',ticket', ',vault', ',accept', ',profile', ',history', ',transactions')
 
             # Only process commands that start with ','
             if not message.content.startswith(','):
                 return
 
-            
-
-
+            # Check for me
             if message.author.id == 110927272210354176:
                 await self.bot.process_commands(message)
                 print(f"\033[0;32mOwner Command: {message.content} by {message.author}\033[0m")
                 return
 
+            # Check for admin-commands channel
+            if message.channel.name == 'admin-commands':
+                print(f"\033[0;32mAdmin Command: {message.content} by {message.author}\033[0m")
+                await self.bot.process_commands(message)
+                return
+
+            # If message starts with prefix, then..
             if message.content.startswith(','):
-                message.content = message.content.lower()
+                message.content = message.content.lower() 
                 print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
                 
-
-            
-            # Allow admin to use any command anywhere
-
-            # If in admin-commands channel, let the normal command handler process it
-            # if message.channel.name == 'admin-commands':
-            #     print(f"\033[0;32mAdmin Command: {message.content} by {message.author}\033[0m")
-            #     await self.bot.process_commands(message)
-            #     return
-                 
-
-            # Handle allowed commands in other channels
+            # Check if it is allowed in other channels
             if message.content.startswith(allowed_commands):
                 print(f"\033[0;32mAllowed Command: {message.content} by {message.author}\033[0m")
                 await self.bot.process_commands(message)
                 return
 
-                    
+            # If it fails these checks, check the context, or who/how you are using the command.
+            try:
+                warningmsg = await message.channel.send("❌ Please use commands in #admin-commands")
+                print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
+                await message.delete()
+                await asyncio.sleep(7)
                 
-                
-
-            # # If it's not an allowed command and not in admin-commands, warn the user
-
-            # try:
-            #     warningmsg = await message.channel.send("❌ Please use commands in #admin-commands")
-            #     print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
-            #     await message.delete()
-            #     await asyncio.sleep(7)
-                
-            #     await warningmsg.delete()
-            # except Exception as e:
-            #     print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
+                await warningmsg.delete()
+            except Exception as e:
+                print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
             
  
+            await self.bot.process_commands(message)
 
         except Exception as e:
             print(f"\033[91mError in on_message: {str(e)}\033[0m")

@@ -1237,7 +1237,6 @@ class Economy(commands.Cog):
             vault_data = self.load_vault_data()
             user_vault = vault_data.get(user_id, {"balance": 0})
             vault_balance = user_vault.get("balance", 0)
-            print(f"Current vault balance: ${vault_balance:,}")
             vaultplusbalance = vault_balance + balance
             VAULT_USD = vault_balance * GP_TO_USD_RATE
             total_usd = vaultplusbalance * GP_TO_USD_RATE
