@@ -880,7 +880,7 @@ class GambleSystem(commands.Cog):
             return
             
         if formatted_amount > self.MAX_DEPOSIT:
-            await ctx.send(f"<:remove:1328511957208268800> Maximum deposit amount is {self.format_amount2(self.MAX_DEPOSIT)} <:goldpoints:1319902464115343473>")
+            await ctx.send(f"<:remove:1328511957208268800> Maximum deposit amount is {self.format_amount2(self.MAX_DEPOSIT)} You tried to deposit {self.format_amount2(formatted_amount)} <:goldpoints:1319902464115343473>")
             return
         if not formatted_amount:
             await ctx.send("<:remove:1328511957208268800> Invalid amount format! Please use K, M, B, or T (e.g., 100M, 1B)")
