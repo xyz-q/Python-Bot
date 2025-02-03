@@ -881,7 +881,7 @@ class GambleSystem(commands.Cog):
             return
 
         if formatted_amount > self.USER_ID_LIMIT:
-            await ctx.send(f"<:remove:1328511957208268800> Please make sure you are not using a @, or it will use the userid \nExample: `,deposit 100M Zezima`")
+            await ctx.send(f"<:remove:1328511957208268800> Please make sure you are not using an @, or it will use the userid \nExample: `,deposit 100M Zezima`")
             return
         if formatted_amount > self.MAX_DEPOSIT:
             await ctx.send(f"<:remove:1328511957208268800> Maximum deposit amount is {self.format_amount2(self.MAX_DEPOSIT)} <:goldpoints:1319902464115343473>. You tried to deposit {self.format_amount2(formatted_amount)} <:goldpoints:1319902464115343473>\nExample: `,deposit 100M Zezima`")
@@ -975,14 +975,18 @@ class GambleSystem(commands.Cog):
         if not formatted_amount:
             await ctx.send("<:remove:1328511957208268800> Invalid amount format! Please use K, M, B, or T (e.g., 100M, 1B)")
             return
+        
+        if formatted_amount > self.USER_ID_LIMIT:
+            await ctx.send(f"<:remove:1328511957208268800> Please make sure you are not using an @, or it will use the userid \nExample: `,withdraw 100M Zezima`")
+            return        
 
         # Simple limit checks
         if formatted_amount < self.MIN_WITHDRAW:
-            await ctx.send(f"<:remove:1328511957208268800> Minimum withdrawal amount is {self.format_amount2(self.MIN_WITHDRAW)} <:goldpoints:1319902464115343473>")
+            await ctx.send(f"<:remove:1328511957208268800> Minimum withdrawal amount is {self.format_amount2(self.MIN_WITHDRAW)} <:goldpoints:1319902464115343473>\nExample: `,withdraw 100M Zezima`")
             return
             
         if formatted_amount > self.MAX_WITHDRAW:
-            await ctx.send(f"<:remove:1328511957208268800> Maximum withdrawal amount is {self.format_amount2(self.MAX_WITHDRAW)} <:goldpoints:1319902464115343473>")
+            await ctx.send(f"<:remove:1328511957208268800> Maximum withdrawal amount is {self.format_amount2(self.MAX_WITHDRAW)} <:goldpoints:1319902464115343473>\nExample: `,withdraw 100M Zezima`")
             return
         
 
