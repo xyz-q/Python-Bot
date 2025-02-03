@@ -1,4 +1,4 @@
-from discord.ext import commands
+from discord.ext import commands, tasks
 import time
 import json
 import discord
@@ -10,25 +10,56 @@ class Statistics(commands.Cog):
         self.bot = bot
         self.uptime_file = ".json/uptime_stats.json"
         self.command_stats_file = ".json/command_stats.json"
-        self.start_time = self.load_or_create_start_time()
+        self.load_uptime_stats()
+        self.update_runtime.start()  # Start the background task
         
-    def load_or_create_start_time(self):
+    def load_uptime_stats(self):
         try:
             with open(self.uptime_file, 'r') as f:
                 data = json.load(f)
-                return data.get('start_time', time.time())
+                self.total_seconds = data.get('total_seconds', 0)
+                self.total_minutes = data.get('total_minutes', 0)
+                self.total_hours = data.get('total_hours', 0)
+                self.total_days = data.get('total_days', 0)
         except FileNotFoundError:
-            # If file doesn't exist, create it with current time
-            current_time = time.time()
-            self.save_start_time(current_time)
-            return current_time
+            self.total_seconds = 0
+            self.total_minutes = 0
+            self.total_hours = 0
+            self.total_days = 0
+            self.save_uptime_stats()
 
-    def save_start_time(self, start_time):
-        # Ensure directory exists
+    def save_uptime_stats(self):
         os.makedirs(os.path.dirname(self.uptime_file), exist_ok=True)
-        
         with open(self.uptime_file, 'w') as f:
-            json.dump({'start_time': start_time}, f)
+            json.dump({
+                'total_seconds': self.total_seconds,
+                'total_minutes': self.total_minutes,
+                'total_hours': self.total_hours,
+                'total_days': self.total_days
+            }, f, indent=4)
+
+    @tasks.loop(seconds=17.0)
+    async def update_runtime(self):
+        """Update the runtime every 17 seconds"""
+        self.total_seconds += 17
+
+        # Update minutes if we have 60 or more seconds
+        while self.total_seconds >= 60:
+            self.total_seconds -= 60
+            self.total_minutes += 1
+
+        # Update hours if we have 60 or more minutes
+        while self.total_minutes >= 60:
+            self.total_minutes -= 60
+            self.total_hours += 1
+
+        # Update days if we have 24 or more hours
+        while self.total_hours >= 24:
+            self.total_hours -= 24
+            self.total_days += 1
+
+        # Save the updated stats
+        self.save_uptime_stats()
 
     def load_command_stats(self):
         try:
@@ -37,12 +68,10 @@ class Statistics(commands.Cog):
         except FileNotFoundError:
             return {}
 
-
     def calculate_total_commands(self):
         stats = self.load_command_stats()
         total_commands = 0
         command_breakdown = {}
-
 
         # Calculate totals for each command across all users
         for user_id, commands in stats.items():
@@ -53,27 +82,7 @@ class Statistics(commands.Cog):
         return total_commands, command_breakdown
 
     def format_uptime(self):
-        current_time = time.time()
-        diff = current_time - self.start_time
-        
-        # Convert to datetime.timedelta for easier formatting
-        uptime = timedelta(seconds=int(diff))
-        
-        days = uptime.days
-        hours = uptime.seconds // 3600
-        minutes = (uptime.seconds % 3600) // 60
-        seconds = uptime.seconds % 60
-
-        return f"{days}d {hours}h {minutes}m {seconds}s"
-
-
-    @commands.command(name="resetuptime")
-    @commands.is_owner()  # Only bot owner can use this command
-    async def reset_uptime(self, ctx):
-        """Resets the bot's uptime counter"""
-        self.start_time = time.time()
-        self.save_start_time(self.start_time)
-        await ctx.send("Bot uptime has been reset!")
+        return f"{self.total_days}d {self.total_hours}h {self.total_minutes}m {self.total_seconds}s"
 
     @commands.command(name="botstats")
     async def show_stats(self, ctx):
@@ -83,22 +92,14 @@ class Statistics(commands.Cog):
 
         embed = discord.Embed(
             title="Bot Statistics",
-            color=discord.Color.blue(),
+            color=discord.Color.gold(),
             timestamp=datetime.utcnow()
         )
 
-        # Add uptime field
+        # Add total uptime field
         embed.add_field(
-            name="Uptime",
+            name="Total Running Time",
             value=uptime,
-            inline=False
-        )
-
-        # Add start time field
-        start_datetime = datetime.fromtimestamp(self.start_time)
-        embed.add_field(
-            name="Started On",
-            value=start_datetime.strftime("%Y-%m-%d %H:%M:%S UTC"),
             inline=False
         )
 
@@ -121,41 +122,26 @@ class Statistics(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="commandstats")
-    async def command_stats(self, ctx, command_name: str = None):
-        """Shows statistics for a specific command or lists all commands"""
-        stats = self.load_command_stats()
-        total_commands, command_breakdown = self.calculate_total_commands()
+    @commands.command(name="resetuptime")
+    @commands.is_owner()
+    async def reset_uptime(self, ctx):
+        """Resets the bot's uptime counter"""
+        self.total_seconds = 0
+        self.total_minutes = 0
+        self.total_hours = 0
+        self.total_days = 0
+        self.save_uptime_stats()
+        await ctx.send("Bot uptime has been reset!")
 
-        if command_name:
-            # Show stats for specific command
-            command_total = command_breakdown.get(command_name.lower(), 0)
-            embed = discord.Embed(
-                title=f"Command Statistics: {command_name}",
-                description=f"Total uses: {command_total}",
-                color=discord.Color.blue()
-            )
-        else:
-            # Show all commands
-            embed = discord.Embed(
-                title="All Command Statistics",
-                color=discord.Color.blue()
-            )
-            
-            # Sort commands by usage
-            sorted_commands = sorted(command_breakdown.items(), key=lambda x: x[1], reverse=True)
-            
-            # Split into chunks of 15 for multiple fields if needed
-            for i in range(0, len(sorted_commands), 15):
-                chunk = sorted_commands[i:i+15]
-                field_value = "\n".join(f"`{cmd}`: {count}" for cmd, count in chunk)
-                embed.add_field(
-                    name=f"Commands {i+1}-{i+len(chunk)}",
-                    value=field_value,
-                    inline=False
-                )
+    def cog_unload(self):
+        """Called when the cog is unloaded"""
+        self.update_runtime.cancel()  # Stop the background task
+        self.save_uptime_stats()
 
-        await ctx.send(embed=embed)
+    @update_runtime.before_loop
+    async def before_update_runtime(self):
+        """Wait until the bot is ready before starting the task"""
+        await self.bot.wait_until_ready()
 
 async def setup(bot):
     await bot.add_cog(Statistics(bot))
