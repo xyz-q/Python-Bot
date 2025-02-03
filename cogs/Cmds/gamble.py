@@ -1822,7 +1822,7 @@ class Economy(commands.Cog):
                 description=page,
                 color=discord.Color.gold()
             )
-            embed.set_footer(text=f"Page {i}/{len(pages)} • Command list will be deleted after 30s of inactivity")
+            embed.set_footer(text=f"Page {i}/{len(pages)} • Command list will be deleted after 30s of inactivity", icon_url=ctx.author.avatar.url)
             embeds.append(embed)
 
         # Send message with pagination
@@ -2194,7 +2194,7 @@ class Economy(commands.Cog):
             # Create and send initial embed
             embed = discord.Embed(title="<:gamba:1328512027282374718> Slot Machine <:gamba:1328512027282374718>", color=discord.Color.gold())
             embed.add_field(name="Spinning...", value="| ❓ | ❓ | ❓ |")
-            embed.set_footer(text=f"Balance: {self.format_amount(while_betting_balance)} GP")
+            embed.set_footer(text=f"Balance: {self.format_amount(while_betting_balance)} GP", icon_url=ctx.author.avatar.url)
             msg = await ctx.send(embed=embed)
 
             # Generate final results
@@ -2280,7 +2280,7 @@ class Economy(commands.Cog):
             )
             
             result_embed.set_footer(
-                text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} GP"
+                text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} GP", icon_url=ctx.author.avatar.url
             )
 
             await msg.edit(embed=result_embed)
@@ -2394,7 +2394,7 @@ class Economy(commands.Cog):
                         self.stop()
                         await interaction.message.delete()  # Delete the message with buttons
 
-                @discord.ui.button(label="Banker (1.95x)", style=discord.ButtonStyle.red)
+                @discord.ui.button(label="Banker (2x)", style=discord.ButtonStyle.red)
                 async def banker(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id == ctx.author.id:
                         self.value = "banker"
@@ -2494,7 +2494,7 @@ class Economy(commands.Cog):
             game_embed = discord.Embed(title="<:seeds:1326024477145956433> Flower Staking Game", color=discord.Color.gold())
             game_embed.add_field(
                 name="Your Bet", 
-                value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
+                value=f"<:goldpoints:1319902464115343473> __**{self.format_amount(amount)}**__ on __**{side.title()}**__", 
                 inline=False
             )
             game_embed.add_field(
@@ -2524,7 +2524,7 @@ class Economy(commands.Cog):
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
+                    value=f"<:goldpoints:1319902464115343473> __**{self.format_amount(amount)}**__ on __**{side.title()}**__", 
                     inline=False
                 )
                 game_embed.add_field(
@@ -2589,7 +2589,7 @@ class Economy(commands.Cog):
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
+                    value=f"<:goldpoints:1319902464115343473> __**{self.format_amount(amount)}**__ on __**{side.title()}**__", 
                     inline=False
                 )
                 game_embed.add_field(
@@ -2630,7 +2630,7 @@ class Economy(commands.Cog):
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
+                    value=f"<:goldpoints:1319902464115343473> __**{self.format_amount(amount)}**__ on __**{side.title()}**__", 
                     inline=False
                 )
                 game_embed.add_field(
@@ -2661,7 +2661,7 @@ class Economy(commands.Cog):
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
+                    value=f"<:goldpoints:1319902464115343473> __**{self.format_amount(amount)}**__ on __**{side.title()}**__", 
                     inline=False
                 )
                 game_embed.add_field(
@@ -2697,7 +2697,7 @@ class Economy(commands.Cog):
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
+                    value=f"<:goldpoints:1319902464115343473> __**{self.format_amount(amount)}**__ on __**{side.title()}**__", 
                     inline=False
                 )
                 game_embed.add_field(
@@ -2737,7 +2737,7 @@ class Economy(commands.Cog):
             final_embed = discord.Embed(title="<:seeds:1326024477145956433> Flower Staking Game", color=discord.Color.gold())
             final_embed.add_field(
                 name="Your Bet", 
-                value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
+                value=f"<:goldpoints:1319902464115343473> __**{self.format_amount(amount)}**__ on __**{side.title()}**__", 
                 inline=False
             )
             final_embed.add_field(
@@ -2803,12 +2803,18 @@ class Economy(commands.Cog):
                         value=f"Player wins! You win! <a:MUGA:1178140574570790954>\nWinnings: {self.format_amount(net_winnings)} (After 5% tax)", 
                         inline=False
                     )
+                    final_embed.set_footer(
+                        text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>", icon_url=ctx.author.avatar.url
+                    )                    
                 else:
                     # Player bet on banker and lost
                     final_embed.add_field(
                         name="Result", 
                         value="Player wins! You lose! <a:xdd:1221066292631568456>", 
                         inline=False
+                    )
+                    final_embed.set_footer(
+                        text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>", icon_url=ctx.author.avatar.url
                     )
                     self.update_stats(user_id, amount, 0)
                     final_balance = await self.get_balance(user_id)
@@ -2817,7 +2823,7 @@ class Economy(commands.Cog):
             elif banker_total > player_total:
                 if side == "banker":
                     # Player bet on banker and won
-                    winnings = amount * 1.95  # Slightly lower multiplier for banker
+                    winnings = amount * 2  # Slightly lower multiplier for banker
                     tax_amount = int(winnings * 0.05)
                     net_winnings = winnings - tax_amount
                     self.currency[user_id] += net_winnings
@@ -2858,7 +2864,7 @@ class Economy(commands.Cog):
                 )
 
                 final_embed.set_footer(
-                    text=f"Balance is the same."
+                    text=f"Balance is the same: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>", icon_url=ctx.author.avatar.url
                 )
 
 
@@ -3043,7 +3049,7 @@ class Economy(commands.Cog):
                 inline=False
             )
 
-        embed.set_footer(text="Keep your wealth secure!")
+        embed.set_footer(text="Keep your wealth secure!", icon_url=ctx.author.avatar.url)
         
         await ctx.send(embed=embed)
 
@@ -3128,7 +3134,7 @@ class Economy(commands.Cog):
                     value=f"Locked until {lock_until.strftime('%Y-%m-%d %H:%M')}",
                     inline=False
                 )
-            embed.set_footer(text=f"Use ',vault lock' to lock it and gain interest!")
+            embed.set_footer(text=f"Use ',vault lock' to lock it and gain interest!", icon_url=ctx.author.avatar.url)
             await ctx.send(embed=embed)
             
         except Exception as e:
