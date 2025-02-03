@@ -2346,56 +2346,6 @@ class Economy(commands.Cog):
             await ctx.send(embed=help_embed)
             return
 
-        # Create buttons for side selection
-        class SideButtons(discord.ui.View):
-            def __init__(self):
-                super().__init__(timeout=30)
-                self.value = None
-
-            @discord.ui.button(label="Player (2x)", style=discord.ButtonStyle.green)
-            async def player(self, interaction: discord.Interaction, button: discord.ui.Button):
-                if interaction.user.id == ctx.author.id:
-                    self.value = "player"
-                    self.stop()
-                    for item in self.children:
-                        item.disabled = True
-                    await interaction.response.edit_message(view=self)
-
-            @discord.ui.button(label="Banker (1.95x)", style=discord.ButtonStyle.red)
-            async def banker(self, interaction: discord.Interaction, button: discord.ui.Button):
-                if interaction.user.id == ctx.author.id:
-                    self.value = "banker"
-                    self.stop()
-                    for item in self.children:
-                        item.disabled = True
-                    await interaction.response.edit_message(view=self)
-
-        # Show side selection buttons
-        view = SideButtons()
-        embed = discord.Embed(
-            title="Choose Your Side",
-            description="Click a button to choose your side:",
-            color=discord.Color.gold()
-        )
-        embed.add_field(
-            name="Bet Amount", 
-            value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
-            inline=False
-        )
-
-        selection_message = await ctx.send(embed=embed, view=view)
-
-        # Wait for button press
-        await view.wait()
-
-        # If no button was pressed (timeout)
-        if view.value is None:
-            await selection_message.delete()
-            await ctx.send("Game cancelled - no side selected in time!")
-            return
-            
-        side = view.value  # This will be either "player" or "banker"
-
         # If bet_amount is provided, continue with the existing game logic
         try:
             print(f"Raw bet_amount: {bet_amount!r}")
@@ -2429,6 +2379,57 @@ class Economy(commands.Cog):
                 return
             house_id = str(self.bot.user.id)
             print(f"House ID {house_id}")
+
+
+            # Create buttons for side selection
+            class SideButtons(discord.ui.View):
+                def __init__(self):
+                    super().__init__(timeout=30)
+                    self.value = None
+
+                @discord.ui.button(label="Player (2x)", style=discord.ButtonStyle.green)
+                async def player(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id == ctx.author.id:
+                        self.value = "player"
+                        self.stop()
+                        for item in self.children:
+                            item.disabled = True
+                        await interaction.response.edit_message(view=self)
+
+                @discord.ui.button(label="Banker (1.95x)", style=discord.ButtonStyle.red)
+                async def banker(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id == ctx.author.id:
+                        self.value = "banker"
+                        self.stop()
+                        for item in self.children:
+                            item.disabled = True
+                        await interaction.response.edit_message(view=self)
+
+            # Show side selection buttons
+            view = SideButtons()
+            embed = discord.Embed(
+                title="Choose Your Side",
+                description="Click a button to choose your side:",
+                color=discord.Color.gold()
+            )
+            embed.add_field(
+                name="Bet Amount", 
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
+                inline=False
+            )
+
+            selection_message = await ctx.send(embed=embed, view=view)
+
+            # Wait for button press
+            await view.wait()
+
+            # If no button was pressed (timeout)
+            if view.value is None:
+                await selection_message.delete()
+                await ctx.send("Game cancelled - no side selected in time!")
+                return
+                
+            side = view.value  # This will be either "player" or "banker"            
             if house_id not in self.currency:
                 self.currency[house_id] = 0      
   
@@ -2458,6 +2459,8 @@ class Economy(commands.Cog):
             print(f"giving {amount} to house")
             self.currency[house_id] += amount 
             self.save_currency()  
+
+  
 
   
 
