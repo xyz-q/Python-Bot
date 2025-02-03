@@ -2381,7 +2381,7 @@ class Economy(commands.Cog):
             print(f"House ID {house_id}")
 
 
-            # Create buttons for side selection
+                        # Create buttons for side selection
             class SideButtons(discord.ui.View):
                 def __init__(self):
                     super().__init__(timeout=30)
@@ -2392,18 +2392,14 @@ class Economy(commands.Cog):
                     if interaction.user.id == ctx.author.id:
                         self.value = "player"
                         self.stop()
-                        for item in self.children:
-                            item.disabled = True
-                        await interaction.response.edit_message(view=self)
+                        await interaction.message.delete()  # Delete the message with buttons
 
                 @discord.ui.button(label="Banker (1.95x)", style=discord.ButtonStyle.red)
                 async def banker(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id == ctx.author.id:
                         self.value = "banker"
                         self.stop()
-                        for item in self.children:
-                            item.disabled = True
-                        await interaction.response.edit_message(view=self)
+                        await interaction.message.delete()  # Delete the message with buttons
 
             # Show side selection buttons
             view = SideButtons()
@@ -2498,7 +2494,7 @@ class Economy(commands.Cog):
             game_embed = discord.Embed(title="<:seeds:1326024477145956433> Flower Staking Game", color=discord.Color.gold())
             game_embed.add_field(
                 name="Your Bet", 
-                value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on {side.title()}", 
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
                 inline=False
             )
             game_embed.add_field(
@@ -2528,7 +2524,7 @@ class Economy(commands.Cog):
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
                     inline=False
                 )
                 game_embed.add_field(
@@ -2593,7 +2589,7 @@ class Economy(commands.Cog):
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
                     inline=False
                 )
                 game_embed.add_field(
@@ -2634,7 +2630,7 @@ class Economy(commands.Cog):
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
                     inline=False
                 )
                 game_embed.add_field(
@@ -2665,7 +2661,7 @@ class Economy(commands.Cog):
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
                     inline=False
                 )
                 game_embed.add_field(
@@ -2701,7 +2697,7 @@ class Economy(commands.Cog):
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
-                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
                     inline=False
                 )
                 game_embed.add_field(
@@ -2741,7 +2737,7 @@ class Economy(commands.Cog):
             final_embed = discord.Embed(title="<:seeds:1326024477145956433> Flower Staking Game", color=discord.Color.gold())
             final_embed.add_field(
                 name="Your Bet", 
-                value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)}", 
+                value=f"<:goldpoints:1319902464115343473> {self.format_amount(amount)} on **{side.title()}**", 
                 inline=False
             )
             final_embed.add_field(
