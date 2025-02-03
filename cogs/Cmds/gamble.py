@@ -2398,6 +2398,7 @@ class Economy(commands.Cog):
                 async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id == ctx.author.id:
                         self.stop()
+                        await ctx.message.delete()
                         await interaction.message.delete()  # Delete the message with buttons  
 
                 @discord.ui.button(label="Banker", style=discord.ButtonStyle.blurple)
@@ -2431,6 +2432,7 @@ class Economy(commands.Cog):
             # If no button was pressed (timeout)
             if view.value is None:
                 await selection_message.delete()
+                await ctx.message.delete()
                 await ctx.send("Game cancelled - no side selected in time!")
                 return
                 
