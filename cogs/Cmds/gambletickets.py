@@ -883,7 +883,7 @@ class GambleSystem(commands.Cog):
             await ctx.send(f"<:remove:1328511957208268800> Maximum deposit amount is {self.format_amount2(self.MAX_DEPOSIT)} <:goldpoints:1319902464115343473>. You tried to deposit {self.format_amount2(formatted_amount)} <:goldpoints:1319902464115343473>\nExample: `,deposit 100M Zezima`")
             return
         if not formatted_amount:
-            await ctx.send("<:remove:1328511957208268800> Invalid amount format! Please use K, M, B, or T (e.g., 100M, 1B)")
+            await ctx.send("<:remove:1328511957208268800> Invalid amount format! Please use K, M, B, or T (e.g., 100M, 1B)\nExample: `,deposit 100M Zezima`")
             return
 
         ticket_id = self.generate_ticket_id()
