@@ -98,8 +98,9 @@ def has_account():
                 inline=False
             )
             embed.set_footer(text="    2025 N.I.C.E™ Inc")
-            await ctx.send(embed=embed)
-            await asyncio.sleep(3)
+            TOSEMBED = await ctx.send(embed=embed)
+            await asyncio.sleep(25)
+            await TOSEMBED.delete()
             
             # Clean up after a delay
             message_sent.discard(message_key)
