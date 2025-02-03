@@ -702,7 +702,8 @@ class Economy(commands.Cog):
                 "• `,stats` - View your gambling statistics\n",
             inline=False
         )
-        
+        embed.set_footer(text=f"{ctx.author.display_name} has accepted.", icon_url=ctx.author.avatar.url)
+
         await ctx.send(embed=embed)
 
 
@@ -1276,7 +1277,7 @@ class Economy(commands.Cog):
                     inline=False
                 )                
                 # Add the commands as description
-                embed.set_footer(text=f"Total balance {self.format_amount(vaultplusbalance)} GP / ${total_usd:.2f} USD")
+                embed.set_footer(text=f"Total balance {self.format_amount(vaultplusbalance)} GP / ${total_usd:.2f} USD", icon_url=ctx.author.avatar.url)
 
             await ctx.send(embed=embed)
         except Exception as e:
