@@ -2387,19 +2387,24 @@ class Economy(commands.Cog):
                     super().__init__(timeout=30)
                     self.value = None
 
-                @discord.ui.button(label="Player (2x)", style=discord.ButtonStyle.green)
+                @discord.ui.button(label="Player", style=discord.ButtonStyle.green)
                 async def player(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id == ctx.author.id:
                         self.value = "player"
                         self.stop()
                         await interaction.message.delete()  # Delete the message with buttons
 
-                @discord.ui.button(label="Banker (2x)", style=discord.ButtonStyle.red)
+                @discord.ui.button(label="Banker", style=discord.ButtonStyle.gray)
                 async def banker(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id == ctx.author.id:
                         self.value = "banker"
                         self.stop()
                         await interaction.message.delete()  # Delete the message with buttons
+                @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
+                async def banker(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    if interaction.user.id == ctx.author.id:
+                        self.stop()
+                        await interaction.message.delete()  # Delete the message with buttons                        
 
             # Show side selection buttons
             view = SideButtons()
