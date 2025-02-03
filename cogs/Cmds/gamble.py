@@ -2725,7 +2725,7 @@ class Economy(commands.Cog):
                 
                 if result == "win":
                     self.currency[user_id] += amount
-                    winnings = amount * 1.90
+                    winnings = amount * 1.95
                     self.update_stats(user_id, amount, winnings)
                 else:
                     self.currency[user_id] += amount  # Player wins
@@ -2750,35 +2750,33 @@ class Economy(commands.Cog):
                 value=f"{''.join(banker_flowers)} = {banker_total}", 
                 inline=False
             )
-            #-------------------------------------------    
-    # Determine winner and update balances
-# Determine winner and update balances
+               
+            # Determine winner and update balances
+
             if player_total == 9 and banker_total == 9:
                 # Tie on 9s, banker wins
                 if side == "banker":
-                    # Player bet on banker and won
-                    winnings = amount * 1.95  # Slightly lower multiplier for banker
-                    tax_amount = int(winnings * 0.05)
-                    net_winnings = winnings - tax_amount
-                    self.currency[user_id] += net_winnings
-                    self.currency[house_id] -= winnings
-                    self.currency[house_id] += tax_amount
-                    self.update_stats(user_id, amount, net_winnings)
-                    
-                    final_balance = await self.get_balance(user_id)
-                    await self.log_transaction(ctx, amount, net_winnings, final_balance, is_house=False)
-                    
                     final_embed.add_field(
                         name="Result", 
-                        value=f"Double 9s! Banker wins! You win! <a:MUGA:1178140574570790954>\nWinnings: {self.format_amount(net_winnings)} (After 5% tax)", 
+                        value="Double 9s! Banker wins! <a:xdd:1221066292631568456>", 
                         inline=False
                     )
+                    final_embed.set_footer(
+                        text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} ", icon_url=ctx.author.avatar.url
+                    )
+                    self.update_stats(user_id, amount, 0)
+                    final_balance = await self.get_balance(user_id)
+                    await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
+                    
                 else:
                     # Player bet on player and lost
                     final_embed.add_field(
                         name="Result", 
                         value="Double 9s! Banker wins! <a:xdd:1221066292631568456>", 
                         inline=False
+                    )
+                    final_embed.set_footer(
+                        text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} ", icon_url=ctx.author.avatar.url
                     )
                     self.update_stats(user_id, amount, 0)
                     final_balance = await self.get_balance(user_id)
@@ -2804,7 +2802,7 @@ class Economy(commands.Cog):
                         inline=False
                     )
                     final_embed.set_footer(
-                        text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>", icon_url=ctx.author.avatar.url
+                        text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} ", icon_url=ctx.author.avatar.url
                     )                    
                 else:
                     # Player bet on banker and lost
@@ -2814,7 +2812,7 @@ class Economy(commands.Cog):
                         inline=False
                     )
                     final_embed.set_footer(
-                        text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>", icon_url=ctx.author.avatar.url
+                        text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} ", icon_url=ctx.author.avatar.url
                     )
                     self.update_stats(user_id, amount, 0)
                     final_balance = await self.get_balance(user_id)
