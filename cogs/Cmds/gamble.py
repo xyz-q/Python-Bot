@@ -2394,12 +2394,13 @@ class Economy(commands.Cog):
                         self.stop()
                         await interaction.message.delete()  # Delete the message with buttons
 
-                @discord.ui.button(label="Banker", style=discord.ButtonStyle.gray)
+                @discord.ui.button(label="Banker", style=discord.ButtonStyle.red)
                 async def banker(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id == ctx.author.id:
                         self.value = "banker"
                         self.stop()
                         await interaction.message.delete()  # Delete the message with buttons
+                        
                 @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
                 async def banker(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id == ctx.author.id:
