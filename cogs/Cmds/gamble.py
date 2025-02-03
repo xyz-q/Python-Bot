@@ -1662,22 +1662,13 @@ class Economy(commands.Cog):
                 recipient_final_balance = await self.get_balance(recipient_id)
                 
                 # Log transaction for sender
-                await self.log_transaction(
-                    ctx=ctx,
-                    bet_amount=0,
-                    win_amount=-amount,  # Negative because they're sending
-                    final_balance=sender_final_balance,
-                    transaction_type="transfer",
-                    is_house=False
-                )
-                
                 # Log transaction for recipient (if not house)
                 if recipient_arg.lower() == "house":
                     # Log house transaction
                     await self.log_transaction(
                         ctx=ctx,
                         bet_amount=0,
-                        win_amount=-amount,  # Negative because they're sending
+                        win_amount=amount,  # Positive because they're receiving
                         final_balance=sender_final_balance,
                         transaction_type="transfer",
                         is_house=True
@@ -1687,10 +1678,10 @@ class Economy(commands.Cog):
                     recipient_ctx = copy.copy(ctx)
                     recipient_ctx.author = recipient
                     await self.log_transaction(
-                        ctx=ctx,
+                        ctx=recipient_ctx,  # Use recipient_ctx here
                         bet_amount=0,
-                        win_amount=-amount,  # Negative because they're sending
-                        final_balance=sender_final_balance,
+                        win_amount=amount,  # Positive because they're receiving
+                        final_balance=recipient_final_balance,
                         transaction_type="transfer",
                         is_house=False
                     )
