@@ -2296,11 +2296,16 @@ class Economy(commands.Cog):
     @confirm_bet()
     @transaction_limit()
     @user_lock()
-    async def flower(self, ctx, bet_amount: typing.Optional[str] = None):
+    async def flower(self, ctx, bet_amount: typing.Optional[str] = None, side: str = "player"):
         user_id = ctx.author.id
         
+        # Validate the side parameter
+        side = side.lower()
+        if side not in ["player", "banker"]:
+            await ctx.send("Please choose either 'player' or 'banker' as your side!")
+            return
+        
         if bet_amount is None:
-            # Create an embed for the flower command help/info
             help_embed = discord.Embed(
                 title="<:seeds:1326024477145956433> Flower Game Information",
                 description="Welcome to the Flower Staking Game!",
@@ -2334,7 +2339,9 @@ class Economy(commands.Cog):
             help_embed.add_field(
                 name="How to Play",
                 value=(
-                    "• Use `,flower <bet amount>` to play!\n• Get a higher total than the banker to win!\n"
+                    "• Use `,flower <bet amount> player` to play as Player!\n"
+                    "• Use `,flower <bet amount> banker` to play as Banker!\n"
+                    "• Get a higher total than the opponent to win!\n"
                     "• Numbers over 10 reset (eg: 12 becomes 2)"
                 ),
                 inline=False
@@ -2700,77 +2707,102 @@ class Economy(commands.Cog):
             )
             #-------------------------------------------    
     # Determine winner and update balances
+# Determine winner and update balances
             if player_total == 9 and banker_total == 9:
                 # Tie on 9s, banker wins
-                final_embed.add_field(
-                    name="Result", 
-                    value="Double 9s! Banker wins! <a:xdd:1221066292631568456>", 
-                    inline=False
-                )
-                                        
-                print(f"banker wins {amount} GP! from double 9s!")
-                self.update_stats(user_id, amount, 0)
-                final_balance = await self.get_balance(user_id)
-                await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
-                
-                final_embed.set_footer(
-                    text=f"New Balance: {self.format_amount(final_balance)} GP"
-                )
+                if side == "banker":
+                    # Player bet on banker and won
+                    winnings = amount * 1.95  # Slightly lower multiplier for banker
+                    tax_amount = int(winnings * 0.05)
+                    net_winnings = winnings - tax_amount
+                    self.currency[user_id] += net_winnings
+                    self.currency[house_id] -= winnings
+                    self.currency[house_id] += tax_amount
+                    self.update_stats(user_id, amount, net_winnings)
+                    
+                    final_balance = await self.get_balance(user_id)
+                    await self.log_transaction(ctx, amount, net_winnings, final_balance, is_house=False)
+                    
+                    final_embed.add_field(
+                        name="Result", 
+                        value=f"Double 9s! Banker wins! You win! <a:MUGA:1178140574570790954>\nWinnings: {self.format_amount(net_winnings)} (After 5% tax)", 
+                        inline=False
+                    )
+                else:
+                    # Player bet on player and lost
+                    final_embed.add_field(
+                        name="Result", 
+                        value="Double 9s! Banker wins! <a:xdd:1221066292631568456>", 
+                        inline=False
+                    )
+                    self.update_stats(user_id, amount, 0)
+                    final_balance = await self.get_balance(user_id)
+                    await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
 
             elif player_total > banker_total:
-                # Player wins
-                winnings = amount * 2
-                tax_amount = int(winnings * 0.05)
-                net_winnings = winnings - tax_amount
-                print(f"Player's balance before: {self.currency[user_id]}")
-                self.currency[user_id] += net_winnings
-                self.update_stats(user_id, amount, net_winnings)
-                print(f"Tax amount: {tax_amount}")
-                print(f"Net winnings: {net_winnings}")
-                print(f"House's balance before: {self.currency[house_id]}")
-                
-                print(f"Player wins {winnings} GP, tax: {tax_amount}, net: {net_winnings}")
-                self.currency[house_id] -= winnings
-                print(f"House's balance after loss {self.currency[house_id]}")
-                self.currency[house_id] += tax_amount
-                print(f"House's balance after tax: {self.currency[house_id]}")
-                print(f"Player's balance after: {self.currency[user_id]}")
-                
-                final_balance = await self.get_balance(user_id)
-                await self.log_transaction(ctx, amount, net_winnings, final_balance, is_house=False)
-                
-                final_embed.add_field(
-                    name="Result", 
-                    value=f"You win! <a:MUGA:1178140574570790954>\nWinnings: {self.format_amount(net_winnings)} (After 5% tax)", 
-                    inline=False
-                )
-                final_embed.set_footer(
-                    text=f"New Balance: {self.format_amount(final_balance)} GP"
-                )
-                                        
-            elif banker_total > player_total:
-                # Banker wins
+                if side == "player":
+                    # Player bet on player and won
+                    winnings = amount * 2
+                    tax_amount = int(winnings * 0.05)
+                    net_winnings = winnings - tax_amount
+                    self.currency[user_id] += net_winnings
+                    self.currency[house_id] -= winnings
+                    self.currency[house_id] += tax_amount
+                    self.update_stats(user_id, amount, net_winnings)
+                    
+                    final_balance = await self.get_balance(user_id)
+                    await self.log_transaction(ctx, amount, net_winnings, final_balance, is_house=False)
+                    
+                    final_embed.add_field(
+                        name="Result", 
+                        value=f"Player wins! You win! <a:MUGA:1178140574570790954>\nWinnings: {self.format_amount(net_winnings)} (After 5% tax)", 
+                        inline=False
+                    )
+                else:
+                    # Player bet on banker and lost
+                    final_embed.add_field(
+                        name="Result", 
+                        value="Player wins! You lose! <a:xdd:1221066292631568456>", 
+                        inline=False
+                    )
+                    self.update_stats(user_id, amount, 0)
+                    final_balance = await self.get_balance(user_id)
+                    await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
 
-                self.update_stats(user_id, amount, 0)
-                print(f"banker wins {amount} GP! from banker win!")
-                final_balance = await self.get_balance(user_id)
-                await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
-                
-                final_embed.add_field(
-                    name="Result", 
-                    value="Banker wins! <a:xdd:1221066292631568456>", 
-                    inline=False
-                )
-                final_embed.set_footer(
-                    text=f"New Balance: {self.format_amount(final_balance)} GP"
-                )                
+            elif banker_total > player_total:
+                if side == "banker":
+                    # Player bet on banker and won
+                    winnings = amount * 1.95  # Slightly lower multiplier for banker
+                    tax_amount = int(winnings * 0.05)
+                    net_winnings = winnings - tax_amount
+                    self.currency[user_id] += net_winnings
+                    self.currency[house_id] -= winnings
+                    self.currency[house_id] += tax_amount
+                    self.update_stats(user_id, amount, net_winnings)
+                    
+                    final_balance = await self.get_balance(user_id)
+                    await self.log_transaction(ctx, amount, net_winnings, final_balance, is_house=False)
+                    
+                    final_embed.add_field(
+                        name="Result", 
+                        value=f"Banker wins! You win! <a:MUGA:1178140574570790954>\nWinnings: {self.format_amount(net_winnings)} (After 5% tax)", 
+                        inline=False
+                    )
+                else:
+                    # Player bet on player and lost
+                    final_embed.add_field(
+                        name="Result", 
+                        value="Banker wins! You lose! <a:xdd:1221066292631568456>", 
+                        inline=False
+                    )
+                    self.update_stats(user_id, amount, 0)
+                    final_balance = await self.get_balance(user_id)
+                    await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
 
             else:
-                # Tie
-                
-                print(f"Tie! Refunding bet: {amount}")
-                self.currency[user_id] += amount  # Refund the bet on a tie
-                self.currency[house_id] -= amount               
+                # Tie (push)
+                self.currency[user_id] += amount  # Refund the bet
+                self.currency[house_id] -= amount
                 final_balance = await self.get_balance(user_id)
                 await self.log_transaction(ctx, amount, 0, final_balance, is_house=False)
                 self.update_stats(user_id, amount, amount)
@@ -2779,6 +2811,7 @@ class Economy(commands.Cog):
                     value="Tie! It's a push. <a:aware:1255561720810831912>", 
                     inline=False
                 )
+
                 final_embed.set_footer(
                     text=f"Balance is the same."
                 )
