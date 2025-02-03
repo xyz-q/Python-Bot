@@ -1356,24 +1356,27 @@ class Economy(commands.Cog):
                 
                 # Log the transaction for the target user
                 if (isinstance(user, discord.Member) and user.id == self.bot.user.id) or (isinstance(user, str) and user.lower() == "house"):
-
                     # This is a house transaction (bot ID was targeted)
                     await self.log_transaction(
-                        ctx=ctx,
+                        ctx=ctx,  # Create a modified context with the bot as author
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
-                        transaction_type="add",
+                        transaction_type="deposit",
                         is_house=True
                     )
                 else:
+                    # Create a modified context with the target user as the author
+                    modified_ctx = copy.copy(ctx)
+                    modified_ctx.author = user  # Set the author to the target user
+                    
                     # This is a regular user transaction
                     await self.log_transaction(
-                        ctx=ctx,
+                        ctx=modified_ctx,  # Use the modified context
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
-                        transaction_type="add"
+                        transaction_type="deposit"
                     )
                 # Add this after the transaction is completed but before the final confirmation message
                 if isinstance(user, discord.Member):  # Only send DM if it's a Discord member (not house)
@@ -1499,25 +1502,29 @@ class Economy(commands.Cog):
                 
                 # Log the transaction for the target user
                 if (isinstance(user, discord.Member) and user.id == self.bot.user.id) or (isinstance(user, str) and user.lower() == "house"):
-
                     # This is a house transaction (bot ID was targeted)
                     await self.log_transaction(
                         ctx=ctx,
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
-                        transaction_type="remove",
+                        transaction_type="withdraw",
                         is_house=True
                     )
                 else:
+                    # Create a modified context with the target user as the author
+                    modified_ctx = copy.copy(ctx)
+                    modified_ctx.author = user  # Set the author to the target user
+                    
                     # This is a regular user transaction
                     await self.log_transaction(
-                        ctx=ctx,
+                        ctx=modified_ctx,  # Use the modified context
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
-                        transaction_type="remove"
-                    )            
+                        transaction_type="withdraw"
+                    )
+         
                 
 
                 if isinstance(user, discord.Member):  # Only send DM if it's a Discord member (not house)
@@ -2877,7 +2884,7 @@ class Economy(commands.Cog):
                 )
 
                 final_embed.set_footer(
-                    text=f"Balance is the same: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>", icon_url=ctx.author.avatar.url
+                    text=f"Balance is the same: {self.format_amount(await self.get_balance(user_id))}", icon_url=ctx.author.avatar.url
                 )
 
 
