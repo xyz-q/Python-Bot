@@ -14,7 +14,7 @@ import math
 from discord.ui import View, Button
 from pathlib import Path
 import functools
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import copy
 import typing
 
@@ -50,19 +50,24 @@ class DayInput(discord.ui.Modal, title="Custom Time Input"):
             await interaction.response.send_message("Please enter a valid number!", ephemeral=True)
             
 def has_account():
-    message_sent = set()  # Track if we've sent a message for this command invocation
+    message_sent = set()
     
     async def predicate(ctx):
-        # Get the cog by name only
-        cog = ctx.bot.get_cog('GambleSystem')
         user_id = str(ctx.author.id)
         
-        # Force reload currency data before checking
-        if cog:
-            cog.load_currency()
-            
-        # Check if cog exists and user has an account
-        if cog and hasattr(cog, 'currency') and user_id in cog.currency:
+        # Load TOS acceptance data from JSON
+        try:
+            with open('.json/tos.json', 'r') as f:
+                tos_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            # Create file if it doesn't exist
+            tos_data = {}
+            os.makedirs('data', exist_ok=True)
+            with open('.json/tos.json', 'w') as f:
+                json.dump(tos_data, f)
+
+        # Check if user has accepted TOS
+        if user_id in tos_data:
             return True
             
         # Create unique key for this command invocation
@@ -71,7 +76,7 @@ def has_account():
         # Only send message if we haven't sent one for this command invocation
         if message_key not in message_sent:
             message_sent.add(message_key)
-            # If no account, show terms
+            
             embed = discord.Embed(
                 title="You haven't read the terms of service yet!",
                 description="",
@@ -79,19 +84,20 @@ def has_account():
             )
             embed.add_field(
                 name="Terms & Conditions",
-                value="1. You must be __**18**__ **years** or older to use our services.\n"
-                    "2. ***ANY*** form of exploitation will result in a __**PERMANENT**__ suspension.\n"
-                    "3. This is for entertainment purposes only.\n"
-                    "4. ***ALL*** transactions are final.\n"
+                value="1. You must be __**21**__ **years** or older to use our services.\n"
+                    "2. ***ANY*** form of exploitation will result in a __**PERMANENT**__ blacklist.\n"
+                    "3. This is for __***entertainment***__ purposes only. **Do not** expect to make money.\n"
+                    "4. ***ALL*** transactions are final. Please contact staff if you have an issue.\n"
             )
             embed.add_field(
                 name="Privacy Notice",
                 value="• We track gambling statistics and transaction history\n"
-                    "• Data is used for monitoring responsible gaming\n"
+                    "• Your data is used for feature improvement and enhancing user experience.\n"
                     "• Your activity may be logged for security purposes\n\n"
-                    "   Please use ,accept if you agree to these.",                    
+                    "   Please use `,accept` if you agree to these.",                    
                 inline=False
             )
+            embed.set_footer(text="    2025 N.I.C.E™ Inc")
             await ctx.send(embed=embed)
             await asyncio.sleep(3)
             
@@ -655,14 +661,30 @@ class Economy(commands.Cog):
         """Create a new account"""
         user_id = str(ctx.author.id)
         
-        # Check if user already has an account
-        if user_id in self.currency:
+        # Load TOS data
+        try:
+            with open('.json/tos.json', 'r') as f:
+                tos_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            tos_data = {}
+            os.makedirs('data', exist_ok=True)
+            with open('.json/tos.json', 'w') as f:
+                json.dump(tos_data, f)
+        
+        # Check if user already accepted TOS
+        if user_id in tos_data:
             await ctx.send("You have already accepted the TOS!")
             return
-            
-        # Create new account with 0 balance
-        self.currency[user_id] = 0
-        self.save_currency()
+        
+        # Add user to TOS acceptance file
+        tos_data[user_id] = {
+            "accepted_at": str(discord.utils.utcnow()),
+            "username": str(ctx.author)
+        }
+        
+        # Save updated TOS data
+        with open('.json/tos.json', 'w') as f:
+            json.dump(tos_data, f, indent=4)
         
         # Create welcome embed
         embed = discord.Embed(
@@ -678,12 +700,11 @@ class Economy(commands.Cog):
                 "• `,staking` - See all staking commands\n"
                 "• `,vault` - Deposit/withdraw from the vault\n"
                 "• `,stats` - View your gambling statistics\n",
-
-
             inline=False
         )
         
         await ctx.send(embed=embed)
+
 
 
     @has_account()
@@ -1169,7 +1190,7 @@ class Economy(commands.Cog):
     @commands.command(aliases=['bal'])
     @has_account()
     async def balance(self, ctx, *, user: typing.Optional[typing.Union[discord.Member, str]] = None):
-        GP_TO_USD_RATE = 0.0000000247
+        GP_TO_USD_RATE = 0.0000000196
         """Check your balance or someone else's balance"""
         try:
             # Check if user is specifically requesting house balance
@@ -2946,6 +2967,8 @@ class Economy(commands.Cog):
         embed.set_footer(text="Keep your wealth secure!")
         
         await ctx.send(embed=embed)
+
+        
     @has_account()
     def get_vault_balance(self, user_id):
         """Get vault balance with accumulated interest"""
@@ -2962,7 +2985,7 @@ class Economy(commands.Cog):
             hours_passed = (current_time - last_interest) / 3600
             
             # Calculate interest (1% per day = 0.0417% per hour)
-            hourly_rate = 0.000417  # 1% / 24 hours
+            hourly_rate = 0.0001042 #/ 24 hours
             interest = int(balance * hourly_rate * hours_passed)
             
             # Update balance and last interest time
@@ -2986,7 +3009,7 @@ class Economy(commands.Cog):
             
             user_vault = vault_data.get(user_id, {"balance": 0})
             vault_balance = user_vault.get("balance", 0)
-            total_interest = int(vault_balance * 0.01)  # 1% interest per cycle
+            total_interest = int(vault_balance * 0.0025) 
             wallet_balance = self.currency.get(user_id, 0)
             total_worth = vault_balance + wallet_balance
             
@@ -3002,8 +3025,8 @@ class Economy(commands.Cog):
             )
             
             embed.add_field(
-                name="Interest Per Cycle",
-                value=f"<:goldpoints:1319902464115343473> +{self.format_amount(total_interest)} (0.7%)",
+                name="Interest Per day",
+                value=f"<:goldpoints:1319902464115343473> +{self.format_amount(total_interest)} (0.25%)",
                 inline=False
             )
             
@@ -3313,7 +3336,7 @@ class Economy(commands.Cog):
                 if data.get("locked", False):
                     locked_count += 1
                     current_balance = data.get("balance", 0)
-                    interest = int(current_balance * 0.007)
+                    interest = int(current_balance * 0.0025)
                     total_interest += interest
                     print(f"User {user_id}: Balance={current_balance}, Interest calculated={interest}")
 
@@ -3338,7 +3361,7 @@ class Economy(commands.Cog):
             for user_id, data in vault_data.items():
                 if data.get("locked", False):
                     current_balance = data.get("balance", 0)
-                    interest = int(current_balance * 0.007)
+                    interest = int(current_balance * 0.0025)
                     new_balance = current_balance + interest
                     vault_data[user_id]["balance"] = new_balance
                     print(f"User {user_id}: Old balance={current_balance}, Interest={interest}, New balance={new_balance}")
@@ -3359,7 +3382,7 @@ class Economy(commands.Cog):
             traceback.print_exc()
             return False
 
-    @tasks.loop(minutes=97) 
+    @tasks.loop(time=time(hour=12, minute=30, second=15))
     async def interest_task(self):
         await asyncio.sleep(10)
         try:
@@ -3368,7 +3391,7 @@ class Economy(commands.Cog):
             last_interest_time = self.load_last_interest_time()
             now = datetime.now()
             time_elapsed = now - last_interest_time
-            required_delay = timedelta(hours=3, minutes=15)
+            required_delay = timedelta(hours=24)
 
             print(f"Last interest time: {last_interest_time}")
             print(f"Current time: {now}")

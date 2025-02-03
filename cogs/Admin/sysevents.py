@@ -216,8 +216,11 @@ class SystemEvents(commands.Cog):
                 warning = await ctx.send("❌ Could not find that channel!")
                 
             elif isinstance(error, commands.RoleNotFound):
-                warning = await ctx.send("❌ Could not find that role!")
+                warning = await ctx.send("❌ Could not find that role!")  
                 
+            elif isinstance(error, commands.NotOwner):
+                print("NotOwner error triggered")  # Debug print
+                warning = await ctx.send(f"❌ You are not <@110927272210354176>")
 
 
             else:
