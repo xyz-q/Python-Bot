@@ -168,7 +168,7 @@ class Profile(commands.Cog):
             embed.add_field(
                 name=f"{prestige_text}",
                 value=" ",
-                inline=False
+                inline=True
             )
 
     def calculate_prestige(self, first_seen_timestamp: datetime) -> dict:
@@ -209,6 +209,35 @@ class Profile(commands.Cog):
         }
 
 
+    def add_command_badge_fields(self, embed: discord.Embed, stats_data: Dict[str, Any]):
+        """Add command badge information to embed"""
+        # Early return if stats_data is None
+        if stats_data is None:
+            return
+            
+        # Get total commands with default value of 0 if not found
+        total_commands = stats_data.get('total', 0)
+        if total_commands is None:  # Additional check if total is None
+            return
+        
+        # Define badge based on total commands
+        if total_commands >= 1000000:
+            badge = "<:Level3Teal:1336140486376689714> __**1M cmds**__"
+        elif total_commands >= 125000:
+            badge = "<:Level3Pink:1336140417867059261> __**125k cmds**__"
+        elif total_commands >= 50000:
+            badge = "<:Level3:1336140395104436275> __**50k cmds**__"
+        elif total_commands >= 10000:
+            badge = "<:Level2:1336140376934977640> __**10k cmds**__"
+        elif total_commands >= 2500:
+            badge = "<:Level1:1336140359138279515> __**2.5k cmds**__"
+        else:
+            return  # No badge for less than 100 commands
+            
+        embed.add_field(name=" ", value=badge, inline=True)
+
+
+
     @commands.command()
     async def profile(self, ctx, member: discord.Member = None):
         """Display user profile with various statistics"""
@@ -220,28 +249,30 @@ class Profile(commands.Cog):
             color=target_user.color
         )
         embed.set_thumbnail(url=target_user.display_avatar.url)
-
+        stats_data = await self.get_command_stats(target_user.id)
         # Add first seen date
         first_seen_data = await self.get_first_seen_data(target_user.id)
+        
+        self.add_command_badge_fields(embed, stats_data)  # Add badge using existing stats
         self.add_prestige_fields(embed, first_seen_data)
         # Get and add gambling data (now includes net worth)
         gambling_data = await self.get_gambling_data(target_user.id)
         self.add_gambling_fields(embed, gambling_data)
 
         # Get and add command stats
-        stats_data = await self.get_command_stats(target_user.id)
+        
         self.add_command_stats_fields(embed, stats_data)
 
         #
         
         if first_seen_data:
             timestamp = first_seen_data['timestamp']
-            embed.set_footer(text=f"First seen on {timestamp.strftime('%B %d, %Y')}")
+            embed.set_footer(text=f"First seen on {timestamp.strftime('%B %d, %Y')}", icon_url=ctx.author.avatar.url)
 
             # Add prestige information
             
         else:
-            embed.set_footer(text=f"No commands run.")
+            embed.set_footer(text=f"No commands run.", icon_url=ctx.author.avatar.url)
 
         # Add footer with user ID
         
