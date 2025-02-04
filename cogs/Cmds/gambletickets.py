@@ -39,7 +39,7 @@ class AdminTicketView(View):
         self.cog.active_timers[timer_id] = False        
         
         if user:
-            await self.user_timer.edit(content="<:add:1328511998647861390> Trade completed! Thank you for using our services!")
+            await self.user_timer.edit(content=f"<:add:1328511998647861390> {self.ticket_type.capitalize()} completed! Thank you for using our services!")
             await asyncio.sleep(2)
             await user.send("<:add:1328511998647861390> Your ticket has been closed.")
             await self.user_embed.delete()
@@ -50,7 +50,8 @@ class AdminTicketView(View):
         
         # Update DM messages
         await self.admin_embed.delete()
-        await self.dm_timer.edit(content=f"<:add:1328511998647861390> Trade completed! Amount: {self.cog.format_amount2(self.ticket_data['amount'])} <:goldpoints:1319902464115343473>")
+        await self.dm_timer.edit(content=f"<:add:1328511998647861390> {self.ticket_type.capitalize()} completed! Amount: {self.cog.format_amount2(self.ticket_data['amount'])} <:goldpoints:1319902464115343473>")
+
 
 
 
