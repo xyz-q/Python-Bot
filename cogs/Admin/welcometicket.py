@@ -15,7 +15,6 @@ class WelcomeTicket(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         if member.guild.id == GUILD_ID:
-            await self.send_welcome_message(member)
             await self.send_ticket_message(member, member.guild)
 
     @commands.Cog.listener()
@@ -44,19 +43,7 @@ class WelcomeTicket(commands.Cog):
             else:
                 print("Error: Could not find the specified channel for ticket messages.")
 
-            channel = discord.utils.get(member.guild.channels, name="exit", type=discord.ChannelType.text)
-            if channel:
-                embed = discord.Embed(
-                    title=f"Goodbye, {member.display_name}!",
-                    description="We'll miss you.",
-                    color=discord.Color.dark_grey()
-                )
-                if member.avatar:
-                    embed.set_thumbnail(url=member.avatar.url)
-                embed.set_footer(text=f"User ID: {member.id}")
-                await channel.send(embed=embed)
-            else:
-                print("Error: Could not find the specified channel for farewell messages.")
+
 
     async def send_ticket_message(self, member: discord.Member, guild: discord.Guild):
         me2 = await self.bot.fetch_user(110927272210354176) 
@@ -77,20 +64,7 @@ class WelcomeTicket(commands.Cog):
         else:
             print("Error: Could not find the specified channel for ticket messages.")
 
-    async def send_welcome_message(self, member: discord.Member):
-        channel = discord.utils.get(member.guild.channels, name=WELCOME_CHANNEL_NAME, type=discord.ChannelType.text)
-        if channel:
-            embed = discord.Embed(
-                title=f"{member.display_name} pulled up",
-                description=f"Username: {member.name}",
-                color=discord.Color.red()
-            )
-            avatar_url = member.avatar.url if member.avatar else member.default_avatar.url
-            embed.set_thumbnail(url=avatar_url)
-            embed.set_footer(text=f"User ID: {member.id}")
-            await channel.send(embed=embed)
-        else:
-            print("Error: Could not find the specified channel for welcome messages.")
+
 
 class AcceptDeclineView(discord.ui.View):
     def __init__(self, user: discord.Member, guild: discord.Guild, message: discord.Message):
