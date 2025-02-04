@@ -5,7 +5,7 @@ class ServerInfo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @commands.dm_only()  # This ensures the command only works in DMs
+    @commands.dm_only()
     @commands.command()
     async def serverlist(self, ctx):
         try:
@@ -13,9 +13,8 @@ class ServerInfo(commands.Cog):
             for guild in self.bot.guilds:
                 servers_list.append(f"Server: {guild.name} (ID: {guild.id})")
             
-            # Split into multiple messages if too long
             message = "\n".join(servers_list)
-            if len(message) > 1900:  # Discord has 2000 char limit, leaving room for formatting
+            if len(message) > 1900:
                 chunks = [servers_list[i:i + 20] for i in range(0, len(servers_list), 20)]
                 for chunk in chunks:
                     await ctx.send("\n".join(chunk))
@@ -36,7 +35,6 @@ class ServerInfo(commands.Cog):
             
             channels_list = [f"Channels in {guild.name}:"]
             
-            # Organize channels by category
             categories = {}
             no_category = []
             
@@ -58,18 +56,15 @@ class ServerInfo(commands.Cog):
                             f"  {channel.name} (ID: {channel.id}) - {channel.type}"
                         )
             
-            # Add no-category channels first
             if no_category:
                 channels_list.append("\nNo Category:")
                 channels_list.extend(no_category)
             
-            # Add categorized channels
             for category in categories.values():
-                if category["channels"]:  # Only show categories that have channels
+                if category["channels"]:
                     channels_list.append(f"\n{category['name']}:")
                     channels_list.extend(category["channels"])
             
-            # Split into multiple messages if too long
             message = "\n".join(channels_list)
             if len(message) > 1900:
                 chunks = [channels_list[i:i + 20] for i in range(0, len(channels_list), 20)]

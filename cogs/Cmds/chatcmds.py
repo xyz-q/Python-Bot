@@ -104,10 +104,8 @@ class ChatCommands(commands.Cog):
                 self.stop()
                 await interaction.response.defer()
 
-        # Create confirmation view
         view = ConfirmPurge()
         
-        # Show different messages based on whether purging current or different channel
         if channel == ctx.channel:
             confirm_text = f"Are you sure you want to purge {limit} messages from this channel?"
         else:
@@ -115,38 +113,29 @@ class ChatCommands(commands.Cog):
         
         confirm_msg = await ctx.send(confirm_text, view=view)
 
-        # Wait for the user to interact with buttons
         await view.wait()
         
-        # If user didn't respond in time
         if view.value is None:
             await confirm_msg.edit(content="Purge timed out.", view=None)
             return
         
-        # If user cancelled
         if not view.value:
             await confirm_msg.edit(content="Purge cancelled.", view=None)
             return
 
-        # If confirmed, proceed with purge
         try:
-            # Delete confirmation message first
             await confirm_msg.delete()
             
-            # Add status message in the channel where purge is happening
             status_msg = await channel.send(f"🧹 Cleaning {limit} messages...")
             
-            # Delete messages in one bulk operation
             deleted = await channel.purge(
-                limit=limit + 1,  # Add 1 to include the command message if in same channel
+                limit=limit + 1,
                 check=lambda m: m.id != status_msg.id
             )
 
-            # Update status message and delete after delay
             completion_msg = f"✨ Successfully purged {len(deleted)} messages!"
             await status_msg.edit(content=completion_msg)
             
-            # If purging different channel, also send notification in command channel
             if channel != ctx.channel:
                 notify_msg = await ctx.send(f"✨ Successfully purged {len(deleted)} messages from {channel.mention}!")
                 await asyncio.sleep(3)

@@ -27,7 +27,7 @@ class CogLister(commands.Cog):
 
             @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, disabled=True)
             async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.defer()  # Defer the interaction
+                await interaction.response.defer()
                 if interaction.user != self.ctx.author:
                     return
                 self.current_page = max(0, self.current_page - 1)
@@ -35,7 +35,7 @@ class CogLister(commands.Cog):
 
             @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
             async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.defer()  # Defer the interaction
+                await interaction.response.defer()
                 if interaction.user != self.ctx.author:
                     return
                 self.current_page = min(max_pages - 1, self.current_page + 1)
@@ -43,7 +43,7 @@ class CogLister(commands.Cog):
 
             @discord.ui.button(label="Close", style=discord.ButtonStyle.danger)
             async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.defer()  # Defer the interaction
+                await interaction.response.defer()
                 if interaction.user != self.ctx.author:
                     return
                 await self.message.delete()

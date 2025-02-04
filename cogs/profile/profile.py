@@ -15,29 +15,25 @@ class Profile(commands.Cog):
         """Calculate user's total net worth from vault and currency"""
         total = 0
         
-        # Get vault balance
         try:
             if os.path.exists(self.vault_file):
                 with open(self.vault_file, 'r') as f:
                     vault_data = json.load(f)
-                    # Check if user exists in vault data and get their balance
                     if str(user_id) in vault_data:
                         user_vault = vault_data[str(user_id)]
                         if isinstance(user_vault, dict) and 'balance' in user_vault:
                             total += user_vault['balance']
-                        print(f"Vault data for {user_id}: {user_vault}")  # Debug print
+                        print(f"Vault data for {user_id}: {user_vault}")
         except Exception as e:
             print(f"Error reading vault.json: {e}")
-            print(f"Vault data structure: {vault_data}")  # Debug print
+            print(f"Vault data structure: {vault_data}")
 
-        # Get currency balance
         try:
             if os.path.exists(self.currency_file):
                 with open(self.currency_file, 'r') as f:
                     currency_data = json.load(f)
-                    # Add currency balance if it exists
                     total += currency_data.get(str(user_id), 0)
-                    print(f"Currency data for {user_id}: {currency_data.get(str(user_id), 0)}")  # Debug print
+                    print(f"Currency data for {user_id}: {currency_data.get(str(user_id), 0)}")
         except Exception as e:
             print(f"Error reading currency.json: {e}")
 
@@ -46,11 +42,11 @@ class Profile(commands.Cog):
 
     def format_number(self, number: int) -> str:
         """Format number to K/M/B format"""
-        if number >= 10_000_000_000:  # 10 Billion and above
+        if number >= 10_000_000_000:
             return f"{number/1_000_000_000:.2f}B"
-        elif number >= 1_000_000:    # Millions (including 1-9.9B)
+        elif number >= 1_000_000:
             return f"{int(number/1_000_000)}M"
-        elif number >= 1_000:        # Thousands
+        elif number >= 1_000:
             return f"{number/1_000:.1f}K"
         return str(number)
 
@@ -77,7 +73,7 @@ class Profile(commands.Cog):
         
         data = await level_cog.get_user_data(user_id)
         if data:
-            data['user_id'] = user_id  # Add user_id to the data
+            data['user_id'] = user_id
         return data
 
     async def get_command_stats(self, user_id: int) -> Dict[str, Any]:
@@ -101,30 +97,23 @@ class Profile(commands.Cog):
             embed.add_field(name="Gambling Stats", value="Not available", inline=False)
             return
 
-        # Add level information
         level_text = f"{gambling_data['level_icon']} `{gambling_data['level_name']}`"
         embed.add_field(name="Rank", value=level_text, inline=False)
 
-        # Get net worth
         net_worth = self.get_net_worth(gambling_data.get('user_id', 0))
         
-        # Create combined field for wagered and net worth
         stats_text = (
             f"<:goldpoints:1319902464115343473> Net Worth - `{self.format_number(net_worth)}` \n"
             f"<:gamba:1328512027282374718> Total Wagered - `{self.format_number(gambling_data['total_wagered'])}` "
         )
         embed.add_field(name="Staking Stats", value=stats_text, inline=False)
 
-        # Add progress bar if available
         if gambling_data['progress_data']:
             level_cog = self.bot.get_cog('LevelSystem')
             progress = gambling_data['progress_data']
             progress_bar = level_cog.create_progress_bar(progress['progress_percent'])
             progress_text = (
                 f"{progress_bar} {progress['next_level_icon']} \n"
-                #f" You need {self.format_number(progress['required_total'])}"
-                #f"{progress['next_level_name']} {progress['next_level_icon']}\n"
-                #f"{gambling_data['level_icon']}        {progress['next_level_icon']}\n"
                 
             )
             embed.add_field(name=f"Level Progress {progress['progress_percent']:.1f}%", value=progress_text, inline=False)
@@ -139,9 +128,8 @@ class Profile(commands.Cog):
             )
             return
 
-        # Format the commands section
         commands_text = (
-            f"Total - `{self.format_number(stats_data['total'])}`\n"  # Updated to use self.format_number
+            f"Total - `{self.format_number(stats_data['total'])}`\n"
             f"Favorite - `{stats_data['favorite'] if stats_data['favorite'] else 'None'}`"
         )
 
@@ -174,18 +162,17 @@ class Profile(commands.Cog):
     def calculate_prestige(self, first_seen_timestamp: datetime) -> dict:
         """Calculate prestige level based on years since first seen"""
         now = datetime.now()
-        years_diff = (now - first_seen_timestamp).days / 365.25  # Using 365.25 to account for leap years
+        years_diff = (now - first_seen_timestamp).days / 365.25
         
-        prestige_level = int(years_diff)  # Full years only
+        prestige_level = int(years_diff)
         
-        # Prestige icons/names based on years (you can customize these)
         prestige_icons = {
-            0: " ",  # No prestige
-            1: "<:prestige1:1334791356765175879>",  # 1 year
-            2: "<:prestige2:1334791402068119572>",  # 2 years
-            3: "<:prestige3:1334801979964129300>",  # 3 years
-            4: "<:prestige4:1334791804087963720>",  # 4 years
-            5: "<:prestige5:1334791823436025878>",  # 5+ years
+            0: " ",
+            1: "<:prestige1:1334791356765175879>",
+            2: "<:prestige2:1334791402068119572>",
+            3: "<:prestige3:1334801979964129300>",
+            4: "<:prestige4:1334791804087963720>",
+            5: "<:prestige5:1334791823436025878>",
         }
         
         prestige_names = {
@@ -197,7 +184,6 @@ class Profile(commands.Cog):
             5: "5 Years",
         }
         
-        # Get icon and name (default to highest tier if years > 5)
         icon = prestige_icons.get(min(prestige_level, 5))
         name = prestige_names.get(min(prestige_level, 5))
         
@@ -211,16 +197,13 @@ class Profile(commands.Cog):
 
     def add_command_badge_fields(self, embed: discord.Embed, stats_data: Dict[str, Any]):
         """Add command badge information to embed"""
-        # Early return if stats_data is None
         if stats_data is None:
             return
             
-        # Get total commands with default value of 0 if not found
         total_commands = stats_data.get('total', 0)
-        if total_commands is None:  # Additional check if total is None
+        if total_commands is None:
             return
         
-        # Define badge based on total commands
         if total_commands >= 1000000:
             badge = "<:Level3Teal:1336140486376689714> __**1M cmds**__"
         elif total_commands >= 125000:
@@ -232,7 +215,7 @@ class Profile(commands.Cog):
         elif total_commands >= 2500:
             badge = "<:Level1:1336140359138279515> __**2.5k cmds**__"
         else:
-            return  # No badge for less than 100 commands
+            return
             
         embed.add_field(name=" ", value=badge, inline=True)
 
@@ -243,38 +226,31 @@ class Profile(commands.Cog):
         """Display user profile with various statistics"""
         target_user = member or ctx.author
         
-        # Create the base embed
         embed = discord.Embed(
             title=f"{target_user.display_name.title()}'s Profile",
             color=target_user.color
         )
         embed.set_thumbnail(url=target_user.display_avatar.url)
         stats_data = await self.get_command_stats(target_user.id)
-        # Add first seen date
         first_seen_data = await self.get_first_seen_data(target_user.id)
         
-        self.add_command_badge_fields(embed, stats_data)  # Add badge using existing stats
+        self.add_command_badge_fields(embed, stats_data)
         self.add_prestige_fields(embed, first_seen_data)
-        # Get and add gambling data (now includes net worth)
         gambling_data = await self.get_gambling_data(target_user.id)
         self.add_gambling_fields(embed, gambling_data)
 
-        # Get and add command stats
         
         self.add_command_stats_fields(embed, stats_data)
 
-        #
         
         if first_seen_data:
             timestamp = first_seen_data['timestamp']
             embed.set_footer(text=f"First seen on {timestamp.strftime('%B %d, %Y')}", icon_url=ctx.author.avatar.url)
 
-            # Add prestige information
             
         else:
             embed.set_footer(text=f"No commands run.", icon_url=ctx.author.avatar.url)
 
-        # Add footer with user ID
         
 
         await ctx.send(embed=embed)

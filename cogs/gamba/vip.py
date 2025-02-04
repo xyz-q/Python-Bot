@@ -16,7 +16,6 @@ class VIPView(View):
         self.is_subscribed = is_subscribed
         self.message = None
         if not is_subscribed:
-            # Add subscribe button
             subscribe_button = Button(
                 label="Subscribe to VIP", 
                 style=discord.ButtonStyle.green,
@@ -25,7 +24,6 @@ class VIPView(View):
             subscribe_button.callback = self.subscribe_callback
             self.add_item(subscribe_button)
         else:
-            # Add status and cancel buttons for subscribed users
             status_button = Button(
                 label="Check Status", 
                 style=discord.ButtonStyle.blurple,
@@ -50,7 +48,6 @@ class VIPView(View):
                 print("deleting vipview")
                 await self.message.delete()
             except discord.HTTPException:
-                # Message already deleted or no permissions
                 pass
 
     async def subscribe_callback(self, interaction):
@@ -60,23 +57,19 @@ class VIPView(View):
 
         vip_price = self.cog.vip_price
         
-        # Process payment
         if not await self.cog.process_vip_payment(str(interaction.user.id), vip_price):
             await interaction.response.send_message(f"Insufficient funds! You need {vip_price:,} coins.", ephemeral=True)
             return
 
-        # Update VIP status
         self.cog.vip_data[str(interaction.user.id)] = {
             "start_date": datetime.now().isoformat(),
             "next_payment": (datetime.now() + timedelta(days=30)).isoformat()
         }
         self.cog.save_vip_data()
 
-        # Update user's level to VIP (-2)
         await self.cog.update_user_level(str(interaction.user.id), True)
         
         await interaction.response.send_message("Successfully subscribed to VIP!", ephemeral=True)
-        # Update the original message with new buttons
         await self.update_vip_message(interaction)
 
     async def status_callback(self, interaction):
@@ -105,7 +98,6 @@ class VIPView(View):
             self.cog.save_vip_data()
             await self.cog.update_user_level(user_id, False)
             await interaction.response.send_message("Your VIP subscription has been cancelled.", ephemeral=True)
-            # Update the original message with new buttons
             await self.update_vip_message(interaction)
         else:
             await interaction.response.send_message("You don't have an active subscription!", ephemeral=True)
@@ -121,7 +113,7 @@ class VIPSystem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.vip_data_file = ".json/vip_data.json"
-        self.vip_price = 75000000  # 1m coins
+        self.vip_price = 75000000
         self.vip_perks = [
             "VIP Role",
             "Support the bot!",
@@ -138,13 +130,11 @@ class VIPSystem(commands.Cog):
         BOT_ID = "1233966655923552370"
         
         try:
-            # Get the economy cog
-            economy_cog = self.bot.get_cog('Economy')  # Make sure this matches your economy cog's name
+            economy_cog = self.bot.get_cog('Economy')
             if not economy_cog:
                 print("Economy cog not found!")
                 return False
 
-            # Get balances using economy cog's methods
             user_balance = await economy_cog.get_balance(user_id)
             
             print(f"\nProcessing VIP Payment:")
@@ -155,15 +145,12 @@ class VIPSystem(commands.Cog):
             if user_balance < amount:
                 return False
                 
-            # Update balances using economy cog's currency dictionary
             economy_cog.currency[str(user_id)] = user_balance - amount
             economy_cog.currency[BOT_ID] = economy_cog.currency.get(BOT_ID, 0) + amount
             
-            # Save using economy cog's save method (if it exists)
             if hasattr(economy_cog, 'save_currency'):
                 economy_cog.save_currency()
             else:
-                # Fallback: save currency.json directly
                 with open('.json/currency.json', 'w') as f:
                     json.dump(economy_cog.currency, f, indent=4)
             
@@ -208,19 +195,15 @@ class VIPSystem(commands.Cog):
                 special_levels = json.load(f)
             
             if is_vip:
-                # Add user to special levels with VIP level (-2)
                 special_levels[user_id] = -2
             else:
-                # Remove user from special levels if they exist
                 if user_id in special_levels:
                     del special_levels[user_id]
             
-            # Save the updated special levels
             with open('.json/special_levels.json', 'w') as f:
                 json.dump(special_levels, f, indent=4)
                 
         except FileNotFoundError:
-            # If file doesn't exist, create it with the user if they're VIP
             special_levels = {user_id: -2} if is_vip else {}
             with open('.json/special_levels.json', 'w') as f:
                 json.dump(special_levels, f, indent=4)
@@ -282,19 +265,15 @@ class VIPSystem(commands.Cog):
             if current_time >= next_payment:
                 tier_price = self.vip_tiers[data['tier']]['price']
 
-                # Process payment
                 if await self.process_vip_payment(user_id, tier_price):
-                    # Update next payment date
                     self.vip_data[user_id]['next_payment'] = (
                         next_payment + timedelta(days=self.vip_tiers[data['tier']]['period'])
                     ).isoformat()
                     self.save_vip_data()
                 else:
-                    # Cancel subscription due to insufficient funds
                     del self.vip_data[user_id]
                     self.save_vip_data()
                     
-                    # Remove VIP status
                     await self.update_user_level(user_id, False)
                     
                     try:

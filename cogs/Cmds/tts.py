@@ -27,15 +27,12 @@ class TextToSpeech(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        # Skip if message is from a bot or is a command
         if message.author.bot or message.content.startswith(','):
             return
 
-        # Only process messages from users with TTS enabled
         if message.author.id not in self.tts_enabled_users:
             return
 
-        # Check if user is in a voice channel
         if not message.author.voice:
             return
 
@@ -43,26 +40,21 @@ class TextToSpeech(commands.Cog):
         voice_client = message.guild.voice_client
 
         try:
-            # Connect to voice if not already connected
             if not voice_client:
                 voice_client = await voice_channel.connect()
             elif voice_client.channel != voice_channel:
                 await voice_client.move_to(voice_channel)
 
-            # Create and save TTS file
             tts = gTTS(text=message.content, lang='en')
             temp_file = f'tts_{message.id}.mp3'
             tts.save(temp_file)
 
-            # Stop current audio if playing
             if voice_client.is_playing():
                 voice_client.stop()
 
-            # Play the audio
             def after_playing(error):
                 if error:
                     print(f'Error in playback: {error}')
-                # Schedule cleanup
                 asyncio.run_coroutine_threadsafe(
                     self.cleanup(temp_file, message), 
                     self.bot.loop

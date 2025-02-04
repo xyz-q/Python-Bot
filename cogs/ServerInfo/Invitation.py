@@ -9,16 +9,13 @@ class ServerInvite(commands.Cog):
     @commands.command()
     async def inviteserver(self, ctx, server_id: int):
         try:
-            # Get the guild
             guild = self.bot.get_guild(server_id)
             if not guild:
                 await ctx.send("Server not found! Please check the server ID.")
                 return
 
-            # Find a suitable channel to create an invite from
             invite_channel = None
             for channel in guild.channels:
-                # Check if channel is a text channel and bot has permission to create invite
                 if isinstance(channel, discord.TextChannel):
                     permissions = channel.permissions_for(guild.me)
                     if permissions.create_instant_invite:
@@ -29,11 +26,10 @@ class ServerInvite(commands.Cog):
                 await ctx.send("I don't have permission to create invites in any channel in this server!")
                 return
 
-            # Create the invite (max_age=0 means it never expires)
             invite = await invite_channel.create_invite(
-                max_age=86400,  # 24 hours
-                max_uses=1,     # Can only be used once
-                unique=True,    # Create a unique invite
+                max_age=86400,
+                max_uses=1,
+                unique=True,
                 reason=f"Invite requested by {ctx.author.name} via DM"
             )
 

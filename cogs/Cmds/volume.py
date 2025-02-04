@@ -4,7 +4,7 @@ from discord.ext import commands
 class MusicCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.volume = 1.0  # Default volume (1.0 = 100%)
+        self.volume = 1.0
 
     @commands.command()
     async def volume(self, ctx, volume: float):

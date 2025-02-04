@@ -45,25 +45,21 @@ class TicketView(discord.ui.View):
         self.current_view = "main"
         self.message = None
 
-        # Get reference to admin button and set its state
         for child in self.children:
             if isinstance(child, discord.ui.Button) and child.label == "Admin View":
                 child.disabled = not self.is_admin
                 child.style = discord.ButtonStyle.grey if not self.is_admin else discord.ButtonStyle.green
         
-        # Hide navigation buttons initially
         self.previous_button.disabled = True
         self.next_button.disabled = True
         self.previous_button.style = discord.ButtonStyle.gray
         self.next_button.style = discord.ButtonStyle.gray
 
     async def on_timeout(self):
-        # Disable all buttons
         for item in self.children:
             item.disabled = True
 
             
-        # Update embed to show timeout
         if self.message:
             embed = self.message.embeds[0]
             embed.color = discord.Color.red()
@@ -107,7 +103,6 @@ class TicketView(discord.ui.View):
             self.list_button.disabled = False
             self.admin_view_button.disabled = True
             
-            # Update navigation button styles
             if self.page <= 0:
                 self.previous_button.disabled = True
                 self.previous_button.style = discord.ButtonStyle.grey
@@ -129,7 +124,6 @@ class TicketView(discord.ui.View):
             self.list_button.disabled = True
             self.admin_view_button.disabled = False
             
-            # Update navigation button styles
             if self.page <= 0:
                 self.previous_button.disabled = True
                 self.previous_button.style = discord.ButtonStyle.grey
@@ -167,7 +161,6 @@ class TicketView(discord.ui.View):
             color=discord.Color.gold()
         )
 
-        # User's Ticket Information
         embed.add_field(
             name="Your Active Tickets",
             value=f"```\n"
@@ -179,7 +172,6 @@ class TicketView(discord.ui.View):
         )
 
         if self.is_admin:
-            # Admin System Overview
             embed.add_field(
                 name="System Overview",
                 value=f"```\n"
@@ -190,7 +182,6 @@ class TicketView(discord.ui.View):
                 inline=False
             )
 
-        # Quick Help
         embed.add_field(
             name="Quick Actions",
             value="• Use `List Tickets` to view your active tickets\n"
@@ -208,17 +199,14 @@ class TicketView(discord.ui.View):
         else:
             embed = self.create_list_embed()
         
-        # Check if we need to adjust the page number
         max_pages = self.get_max_pages()
         if self.page > max_pages:
             self.page = max_pages
 
-        # Update the message with new embed
         if self.message:
             await self.message.edit(embed=embed, view=self)
 
     def create_list_embed(self):
-        # Get user's tickets
         user_tickets = []
         for t_type in ["deposit", "withdraw"]:
             for ticket_id, ticket in self.cog.tickets[t_type].items():
@@ -233,7 +221,6 @@ class TicketView(discord.ui.View):
             )
             return embed
 
-        # Get current ticket (1 per page)
         current_ticket = user_tickets[self.page]
         t_type, ticket_id, ticket = current_ticket
         
@@ -257,7 +244,6 @@ class TicketView(discord.ui.View):
         return embed
 
     def create_admin_embed(self):
-        # Get all tickets for admin view
         tickets_list = []
         for t_type in ["deposit", "withdraw"]:
             for ticket_id, ticket in self.cog.tickets[t_type].items():
@@ -271,7 +257,6 @@ class TicketView(discord.ui.View):
             )
             return embed
 
-        # Get current ticket (1 per page)
         current_ticket = tickets_list[self.page]
         t_type, ticket_id, ticket = current_ticket
         
@@ -348,7 +333,6 @@ class TicketView(discord.ui.View):
         await interaction.message.delete()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        # Check if "Main" button was clicked
         if interaction.data.get("custom_id"):
             if interaction.data["custom_id"] == "list_button" and self.list_button.label == "Main":
                 await self.return_to_main(interaction, "list")
@@ -378,7 +362,6 @@ class CancelTicketModal(discord.ui.Modal, title="Cancel Ticket"):
         ticket_id = self.ticket_id.value
         found = False
 
-        # Check both deposit and withdraw tickets
         for t_type in ["deposit", "withdraw"]:
             if ticket_id in self.cog.tickets[t_type]:
                 ticket = self.cog.tickets[t_type][ticket_id]
@@ -405,15 +388,14 @@ class AdminTicketView(View):
         self.public_msg = public_msg
         self.cog = cog
         self.ticket_type = ticket_type
-        self.user_timer = user_timer  # User's timer message
-        self.dm_timer = dm_timer      # Admin's timer message
-        self.user_embed = user_embed  # User's embed message
-        self.admin_embed = admin_embed # Admin's embed message
+        self.user_timer = user_timer
+        self.dm_timer = dm_timer
+        self.user_embed = user_embed
+        self.admin_embed = admin_embed
 
     @discord.ui.button(label="Complete", style=discord.ButtonStyle.green)
     async def complete_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user = self.bot.get_user(int(self.user_id))
-        # Clear active session first
         if str(self.user_id) in self.cog.active_sessions:
             del self.cog.active_sessions[str(self.user_id)]
             print("Deleted active session")
@@ -427,18 +409,15 @@ class AdminTicketView(View):
             await user.send("<:add:1328511998647861390> Your ticket has been closed.")
             await self.user_embed.delete()
         
-        # Delete public messages
         await self.public_msg.delete()
         await self.timer_msg.delete()
         
-        # Update DM messages
         await self.admin_embed.delete()
         await self.dm_timer.edit(content=f"<:add:1328511998647861390> {self.ticket_type.capitalize()} completed! Amount: {self.cog.format_amount2(self.ticket_data['amount'])} <:goldpoints:1319902464115343473>")
 
 
 
 
-        # Remove ticket
         if self.ticket_data['ticket_id'] in self.cog.tickets[self.ticket_type]:
             del self.cog.tickets[self.ticket_type][self.ticket_data['ticket_id']]
             self.cog.save_tickets()
@@ -449,7 +428,6 @@ class AdminTicketView(View):
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user = self.bot.get_user(int(self.user_id))
-        # Clear active session first
         if str(self.user_id) in self.cog.active_sessions:
             del self.cog.active_sessions[str(self.user_id)]
             print("Deleted active session")
@@ -463,15 +441,12 @@ class AdminTicketView(View):
             await user.send("<:remove:1328511957208268800> Your ticket has been closed.")
             await self.user_embed.delete()
         
-        # Delete public messages
         await self.public_msg.delete()
         await self.timer_msg.delete()
         
-        # Update DM messages
         await self.admin_embed.delete()
         await self.dm_timer.edit(content="<:remove:1328511957208268800> Trade cancelled!")
 
-        # Remove ticket
         if self.ticket_data['ticket_id'] in self.cog.tickets[self.ticket_type]:
             del self.cog.tickets[self.ticket_type][self.ticket_data['ticket_id']]
             self.cog.save_tickets()
@@ -493,18 +468,16 @@ class TicketPaginationView(View):
         self.total_pages = len(tickets_list)
         self.message = None
         self.cog = cog
-        # Add navigation buttons
         self.first_page = Button(label="⏮", custom_id="first", style=discord.ButtonStyle.grey)
         self.prev_page = Button(label="◀", custom_id="previous", style=discord.ButtonStyle.primary)
         self.next_page = Button(label="▶", custom_id="next", style=discord.ButtonStyle.primary)
         self.last_page = Button(label="⏭", custom_id="last", style=discord.ButtonStyle.grey)
         
-        # Add close button
         self.close_button = Button(
             label="✖", 
             custom_id="close", 
             style=discord.ButtonStyle.danger,
-            row=1  # Put it on a new row
+            row=1
         )
         
         self.add_item(self.first_page)
@@ -555,7 +528,7 @@ class TicketPaginationView(View):
         embed.add_field(
             name=f"{ticket_type.title()} Ticket #{ticket_id}",
             value=f"**User**\n{ticket['user_name']}\n\n"
-                f"**Amount**\n<:goldpoints:1319902464115343473> {self.cog.format_amount2(ticket['amount'])}\n\n"  # Changed here
+                f"**Amount**\n<:goldpoints:1319902464115343473> {self.cog.format_amount2(ticket['amount'])}\n\n"
                 f"**RSN**\n{ticket['rsn']}\n\n"
                 f"**Date**\n{ticket['date']}",
             inline=False
@@ -568,11 +541,9 @@ class TicketPaginationView(View):
         return embed
 
     async def on_timeout(self):
-        # Disable all buttons
         for item in self.children:
             item.disabled = True
         
-        # Try to update the message with disabled buttons
         try:
             if self.message:
                 await self.message.delete()
@@ -608,11 +579,9 @@ class GambleSystem(commands.Cog):
         Validates a user input and returns (user_id, display_name, is_valid)
         """
         try:
-            # Handle "house" keyword to return bot's ID
             if isinstance(user, str) and user.lower().strip() == "house":
                 return str(self.bot.user.id), "🏦 House", True
             
-            # Handle discord Member
             if isinstance(user, discord.Member):
                 return str(user.id), user.name, True
             
@@ -637,14 +606,11 @@ class GambleSystem(commands.Cog):
     async def get_balance(self, user_id) -> int:
         """Get balance for any user or house"""
         try:
-            # Convert user_id to string
             str_user_id = str(user_id)
             
-            # Handle house account without using upper()
             if str_user_id == "HOUSE" or str_user_id == "house":
                 str_user_id = "1233966655923552370"
             
-            # Get and return balance
             return int(self.currency.get(str_user_id, 0))
             
         except Exception as e:
@@ -653,7 +619,6 @@ class GambleSystem(commands.Cog):
 
     def parse_amount(self, amount_str):
         try:
-            # First convert to string, then do the operations
             amount_str = str(amount_str).replace(',', '').upper().strip()
             
             multipliers = {
@@ -663,7 +628,6 @@ class GambleSystem(commands.Cog):
                 'T': 1000000000000
             }
             
-            # Extract number and multiplier
             number = ''
             multiplier = ''
             
@@ -677,10 +641,8 @@ class GambleSystem(commands.Cog):
             if not number:
                 return None
                 
-            # Convert to float first
             amount = float(number)
             
-            # Apply multiplier if exists
             if multiplier in multipliers:
                 amount *= multipliers[multiplier]
                 
@@ -690,34 +652,30 @@ class GambleSystem(commands.Cog):
             return None
 
     def format_amount2(self, amount):
-        # For amounts >= 1T
-        if amount >= 1000000000000:  # 1T+
-            if amount >= 10000000000000:  # 10T+
+        if amount >= 1000000000000:
+            if amount >= 10000000000000:
                 trillions = amount / 1000000000000
                 return f"{int(trillions):,}T"
             else:
                 billions = amount / 1000000000
                 return f"{int(billions):,}B"
                 
-        # For amounts >= 1B
-        elif amount >= 1000000000:  # 1B+
-            if amount >= 10000000000:  # 10B+
+        elif amount >= 1000000000:
+            if amount >= 10000000000:
                 billions = amount / 1000000000
                 return f"{int(billions):,}B"
             else:
                 millions = amount / 1000000
                 return f"{int(millions):,}M"
                 
-        # For amounts >= 1M
-        elif amount >= 1000000:  # 1M+
-            if amount >= 10000000:  # 10M+
+        elif amount >= 1000000:
+            if amount >= 10000000:
                 millions = amount / 1000000
                 return f"{int(millions):,}M"
             else:
                 thousands = amount / 1000
                 return f"{int(thousands):,}K"
                 
-        # For amounts >= 1K
         elif amount >= 1000:
             thousands = amount / 1000
             return f"{int(thousands):,}K"
@@ -737,32 +695,26 @@ class GambleSystem(commands.Cog):
                 time_left = end_time - now
                 
                 if time_left.total_seconds() <= 0:
-                    # Timer expired, handle cleanup
                     if user:
                         await user_msg.edit(content=f"<:remove:1328511957208268800> Trade ID: {ticket_id} cancelled - Time expired!")
                         if user_embed_msg:
                             await user_embed_msg.delete()
 
-                    # Delete public messages
                     if public_msg:
                         await public_msg.delete()
                     if message:
                         await message.delete()
 
-                    # Update DM messages
                     if admin_embed_msg:
                         await admin_embed_msg.delete()
                     if dm_message:
                         await dm_message.edit(content=f"<:remove:1328511957208268800> Trade ID: {ticket_id} cancelled - Time expired!")
 
-                    # Remove ticket
                     if ticket_id in self.tickets[ticket_type]:
                         del self.tickets[ticket_type][ticket_id]
                         self.save_tickets()
 
-                    # Clean up active session
                     if str(customer_id) in self.active_sessions:
-                        # Notify both user and admin about session end
                         session = self.active_sessions[str(customer_id)]
                         admin = self.bot.get_user(int(session['admin_id']))
                         
@@ -778,11 +730,9 @@ class GambleSystem(commands.Cog):
                             except:
                                 pass
                                 
-                        # Clear the active session
                         del self.active_sessions[str(customer_id)]
                         print(f"Deleted active session for user {customer_id} due to timer expiration")
 
-                    # Clear the timer
                     if timer_id in self.active_timers:
                         del self.active_timers[timer_id]
                         print(f"Deleted active timer {timer_id} due to expiration")
@@ -794,7 +744,6 @@ class GambleSystem(commands.Cog):
                 
                 timer_text = f"⏳ Time remaining: {minutes}m {seconds}s"
                 
-                # Update messages
                 if user_msg:
                     try:
                         await user_msg.edit(content=timer_text)
@@ -809,13 +758,11 @@ class GambleSystem(commands.Cog):
                 
                 await asyncio.sleep(13)
 
-            # Clean up timer reference if loop breaks
             if timer_id in self.active_timers:
                 del self.active_timers[timer_id]
 
         except Exception as e:
             print(f"Error in update_timer_message: {e}")
-            # Attempt to clean up on error
             try:
                 if str(customer_id) in self.active_sessions:
                     del self.active_sessions[str(customer_id)]
@@ -849,17 +796,15 @@ class GambleSystem(commands.Cog):
 
 
 
-    # Modify the existing ticket command
     @commands.group(invoke_without_command=True, aliases=["tickets"])
     async def ticket(self, ctx):
         await ctx.message.delete()
         """View and manage your tickets"""
-        view = TicketView(self.bot, self, ctx.author, ctx.message)  # Added ctx.message here
+        view = TicketView(self.bot, self, ctx.author, ctx.message)
         embed = view.create_embed()
-        view.message = await ctx.send(embed=embed, view=view)  # Store the message in view
-        self.active_views.add(view)  # Add view to active views
+        view.message = await ctx.send(embed=embed, view=view)
+        self.active_views.add(view)
 
-        # Clean up view when it's done
         await view.wait()
         self.active_views.discard(view)
         await asyncio.sleep(5)
@@ -876,13 +821,11 @@ class GambleSystem(commands.Cog):
             await ctx.send("<:remove:1328511957208268800> Invalid type! Use 'deposit' or 'withdraw'")
             return
 
-        # Collect user's tickets into a list
         tickets_list = []
         types_to_show = [type] if type else ["deposit", "withdraw"]
         
         for t in types_to_show:
             for ticket_id, ticket in self.tickets[t].items():
-                # Only add tickets that belong to this user
                 if str(ticket['user_id']) == str(ctx.author.id):
                     tickets_list.append((t, ticket_id, ticket))
 
@@ -890,8 +833,7 @@ class GambleSystem(commands.Cog):
             await ctx.send("<:remove:1328511957208268800> You have no pending tickets!")
             return
 
-        # Create pagination view with cog instance
-        view = TicketPaginationView(tickets_list, self)  # Pass self (cog) instead of bot
+        view = TicketPaginationView(tickets_list, self)
         embed = view.create_embed()
         view.message = await ctx.send(embed=embed, view=view)
 
@@ -918,7 +860,7 @@ class GambleSystem(commands.Cog):
             await ctx.send("<:remove:1328511957208268800> No pending tickets found!")
             return
 
-        view = TicketPaginationView(tickets_list, self)  # Changed from bot=self.bot to just self
+        view = TicketPaginationView(tickets_list, self)
         embed = view.create_embed()
         view.message = await ctx.send(embed=embed, view=view)
 
@@ -945,22 +887,21 @@ class GambleSystem(commands.Cog):
             return
 
         user = self.bot.get_user(int(ticket_data['user_id']))
-        ticket_data['ticket_id'] = ticket_id  # Add ticket_id to the data
+        ticket_data['ticket_id'] = ticket_id
 
-        # Get admin details for both deposit and withdraw
         question_msg = await ctx.send("Please enter your __***RSN***__:")
 
-        messages_to_delete = []  # Add this line to track messages
+        messages_to_delete = []
 
         try:
-            while True:  # Add while loop for message cleanup
+            while True:
                 rsn_response = await self.bot.wait_for(
                     'message',
                     timeout=30.0,
                     check=lambda message: message.author == ctx.author and message.channel == ctx.channel
                 )
                 
-                await rsn_response.delete()  # Add message to cleanup list
+                await rsn_response.delete()
                 admin_rsn = str(rsn_response.content)
 
                 await question_msg.edit(content="Please enter your __***combat***__ __***level***__:")
@@ -969,7 +910,7 @@ class GambleSystem(commands.Cog):
                     timeout=30.0,
                     check=lambda message: message.author == ctx.author and message.channel == ctx.channel
                 )
-                await level_response.delete()  # Add message to cleanup list
+                await level_response.delete()
                 admin_level = level_response.content
                 
                 await question_msg.edit(content="Please enter the __***world***__:")
@@ -978,7 +919,7 @@ class GambleSystem(commands.Cog):
                     timeout=30.0,
                     check=lambda message: message.author == ctx.author and message.channel == ctx.channel
                 )
-                await world_response.delete()  # Add message to cleanup list
+                await world_response.delete()
                 world = world_response.content
 
                 await question_msg.edit(content="Please enter the __***location***__:")
@@ -987,13 +928,12 @@ class GambleSystem(commands.Cog):
                     timeout=30.0,
                     check=lambda message: message.author == ctx.author and message.channel == ctx.channel
                 )
-                await location_response.delete()  # Add message to cleanup list
+                await location_response.delete()
                 location = location_response.content.title()
 
                 await question_msg.delete()
                 await asyncio.sleep(0.5)
 
-                # Display summary messages
                 summary1 = await ctx.send(f"RSN: {admin_rsn}")
                 await asyncio.sleep(0.5)
                 summary2 = await ctx.send(f"Combat Level: {admin_level}")
@@ -1023,9 +963,7 @@ class GambleSystem(commands.Cog):
                             await ctx.send("Information declined and discarded.")
                             return
                         
-                        # If confirmed, proceed with the ticket processing
                         if confirmation.content.lower() == 'confirm':
-                            # Create user embed
                             user_embed = discord.Embed(
                                 title=f"<:add:1328511998647861390> Active {ticket_type} \n       ",
                                 description=f"Your {ticket_type} request has been approved.\n\n__***We will never trade you first.***__\n\n__***Please confirm it's you before trading.***__\n\n__***You can message the bot to talk with an admin.***__\n\n ",
@@ -1053,25 +991,20 @@ class GambleSystem(commands.Cog):
                             )
                             user_embed.set_footer(text=f"Approved by {ctx.author}")
                             
-                            # Create embed for admin DM
                             admin_embed = user_embed.copy()
                             admin_embed.title = f"🎫 Active {ticket_type} "
                             admin_embed.description = f"Ticket ID: {ticket_id} for {ticket_data['user_name']}"
                             
-                            # Send to user with initial timer
                             if user:
                                 user_embed_msg = await user.send(embed=user_embed)
                                 user_timer_msg = await user.send("⏳ Time remaining: 10m 0s")
                             
-                            # Send to channel for reference
                             public_msg = await ctx.send("<:add:1328511998647861390> Trade session started.")
                             timer_msg = await ctx.send(f"Ticket #{ticket_id} accepted by {ctx.author}.")
                             
-                            # Send DM to admin with controls
                             admin_embed_msg = await ctx.author.send(embed=admin_embed)
                             admin_timer_msg = await ctx.author.send("⏳ Time remaining: 10m 0s")
                             
-                            # Add buttons to admin DM
                             admin_view = AdminTicketView(
                                 self.bot, 
                                 ticket_data['user_id'], 
@@ -1080,17 +1013,16 @@ class GambleSystem(commands.Cog):
                                 public_msg, 
                                 self, 
                                 ticket_type,
-                                user_timer_msg,     # User's timer message
-                                admin_timer_msg,    # Admin's timer message
-                                user_embed_msg,     # User's embed message
-                                admin_embed_msg     # Admin's embed message
+                                user_timer_msg,
+                                admin_timer_msg,
+                                user_embed_msg,
+                                admin_embed_msg
                             )
                             await admin_embed_msg.edit(view=admin_view)
                             self.active_sessions[str(ticket_data['user_id'])] = {
                                 'admin_id': str(ctx.author.id),
                                 'ticket_id': ticket_id
                             }                
-                            # Start timer
                             end_time = datetime.datetime.now() + datetime.timedelta(minutes=10)
                             await self.update_timer_message(
                                 timer_msg, 
@@ -1106,13 +1038,12 @@ class GambleSystem(commands.Cog):
                                 ticket_id,
                                 ticket_type
                             )
-                            return  # End the command after successful processing
+                            return
                         break
                     else:
                         error_msg = await ctx.send("<:remove:1328511957208268800> Please type 'confirm' or 'decline'", delete_after=2)
 
         except asyncio.TimeoutError:
-            # Clean up any messages that were collected
             try:
                 await ctx.channel.delete_messages(messages_to_delete)
             except:
@@ -1156,7 +1087,6 @@ class GambleSystem(commands.Cog):
 
         user = self.bot.get_user(int(ticket_data['user_id']))
         
-        # Notify user
         if user:
             embed = discord.Embed(
                 title="<:remove:1328511957208268800> Request Declined",
@@ -1181,14 +1111,13 @@ class GambleSystem(commands.Cog):
             embed.set_footer(text=f"Declined by {ctx.author}")
             await user.send(embed=embed)
 
-        # Remove ticket
         del self.tickets[ticket_type][ticket_id]
         await self.save_tickets()
         declinemsg = await ctx.send(f"<:add:1328511998647861390> Ticket #{ticket_id} has been declined! Reason: {reason}")
         await asyncio.sleep(7)
         await declinemsg.delete()
 
-        for view in self.active_views.copy():  # Use .copy() to avoid modification during iteration
+        for view in self.active_views.copy():
             try:
                 await view.update_view()
             except Exception as e:
@@ -1201,13 +1130,12 @@ class GambleSystem(commands.Cog):
         if not reason:
             return await ctx.send(f"<:remove:1328511957208268800> Please provide a reason for cancellation!\nUsage: `!ticket cancel <ticket_id> <reason>`")
 
-        # Existing ticket finding logic
         found = False
         ticket_type = None
         ticket = None
         
         for t in ["deposit", "withdraw"]:
-            if ticket_id in self.tickets[t]:  # Removed "tickets" wrapper
+            if ticket_id in self.tickets[t]:
                 found = True
                 ticket_type = t
                 ticket = self.tickets[t][ticket_id]
@@ -1216,26 +1144,23 @@ class GambleSystem(commands.Cog):
         if not found:
             return await ctx.send(f"<:remove:1328511957208268800> Invalid ticket ID!")
         
-        if ticket["user_id"] != str(ctx.author.id):  # Using user_id
+        if ticket["user_id"] != str(ctx.author.id):
             return await ctx.send("You can only cancel your own tickets!")
         
-        # Delete the ticket
         del self.tickets[ticket_type][ticket_id]
         self.save_tickets()
         
-        for view in self.active_views.copy():  # Use .copy() to avoid modification during iteration
+        for view in self.active_views.copy():
             try:
                 await view.update_view()
             except Exception as e:
                 print(f"Failed to update view: {e}")
                 self.active_views.discard(view)        
 
-        # Send confirmation to the user
         cancelmsg = await ctx.send(f"<:add:1328511998647861390> Ticket `{ticket_id}` has been cancelled!\nReason: {reason}")
         await asyncio.sleep(7)
         await cancelmsg.delete()
         
-        # Send notifications to admins with reason
         for admin_id in self.admin_ids:
             try:
                 admin = await self.bot.fetch_user(admin_id)
@@ -1274,13 +1199,11 @@ class GambleSystem(commands.Cog):
             await ctx.send("<:remove:1328511957208268800> Please use the correct format\nExample: `,deposit 100M Zezima`")
             return
         
-        # Initial validation checks...
         formatted_amount = self.parse_amount(amount)
         if not formatted_amount:
             await ctx.send("<:remove:1328511957208268800> Invalid amount format! Please use K, M, B, or T (e.g., 100M, 1B)")
             return
 
-        # Create confirmation embed
         confirm_embed = discord.Embed(
             title="📝 Confirm Deposit Request",
             description="Please verify the following details are correct:",
@@ -1297,33 +1220,26 @@ class GambleSystem(commands.Cog):
             inline=False
         )
         
-        # Create and send view with buttons
         view = ConfirmView(timeout=30)
         confirm_msg = await ctx.send(embed=confirm_embed, view=view)
         
-        # Delete the original command message
         try:
             await ctx.message.delete()
         except:
             pass
 
-        # Wait for button interaction
         await view.wait()
         
-        # Handle timeout
         if view.value is None:
             await confirm_msg.edit(content="<:remove:1328511957208268800> Confirmation timed out. Please try again.", embed=None, view=None)
             return
         
-        # Handle cancellation
         if view.value is False:
             await confirm_msg.edit(content="<:remove:1328511957208268800> Deposit request cancelled.", embed=None, view=None)
             return
         
-        # If confirmed, delete confirmation message and proceed
         await confirm_msg.delete()
                     
-                    # Generate ticket ID
         ticket_id = self.generate_ticket_id()
         ticket_data = {
             "user_id": str(ctx.author.id),
@@ -1333,11 +1249,9 @@ class GambleSystem(commands.Cog):
             "date": discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
         }
         
-        # Save ticket data
         self.tickets["deposit"][ticket_id] = ticket_data
         self.save_tickets()
 
-        # User notification embed
         user_embed = discord.Embed(
             title="<:add:1328511998647861390> Deposit Request Sent",
             description="Your deposit request has been sent to an administrator.",
@@ -1361,7 +1275,6 @@ class GambleSystem(commands.Cog):
         user_embed.set_footer(text="Please wait for an administrator to process your request.")
         await ctx.send(embed=user_embed)
 
-        # Admin notification embed
         for admin_id in self.admin_ids:
             admin = self.bot.get_user(admin_id)
             if admin:
@@ -1403,13 +1316,11 @@ class GambleSystem(commands.Cog):
             await ctx.send("<:remove:1328511957208268800> Please use the correct format\nExample: `,withdraw 100M Zezima`")
             return
         
-        # Initial validation checks...
         formatted_amount = self.parse_amount(amount)
         if not formatted_amount:
             await ctx.send("<:remove:1328511957208268800> Invalid amount format! Please use K, M, B, or T (e.g., 100M, 1B)")
             return
 
-        # Create confirmation embed
         confirm_embed = discord.Embed(
             title="📝 Confirm Withdraw Request",
             description="Please verify the following details are correct:",
@@ -1426,33 +1337,26 @@ class GambleSystem(commands.Cog):
             inline=False
         )
 
-        # Create and send view with buttons
         view = ConfirmView(timeout=30)
         confirm_msg = await ctx.send(embed=confirm_embed, view=view)
         
-        # Delete the original command message
         try:
             await ctx.message.delete()
         except:
             pass
 
-        # Wait for button interaction
         await view.wait()
         
-        # Handle timeout
         if view.value is None:
             await confirm_msg.edit(content="<:remove:1328511957208268800> Confirmation timed out. Please try again.", embed=None, view=None)
             return
         
-        # Handle cancellation
         if view.value is False:
             await confirm_msg.edit(content="<:remove:1328511957208268800> Withdraw request cancelled.", embed=None, view=None)
             return
         
-        # If confirmed, delete confirmation message and proceed
         await confirm_msg.delete()
         
-        # Generate ticket ID
         ticket_id = self.generate_ticket_id()
         ticket_data = {
             "user_id": str(ctx.author.id),
@@ -1462,11 +1366,9 @@ class GambleSystem(commands.Cog):
             "date": discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
         }
         
-        # Save ticket data
         self.tickets["withdraw"][ticket_id] = ticket_data
         self.save_tickets()
 
-        # User notification embed
         user_embed = discord.Embed(
             title="<:add:1328511998647861390> Withdraw Request Sent",
             description="Your withdraw request has been sent to an administrator.",
@@ -1490,7 +1392,6 @@ class GambleSystem(commands.Cog):
         user_embed.set_footer(text="Please wait for an administrator to process your request.")
         await ctx.send(embed=user_embed)
 
-        # Admin notification embed
         for admin_id in self.admin_ids:
             admin = self.bot.get_user(admin_id)
             if admin:
@@ -1524,37 +1425,30 @@ class GambleSystem(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        # Ignore messages from bots
         if message.author.bot:
             return
                 
-        # Check if it's a DM
         if not isinstance(message.channel, discord.DMChannel):
             return
 
-        # Check if sender is admin responding to a ticket
         admin_id = str(message.author.id)
         admin_sessions = []
         
-        # Find all sessions this admin is handling
         for user_id, session in self.active_sessions.items():
             if session['admin_id'] == admin_id:
                 admin_sessions.append((user_id, session['ticket_id']))
 
         if admin_sessions:
-            # If admin has multiple active sessions, they need to specify ticket number
             if len(admin_sessions) > 1 and not message.content.startswith('#'):
                 await message.channel.send("<:remove:1328511957208268800> You have multiple active sessions. Please start your message with the ticket number (e.g., '#1234 Your message')")
                 await message.add_reaction("❌")
                 return
                 
             if len(admin_sessions) > 1:
-                # Extract ticket number from message
                 try:
-                    ticket_num = message.content.split()[0][1:]  # Remove the # and get the number
-                    message_content = ' '.join(message.content.split()[1:])  # Get rest of message
+                    ticket_num = message.content.split()[0][1:]
+                    message_content = ' '.join(message.content.split()[1:])
                     
-                    # Find the correct user for this ticket
                     target_user_id = None
                     for user_id, ticket_id in admin_sessions:
                         if ticket_id == ticket_num:
@@ -1570,11 +1464,9 @@ class GambleSystem(commands.Cog):
                     await message.add_reaction("❌")
                     return
             else:
-                # If admin only has one session, no need for ticket number
                 target_user_id = admin_sessions[0][0]
                 message_content = message.content
 
-            # Send message to user
             user = self.bot.get_user(int(target_user_id))
             if user:
                 try:
@@ -1595,14 +1487,12 @@ class GambleSystem(commands.Cog):
                     await message.add_reaction("❌")
             return
 
-        # Handle user message (client side)
         user_id = str(message.author.id)
         if user_id not in self.active_sessions:
             await message.channel.send("<:remove:1328511957208268800> I don't respond to DMs!\nIf theres a green checkmark below to your message, it means I've received it.")
             await message.add_reaction("❌")
             return
 
-        # Forward user message to assigned admin
         session = self.active_sessions[user_id]
         admin = self.bot.get_user(int(session['admin_id']))
         

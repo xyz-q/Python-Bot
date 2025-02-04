@@ -9,9 +9,7 @@ class NotificationSystem(commands.Cog):
         self.bot = bot
         self.notifications_file = '.json/notifications.json'
         self.load_or_create_data()
-        # Add a dictionary to track message counts per user
         self.message_counters = {}
-        # You can optionally add this to customize the interval
         self.message_interval = 7
 
     def load_or_create_data(self):
@@ -53,23 +51,18 @@ class NotificationSystem(commands.Cog):
         except commands.CommandError:
             return
 
-        # Update message counter for this user
         user_id = str(message.author.id)
         
-        # If this is the user's first message, initialize their counter to 1
         if user_id not in self.message_counters:
             self.message_counters[user_id] = 1
-            should_notify = True  # Always notify on first command
+            should_notify = True
         else:
             self.message_counters[user_id] += 1
-            # After first message, only notify every 7th time
             should_notify = (self.message_counters[user_id] - 1) % self.message_interval == 0
 
-        # Only proceed if it's the first message or every 7th after that
         if not should_notify:
             return
 
-        # If we get here, it's either the first command or every 7th after
         data = self.get_data()
         if data["message"] and str(message.author.id) not in data["readers"]:
             embed = discord.Embed(
@@ -105,7 +98,6 @@ class NotificationSystem(commands.Cog):
                 color=discord.Color.gold()
             )
         else:
-            # Add user to readers list if they haven't read it yet
             if str(ctx.author.id) not in data["readers"]:
                 data["readers"].append(str(ctx.author.id))
                 self.save_data(data)
@@ -116,7 +108,6 @@ class NotificationSystem(commands.Cog):
                 color=discord.Color.gold()
             )
             
-            # Calculate reader number
             reader_number = len(data["readers"])
             embed.add_field(name=" ", value="Please use `,report` to send any bugs my way.", inline=False)
             embed.set_footer(text=f"You were #{reader_number} to read this alert!")
@@ -159,11 +150,9 @@ class NotificationSystem(commands.Cog):
     @commands.command()
     async def inspect_embed(self, ctx, message_id: int):
         try:
-            # Use ctx.channel to get the channel
             message = await ctx.channel.fetch_message(message_id)
             if message.embeds:
                 embed = message.embeds[0]
-                # Print embed details
                 print(f"Title: {embed.title}")
                 print(f"Description: {embed.description}")
                 print(f"Color: {embed.color}")

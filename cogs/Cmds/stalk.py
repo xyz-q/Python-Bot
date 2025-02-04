@@ -16,11 +16,13 @@ class Stalk(commands.Cog):
             if os.path.exists('.json/stalked_user.json'):
                 with open('.json/stalked_user.json', 'r') as f:
                     data = json.load(f)
-                    self.stalked_user_id = str(data.get('user_id'))
+                    user_id = data.get('user_id')
+                    self.stalked_user_id = str(user_id) if user_id is not None else None
                 print(f"Loaded stalked user: {self.stalked_user_id}")
         except Exception as e:
             print(f"Error loading stalked user: {e}")
             self.stalked_user_id = None
+
 
     def save_stalked_user(self):
         try:
@@ -34,7 +36,6 @@ class Stalk(commands.Cog):
     async def stalk(self, ctx, member: discord.Member):
         await ctx.message.delete()
 
-        # Check if already stalking someone
         if self.stalked_user_id:
             stalked_user = self.bot.get_user(int(self.stalked_user_id))
             message = await ctx.send(f"Already stalking {stalked_user.display_name}. Use `,stopstalk` first!")
@@ -45,7 +46,6 @@ class Stalk(commands.Cog):
         self.stalked_user_id = str(member.id)
         self.save_stalked_user()
 
-        # If they're in a voice channel, connect immediately
         if member.voice:
             try:
                 await member.voice.channel.connect(timeout=5)
@@ -61,7 +61,6 @@ class Stalk(commands.Cog):
         await ctx.message.delete()
 
         if self.stalked_user_id:
-            # Disconnect from all voice channels in all guilds
             for guild in self.bot.guilds:
                 if guild.voice_client:
                     await guild.voice_client.disconnect()
@@ -80,11 +79,10 @@ class Stalk(commands.Cog):
 
     @tasks.loop(seconds=0.5)
     async def follow_user(self):
-        if not self.stalked_user_id:
+        if not self.stalked_user_id or self.stalked_user_id == 'None':
             return
 
         try:
-            # Find the user in any guild
             user_found = False
             user_voice_channel = None
             user_guild = None
@@ -97,12 +95,10 @@ class Stalk(commands.Cog):
                     user_guild = guild
                     break
 
-            # Disconnect from all guilds where the user isn't present in voice
             for guild in self.bot.guilds:
                 if guild.voice_client and (not user_found or guild != user_guild):
                     await guild.voice_client.disconnect()
 
-            # Connect to the user's current voice channel if they're in one
             if user_found and user_voice_channel:
                 voice_client = user_guild.voice_client
                 if not voice_client:

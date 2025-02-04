@@ -114,7 +114,6 @@ class YouTubeCommands(commands.Cog):
     async def play_next(self, ctx):
         global queue, current_playing_url
 
-        # Cleanup previous message
         async for message in ctx.channel.history(limit=50):
             if message.author == self.bot.user and "Now playing:" in message.content:
                 try:
@@ -124,7 +123,6 @@ class YouTubeCommands(commands.Cog):
                 break
 
         if not queue:
-            # If queue is empty, perform final cleanup
             voice_client = ctx.guild.voice_client
             if voice_client and voice_client.is_connected():
                 await print("Queue is empty, cleaning up.")
@@ -148,7 +146,6 @@ class YouTubeCommands(commands.Cog):
                 if info and 'entries' in info:
                     title = info['entries'][0]['title']
                     
-                    # Send new "Now playing" message with fresh controls
                     play_message = await ctx.send(f'Now playing: {title}')
                     
                     voice_client.play(
@@ -172,7 +169,6 @@ class YouTubeCommands(commands.Cog):
 
         print(f"Received play command with query: {query}")
 
-        # Check if user is in voice channel
         author = ctx.message.author
         voice_channel = author.voice.channel if author.voice else None
 
@@ -183,7 +179,6 @@ class YouTubeCommands(commands.Cog):
 
         voice_client = ctx.guild.voice_client
 
-        # Connect to voice channel
         try:
             if voice_client and voice_client.is_connected():
                 await voice_client.move_to(voice_channel)
@@ -196,7 +191,6 @@ class YouTubeCommands(commands.Cog):
             print(f"Error connecting to voice channel: {str(e)}")
             return
 
-        # Special options for playlist extraction
         playlist_options = {
             'format': 'bestaudio/best',
             'postprocessors': [{
@@ -204,7 +198,7 @@ class YouTubeCommands(commands.Cog):
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }],
-            'extract_flat': False,  # Changed to False to get full info
+            'extract_flat': False,
             'noplaylist': False,
             'nocheckcertificate': True,
             'ignoreerrors': True,
@@ -224,10 +218,8 @@ class YouTubeCommands(commands.Cog):
             await ctx.send("Fetching playlist information... This might take a moment.")
             print("Fetching playlist information...")
 
-            # Create a new YTDL instance with playlist options
             ydl = youtube_dl.YoutubeDL(playlist_options)
 
-            # Extract playlist info
             with ydl:
                 result = await self.bot.loop.run_in_executor(
                     None, lambda: ydl.extract_info(query, download=False)
@@ -250,7 +242,6 @@ class YouTubeCommands(commands.Cog):
                 await ctx.send(f'Processing playlist: {playlist_title} ({len(entries)} tracks)')
                 print(f'Processing playlist: {playlist_title} ({len(entries)} tracks)')
 
-                # Process each video in the playlist
                 for i, entry in enumerate(entries):
                     if entry is None:
                         continue
@@ -259,7 +250,6 @@ class YouTubeCommands(commands.Cog):
                     video_url = entry.get('url', entry.get('webpage_url'))
 
                     if i == 0 and not (voice_client.is_playing() or is_playing):
-                        # Play first song immediately
                         download_msg = await ctx.send(f'Downloading: {title}')
                         await asyncio.sleep(2)
                         await download_msg.delete()
@@ -287,12 +277,10 @@ class YouTubeCommands(commands.Cog):
                             await ctx.send(f"Error playing {title}: {str(e)}")
                             print(f"Error playing {title}: {str(e)}")
                     else:
-                        # Add other songs to queue
                         queue.append(video_url)
                         print(f'Added to queue: {title}')
 
             else:
-                # Handle single video
                 title = result.get('title', 'Unknown Title')
                 download_msg = await ctx.send(f'Downloading: {title}')
                 await asyncio.sleep(2)
@@ -328,7 +316,6 @@ class YouTubeCommands(commands.Cog):
                         print(f"An error occurred while playing: {str(e)}")
                         return
 
-            # Check if nothing is playing and start playing the next song
             if not voice_client.is_playing() and not is_playing:
                 print("Nothing is playing, starting the next song in the queue.")
                 await self.play_next(ctx)
@@ -343,7 +330,6 @@ class YouTubeCommands(commands.Cog):
 
         print("Attempting to play next song in queue...")
 
-        # Cleanup previous message
         async for message in ctx.channel.history(limit=50):
             if message.author == self.bot.user and "Now playing:" in message.content:
                 try:
@@ -353,7 +339,6 @@ class YouTubeCommands(commands.Cog):
                 break
 
         if not queue:
-            # If queue is empty, perform final cleanup
             voice_client = ctx.guild.voice_client
             if voice_client and voice_client.is_connected():
                 await voice_client.disconnect()
@@ -382,7 +367,6 @@ class YouTubeCommands(commands.Cog):
                     if info and 'entries' in info:
                         title = info['entries'][0]['title']
                         
-                        # Send new "Now playing" message with fresh controls
                         play_message = await ctx.send(f'Now playing: {title}')
                         print(f'Now playing: {title}')
                         
@@ -431,7 +415,7 @@ class YouTubeCommands(commands.Cog):
                 if info and 'entries' in info:
                     title = info['entries'][0]['title']
                 else:
-                    title = query  # Fallback to raw query if title extraction fails
+                    title = query
                 queue_list.append(f'{index + 1}. {title}')
             
             queue_display = '\n'.join(queue_list)
@@ -459,7 +443,6 @@ class YouTubeCommands(commands.Cog):
 
     async def cleanup(self, ctx):
         """Clean up messages and disconnect when done"""
-        # Remove "Now Playing" messages
         async for message in ctx.channel.history(limit=50):
             if message.author == self.bot.user and ("Now playing:" in message.content):
                 try:

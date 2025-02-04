@@ -16,7 +16,7 @@ class ElyNotify(commands.Cog):
         self.item_dictionary = data
         self.price_alerts = {}
         self.alerts_file = '.json/alerts.json'
-        self.load_alerts()  # Load saved alerts when bot starts
+        self.load_alerts()
         self.check_prices.start()
 
         self.item_aliases = {
@@ -70,7 +70,6 @@ class ElyNotify(commands.Cog):
         try:
             if os.path.exists(self.alerts_file):
                 with open(self.alerts_file, 'r') as f:
-                    # Convert string keys back to integers
                     data = json.load(f)
                     self.price_alerts = {int(k): v for k, v in data.items()}
                 
@@ -97,7 +96,6 @@ class ElyNotify(commands.Cog):
         
         item_lower = item_name.lower()
         
-        # Check aliases first
         if item_lower in self.item_aliases:
             return self.item_aliases[item_lower]
             
@@ -201,7 +199,7 @@ class ElyNotify(commands.Cog):
                                         try:
                                             await user.send(embed=embed)
                                             self.price_alerts[user_id].remove(alert)
-                                            self.save_alerts()  # Save after alert triggers
+                                            self.save_alerts()
                                             print(f"Alert sent to {user.name} for {item_name}")
                                         except discord.Forbidden:
                                             print(f"Could not send DM to {user.name}")

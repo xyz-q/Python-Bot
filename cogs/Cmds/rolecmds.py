@@ -25,7 +25,6 @@ class RoleCmds(commands.Cog):
 
         member_str, role_str = args
         
-        # Check if role_str is a role ID
         if role_str.isdigit():
             role = discord.utils.get(ctx.guild.roles, id=int(role_str))
         elif role_str.startswith("<@&") and role_str.endswith(">"):
@@ -91,10 +90,8 @@ class RoleCmds(commands.Cog):
 
     @commands.command(name="roles", description="List all roles and their IDs.")
     async def roles(self, ctx):
-        # Get all roles and sort them by position in descending order (highest to lowest)
         roles = sorted(ctx.guild.roles, key=lambda x: x.position, reverse=True)
         
-        # Filter out @everyone role and create the role list
         role_list = "\n".join([f"{role.name}: {role.id}" for role in roles if role.name != "@everyone"])
         
         await ctx.send(f"Roles in this server:\n{role_list}")

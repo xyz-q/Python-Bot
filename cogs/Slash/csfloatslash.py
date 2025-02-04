@@ -48,7 +48,6 @@ class CSFloatSearch2(commands.Cog):
         self.bot = bot
         self.api_url = 'https://csfloat.com/api/v1/listings'
 
-    #@app_commands.command(description="Get a CS2 skin price from CSFloat.com")
     @app_commands.command(description="I AM CURRENTLY IP BLOCKED FROM SCRAPING THIS WEBSITE! NOT WORKING RIGHT NOW")
     @app_commands.autocomplete(weapon=weapon_autocomplete)
     @app_commands.autocomplete(wear=wear_autocomplete)
@@ -60,7 +59,6 @@ class CSFloatSearch2(commands.Cog):
         skin_type="The type of skin (Normal, StatTrak, or Souvenir). Leave empty for Normal."
     )
     async def price(self, interaction: Interaction, weapon: str, skin: str, wear: str, skin_type: str = ""):
-        # Adjust the query construction logic
         if weapon.startswith('★'):
             if skin_type:
                 query = f"★ {skin_type} {weapon[2:]} | {skin} ({wear})"
@@ -70,26 +68,21 @@ class CSFloatSearch2(commands.Cog):
             query = f"{skin_type + ' ' if skin_type else ''}{weapon} | {skin} ({wear})"
         
         try:
-            # Prepare the query parameters
             params = {
                 'market_hash_name': query,
                 'sort_by': 'lowest_price',
-                'limit': 50  # Adjust limit as needed
+                'limit': 50
             }
 
-            # Make the request to CSFloat API
             response = requests.get(self.api_url, params=params)
             response.raise_for_status()
 
-            # Parse the JSON response
             listings = response.json()
 
-            # Check if there are any results
             if not listings:
                 await interaction.response.send_message(f"No listings found for '{query}' on CSFloat. Are you sure the name is correct? There could also be a float cap.", ephemeral=True)
                 return
 
-            # Dictionary to store lowest prices for each wear
             wear_prices = {
                 'Factory New': None,
                 'Minimal Wear': None,
@@ -98,20 +91,17 @@ class CSFloatSearch2(commands.Cog):
                 'Battle-Scarred': None
             }
 
-            # Find the lowest price for each wear condition
             for listing in listings:
                 item = listing.get('item', {})
                 wear_name = item.get('wear_name', 'Unknown')
                 price = listing.get('price', None)
 
-                # Convert price from cents to dollars and cents format
                 if price is not None:
-                    price_dollars = price / 100.0  # Convert cents to dollars
+                    price_dollars = price / 100.0
                     if wear_name in wear_prices.keys():
                         if wear_prices[wear_name] is None or price_dollars < wear_prices[wear_name]:
                             wear_prices[wear_name] = price_dollars
 
-            # Prepare the embed message
             embed = discord.Embed(title=f"Lowest prices for {query} on CSFloat", color=0xFF0000)
             for wear, price in wear_prices.items():
                 if price is not None:

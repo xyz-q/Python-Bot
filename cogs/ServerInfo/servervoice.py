@@ -9,13 +9,11 @@ class ServerVoiceJoin(commands.Cog):
     @commands.command()
     async def serverjoin(self, ctx, server_id: int, channel_id: int = None):
         try:
-            # Get the guild
             guild = self.bot.get_guild(server_id)
             if not guild:
                 await ctx.send("Server not found! Please check the server ID.")
                 return
 
-            # If no channel_id is provided, find the first voice channel
             if channel_id is None:
                 voice_channels = guild.voice_channels
                 if not voice_channels:
@@ -28,18 +26,15 @@ class ServerVoiceJoin(commands.Cog):
                     await ctx.send("Voice channel not found! Please check the channel ID.")
                     return
 
-            # Check if bot has permission to join the voice channel
             permissions = channel.permissions_for(guild.me)
             if not permissions.connect:
                 await ctx.send("I don't have permission to join that voice channel!")
                 return
 
-            # Connect to the voice channel
             try:
                 await channel.connect()
                 await ctx.send(f"Successfully joined voice channel: {channel.name} in {guild.name}")
             except discord.ClientException:
-                # If already connected to a voice channel in this guild
                 for vc in self.bot.voice_clients:
                     if vc.guild.id == guild.id:
                         await vc.disconnect()
@@ -79,7 +74,6 @@ class ServerVoiceJoin(commands.Cog):
                 color=discord.Color.gold()
             )
 
-            # Get all voice channels and their members
             voice_channels = guild.voice_channels
             if not voice_channels:
                 await ctx.send("No voice channels found in this server!")
@@ -87,26 +81,24 @@ class ServerVoiceJoin(commands.Cog):
 
             total_users = 0
             for vc in voice_channels:
-                # Get members in the voice channel
                 members = vc.members
                 member_list = []
                 
                 for member in members:
                     status = []
                     if member.voice.self_mute:
-                        status.append("🔇")  # Self muted
+                        status.append("🔇")
                     if member.voice.self_deaf:
-                        status.append("🔕")  # Self deafened
+                        status.append("🔕")
                     if member.voice.mute:
-                        status.append("🚫")  # Server muted
+                        status.append("🚫")
                     if member.voice.deaf:
-                        status.append("❌")  # Server deafened
+                        status.append("❌")
                     
                     member_status = f"{member.name} {''.join(status)}"
                     member_list.append(member_status)
                     total_users += 1
 
-                # Create field for each voice channel
                 if member_list:
                     members_text = "\n".join(member_list)
                     embed.add_field(

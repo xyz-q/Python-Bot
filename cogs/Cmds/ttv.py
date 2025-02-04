@@ -113,8 +113,8 @@ class Twitch(commands.Cog):
                 new_config = {
                     'twitch_username': twitch_username,
                     'discord_channel_id': channel.id,
-                    'twitch_client_id': 'gp762nuuoqcoxypju8c569th9wz7q5',  # Replace with your Twitch client ID
-                    'twitch_access_token': '3aem92vd1y6x0ad67xlcj731rreyfp',  # Replace with your Twitch OAuth token
+                    'twitch_client_id': 'gp762nuuoqcoxypju8c569th9wz7q5',
+                    'twitch_access_token': '3aem92vd1y6x0ad67xlcj731rreyfp',
                     'previous_status': None
                 }
                 self.configurations.append(new_config)

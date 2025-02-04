@@ -13,7 +13,6 @@ class ReactionCog(commands.Cog):
         Usage: ,react <partial_channel_name> <message_id> <emoji>
         """
         try:
-            # Perform case-insensitive partial match for the channel name
             channel = discord.utils.find(
                 lambda c: partial_channel_name.lower() in c.name.lower(),
                 ctx.guild.text_channels,
@@ -23,10 +22,8 @@ class ReactionCog(commands.Cog):
                 await ctx.send(f"No channel found matching '{partial_channel_name}'.")
                 return
 
-            # Fetch the message
             message = await channel.fetch_message(message_id)
 
-            # Add the reaction
             await message.add_reaction(emoji)
             await ctx.send(f"Reacted to message ID {message_id} in channel #{channel.name} with {emoji}!")
 

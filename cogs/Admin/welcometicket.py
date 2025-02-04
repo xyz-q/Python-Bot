@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 
-# Constants
 TICKET_CHANNEL_ID = 1241495094205354104 
 WELCOME_CHANNEL_NAME = "welcome" 
 ROLE_ID = 1056996133081186395 

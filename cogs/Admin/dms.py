@@ -14,7 +14,6 @@ class DMCommands(commands.Cog):
     @commands.command(name='dm')
     @commands.is_owner()
     async def dm(self, ctx, user_reference: str, *, message: str):
-        # Delete the command message immediately
         await ctx.message.delete()
         
         user = None
@@ -33,7 +32,6 @@ class DMCommands(commands.Cog):
         if user:
             try:
                 await user.send(message)
-                # Send confirmation and delete it after 5 seconds
                 confirmation = await ctx.send(f"Successfully sent a DM to {user.name}.")
                 await confirmation.delete(delay=5)
             except discord.Forbidden:
@@ -51,7 +49,6 @@ class DMCommands(commands.Cog):
         if isinstance(error, commands.MissingPermissions):
             error_msg = await ctx.send("You need administrator permissions to use this command.")
             await error_msg.delete(delay=5)
-            # Also delete the command message if possible
             try:
                 await ctx.message.delete()
             except:

@@ -39,11 +39,9 @@ class VCTicket(commands.Cog):
         if member.bot or member == self.bot.user or member.id == 110927272210354176:
             return
 
-        # Check if the user joined a voice channel
         if before.channel is None and after.channel is not None:
             if after.channel.name == '.waiting-room':
                 await self.send_voice_request_message(member, member.guild)
-        # Check if the user left the waiting room
         elif before.channel and before.channel.name == '.waiting-room' and (not after.channel or after.channel.name != '.waiting-room'):
             await self.cancel_voice_request(member, member.guild)
 

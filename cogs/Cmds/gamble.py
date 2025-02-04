@@ -55,25 +55,20 @@ def has_account():
     async def predicate(ctx):
         user_id = str(ctx.author.id)
         
-        # Load TOS acceptance data from JSON
         try:
             with open('.json/tos.json', 'r') as f:
                 tos_data = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
-            # Create file if it doesn't exist
             tos_data = {}
             os.makedirs('data', exist_ok=True)
             with open('.json/tos.json', 'w') as f:
                 json.dump(tos_data, f)
 
-        # Check if user has accepted TOS
         if user_id in tos_data:
             return True
             
-        # Create unique key for this command invocation
         message_key = f"{ctx.message.id}"
         
-        # Only send message if we haven't sent one for this command invocation
         if message_key not in message_sent:
             message_sent.add(message_key)
             
@@ -102,7 +97,6 @@ def has_account():
             await asyncio.sleep(25)
             await TOSEMBED.delete()
             
-            # Clean up after a delay
             message_sent.discard(message_key)
             
         return False
@@ -147,7 +141,6 @@ class GambleLimits:
         self.load_limits()
 
     def format_amount(self, amount):
-        # Convert to integer if it's a whole number
         if amount.is_integer():
             return int(amount)
         return amount
@@ -165,22 +158,18 @@ class GambleLimits:
         with open(self.limits_file, 'w') as f:
             json.dump({'min': self.current_min, 'max': self.current_max}, f)
 
-# Create a global instance
 limits_manager = GambleLimits()
 
 
 
 def transaction_limit():
-    # Store the last message time for each user
     last_message = {}
     
     async def predicate(ctx):
         try:
-            # Get current user ID
             user_id = ctx.author.id
             current_time = datetime.now()
             
-            # Check if we've sent a message recently (within 1 second)
             if user_id in last_message:
                 if current_time - last_message[user_id] < timedelta(seconds=1):
                     return False
@@ -252,10 +241,8 @@ def confirm_bet():
         @wraps(func)
         async def wrapper(self, ctx, amount=None, *args, **kwargs):
             if amount is None:
-                # If no amount is provided, proceed with the original function
                 return await func(self, ctx, amount, *args, **kwargs)
 
-            # Step 1: Convert the amount using your existing parse_amount method
             try:
                 amount = self.parse_amount(str(amount))
                 print(f"Converted amount: {amount}")
@@ -264,7 +251,6 @@ def confirm_bet():
                 await ctx.send("<:remove:1328511957208268800> Confirmation error: Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B)", delete_after=10)
                 return None
 
-            # Step 2: Check if the amount is valid (positive and within user balance)
             if amount <= 0:
                 await ctx.send("<:remove:1328511957208268800> Confirmation error:  Amount must be positive!", delete_after=10)
                 return None
@@ -275,10 +261,9 @@ def confirm_bet():
                 await ctx.message.delete()
                 await ctx.send(f"<:remove:1328511957208268800> Insufficient balance! Your balance <:goldpoints:1319902464115343473> {self.format_amount(balance)}\n\n Use ,deposit <amount> <rsn> to add more.", delete_after=10)
                 return None
-            # Step 3: If the amount exceeds the threshold, trigger the confirmation
             if amount >= self.CONFIRMATION_THRESHOLD:
                 print(f"Amount exceeds threshold: {self.CONFIRMATION_THRESHOLD}")
-                view = BetConfirmation()  # Assuming this is a button or modal view
+                view = BetConfirmation()
                 message = await ctx.send(
                     f"⚠️ Are you sure you want to use {self.format_amount(amount)} <:goldpoints:1319902464115343473>?", 
                     view=view
@@ -300,7 +285,6 @@ def confirm_bet():
 
                 print("Confirmed!")
 
-            # Step 4: If the amount is below threshold or confirmed, proceed with the command
             return await func(self, ctx, amount, *args, **kwargs)
 
         return wrapper
@@ -386,11 +370,11 @@ class TransactionPaginator(discord.ui.View):
                 transfer_info = transaction.get("transfer_info", "Transferred")
                 amount_str = f"{transfer_info}: {'+'if amount > 0 else ''}{abs(amount):,} <:goldpoints:1319902464115343473>"
             elif trans_type == "vault_deposit":
-                emoji = "🏦"  # or use a custom emoji if you have one
+                emoji = "🏦"
                 bet_str = ""
                 amount_str = f"Deposited to vault: -{abs(amount):,} <:goldpoints:1319902464115343473>"
             elif trans_type == "vault_withdraw":
-                emoji = "🏦"  # or use a custom emoji if you have one
+                emoji = "🏦"
                 bet_str = ""
                 amount_str = f"Withdrawn from vault: +{abs(amount):,} <:goldpoints:1319902464115343473>"
             
@@ -406,11 +390,9 @@ class TransactionPaginator(discord.ui.View):
         return embed
 
     async def on_timeout(self):
-        # Disable all buttons
         for item in self.children:
             item.disabled = True
         
-        # Try to update the message with disabled buttons
         try:
             if self.message:
                 await self.message.delete()
@@ -434,7 +416,6 @@ class BetConfirmation(discord.ui.View):
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Disable all buttons after clicking
         for item in self.children:
             item.disabled = True
         
@@ -444,7 +425,6 @@ class BetConfirmation(discord.ui.View):
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Disable all buttons after clicking
         for item in self.children:
             item.disabled = True
             
@@ -461,13 +441,13 @@ class PaginationView(discord.ui.View):
 
     async def on_timeout(self):
         """Deletes the message when the view times out (like 'Close' button)."""
-        if self.message:  # ✅ Ensure the message exists
+        if self.message:
             try:
-                await self.message.delete()  # ✅ Deletes the message after timeout
+                await self.message.delete()
             except discord.NotFound:
-                pass  # Message was already deleted
+                pass
             except discord.HTTPException:
-                pass  # Some other error (bot lacks permission, etc.)
+                pass
 
     @discord.ui.button(label="Previous", style=discord.ButtonStyle.gray)
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -490,9 +470,9 @@ class PaginationView(discord.ui.View):
 
 
 class Economy(commands.Cog):
-    MIN_TRANSACTION_AMOUNT = 10_000_000  # 50M minimum
-    MAX_DEPOSIT_AMOUNT = 2_000_000_000  # 2B maximum
-    MAX_WITHDRAW_AMOUNT = 500_000_000  # 500M maximum
+    MIN_TRANSACTION_AMOUNT = 10_000_000
+    MAX_DEPOSIT_AMOUNT = 2_000_000_000
+    MAX_WITHDRAW_AMOUNT = 500_000_000
     def __init__(self, bot):
         self.admin_ids = [110927272210354176, 311612585524854805]
         self.bot = bot
@@ -534,7 +514,6 @@ class Economy(commands.Cog):
     async def log_transaction(self, ctx, bet_amount, win_amount, final_balance, transaction_type="game", is_house=False):
         """Log a transaction for both users and house"""
         try:
-            # If it's a house transaction, use special house ID and name
             if is_house:
                 user_id = "HOUSE"
                 user_name = "House"
@@ -542,12 +521,10 @@ class Economy(commands.Cog):
                 user_id = str(ctx.author.id)
                 user_name = str(ctx.author)
             
-            # Convert all amounts to integers
             bet_amount = int(bet_amount) if bet_amount else 0
             win_amount = int(win_amount) if win_amount else 0
             final_balance = int(final_balance)
             
-            # Create transaction data
             transaction_data = {
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "user": {
@@ -599,7 +576,6 @@ class Economy(commands.Cog):
                 view=view
             )
             
-            # Wait for confirmation
             await view.wait()
             await msg.delete()
             
@@ -633,7 +609,6 @@ class Economy(commands.Cog):
         user_id = str(user_id)
         self.initialize_user_stats(user_id)
         
-        # Convert amounts to integers
         try:
             amount_wagered = int(amount_wagered)
             amount_won = int(amount_won)
@@ -641,17 +616,15 @@ class Economy(commands.Cog):
             amount_wagered = self.parse_amount(str(amount_wagered))
             amount_won = self.parse_amount(str(amount_won))
 
-        # Update total wagered and games played
         self.stats[user_id]["total_wagered"] += amount_wagered
         self.stats[user_id]["games_played"] += 1
         
-        # Calculate actual profit/loss from this game
-        if amount_won > amount_wagered:  # Won
+        if amount_won > amount_wagered:
             profit = amount_won - amount_wagered
             self.stats[user_id]["total_won"] += profit
             if profit > self.stats[user_id]["biggest_win"]:
                 self.stats[user_id]["biggest_win"] = profit
-        else:  # Lost
+        else:
             loss = amount_wagered
             self.stats[user_id]["total_lost"] += loss
 
@@ -662,7 +635,6 @@ class Economy(commands.Cog):
         """Create a new account"""
         user_id = str(ctx.author.id)
         
-        # Load TOS data
         try:
             with open('.json/tos.json', 'r') as f:
                 tos_data = json.load(f)
@@ -672,22 +644,18 @@ class Economy(commands.Cog):
             with open('.json/tos.json', 'w') as f:
                 json.dump(tos_data, f)
         
-        # Check if user already accepted TOS
         if user_id in tos_data:
             await ctx.send("You have already accepted the TOS!")
             return
         
-        # Add user to TOS acceptance file
         tos_data[user_id] = {
             "accepted_at": str(discord.utils.utcnow()),
             "username": str(ctx.author)
         }
         
-        # Save updated TOS data
         with open('.json/tos.json', 'w') as f:
             json.dump(tos_data, f, indent=4)
         
-        # Create welcome embed
         embed = discord.Embed(
             title="<:add:1328511998647861390> Account Created!",
             description="Welcome to the staking community!",
@@ -791,13 +759,10 @@ class Economy(commands.Cog):
                 await ctx.send("Only administrators can reset all users' stats!")
                 return
 
-            # Store the number of users affected
             users_affected = len(self.stats)
             
-            # Store some examples for the embed
-            example_users = list(self.stats.keys())[:5]  # First 5 users
+            example_users = list(self.stats.keys())[:5]
             
-            # Reset all stats
             for user_id in self.stats:
                 self.stats[user_id] = {
                     "total_wagered": 0,
@@ -809,14 +774,12 @@ class Economy(commands.Cog):
             
             self.save_stats()
 
-            # Create embed for response
             embed = discord.Embed(
                 title="Statistics Reset",
                 description=f"Reset statistics for {users_affected} users",
                 color=discord.Color.gold()
             )
             
-            # Add sample users to embed
             if example_users:
                 sample_users = "\n".join([f"<@{user_id}>" for user_id in example_users])
                 if len(self.stats) > 5:
@@ -830,11 +793,9 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
 
         else:
-            # Handle single user reset
             target_user = target or ctx.author
             user_id = str(target_user.id)
             
-            # Reset the stats for the user
             self.stats[user_id] = {
                 "total_wagered": 0,
                 "total_won": 0,
@@ -845,7 +806,6 @@ class Economy(commands.Cog):
             
             self.save_stats()
 
-            # Create embed for single user reset
             embed = discord.Embed(
                 title="Statistics Reset",
                 description=f"Statistics have been reset for {target_user.name}",
@@ -910,7 +870,6 @@ class Economy(commands.Cog):
             embed.add_field(name="House Edge", value=f"{house_edge:.2f}%", inline=False)
         
         await ctx.send(embed=embed)        
-# Add this method to your Economy class
 
 
 
@@ -924,11 +883,9 @@ class Economy(commands.Cog):
         Validates a user input and returns (user_id, display_name, is_valid)
         """
         try:
-            # Handle "house" keyword to return bot's ID
             if isinstance(user, str) and user.lower().strip() == "house":
                 return str(self.bot.user.id), "House", True
             
-            # Handle discord Member
             if isinstance(user, discord.Member):
                 return str(user.id), user.name, True
             
@@ -982,7 +939,6 @@ class Economy(commands.Cog):
         try:
             amount = amount.strip().lower()
             
-            # Valid multipliers
             multipliers = {
                 'k': 1_000,
                 'm': 1_000_000,
@@ -990,12 +946,10 @@ class Economy(commands.Cog):
                 't': 1_000_000_000_000
             }
 
-            # If amount ends with a letter
             if amount[-1].isalpha():
                 multiplier = amount[-1]
                 number = amount[:-1]
 
-                # Check if it's a valid multiplier
                 if multiplier not in multipliers:
                     raise ValueError("Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B, 1T)")
 
@@ -1003,7 +957,6 @@ class Economy(commands.Cog):
                     base_amount = float(number)
                     parsed_amount = int(base_amount * multipliers[multiplier])
                     
-                    # Convert large B amounts to T if they exceed 1000B
                     if multiplier == 'b' and base_amount >= 1000:
                         parsed_amount = int((base_amount / 1000) * multipliers['t'])
                     
@@ -1011,7 +964,6 @@ class Economy(commands.Cog):
                 except ValueError:
                     raise ValueError("Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B, 1T)")
 
-            # If no multiplier, try to parse as regular number
             return int(float(amount))
 
         except ValueError as e:
@@ -1020,57 +972,46 @@ class Economy(commands.Cog):
             raise ValueError("Invalid amount! Use numbers with K, M, B, or T (e.g., 50M, 100M, 1B, 5B, 1T)")
 
     def format_amount(self, amount):
-        # For amounts >= 100T
-        if amount >= 100000000000000:  # 100T+
+        if amount >= 100000000000000:
             trillions = amount / 1000000000000
             return f"{int(trillions)}T"
             
-        # For amounts >= 10T
-        elif amount >= 10000000000000:  # 10T+
+        elif amount >= 10000000000000:
             trillions = amount / 1000000000000
             return f"{trillions:.1f}T"
             
-        # For amounts >= 1T
-        elif amount >= 1000000000000:  # 1T+
+        elif amount >= 1000000000000:
             billions = amount / 1000000000
-            return f"{int(billions):,}B"  # Added comma
+            return f"{int(billions):,}B"
             
-        # For amounts >= 100B
-        elif amount >= 100000000000:  # 100B+
+        elif amount >= 100000000000:
             billions = amount / 1000000000
             return f"{int(billions)}B"
             
-        # For amounts >= 10B
-        elif amount >= 10000000000:  # 10B+
+        elif amount >= 10000000000:
             billions = amount / 1000000000
             return f"{billions:.2f}B"
             
-        # For amounts >= 1B
-        elif amount >= 1000000000:  # 1B+
+        elif amount >= 1000000000:
             millions = amount / 1000000
-            return f"{int(millions):,}M"  # Added comma
+            return f"{int(millions):,}M"
             
-        # For amounts >= 100M
-        elif amount >= 100000000:  # 100M+
+        elif amount >= 100000000:
             millions = amount / 1000000
             return f"{int(millions)}M"
             
-        # For amounts >= 10M
-        elif amount >= 10000000:  # 10M+
+        elif amount >= 10000000:
             millions = amount / 1000000
             return f"{millions:.1f}M"
             
-        # For amounts >= 1M
-        elif amount >= 1000000:  # 1M+
+        elif amount >= 1000000:
             thousands = amount / 1000
-            return f"{int(thousands):,}K"  # Added comma
+            return f"{int(thousands):,}K"
             
-        # For amounts >= 100K
-        elif amount >= 100000:  # 100K+
+        elif amount >= 100000:
             thousands = amount / 1000
             return f"{int(thousands)}K"
             
-        # For amounts < 100K
         else:
             return f"{int(amount):,}"
 
@@ -1098,10 +1039,8 @@ class Economy(commands.Cog):
 
     async def get_balance(self, user_id: str) -> int:
         """Get balance for any user or house"""
-        # Convert user_id to string if it isn't already
         user_id = str(user_id)
         
-        # Handle "HOUSE" case (case-insensitive)
         if isinstance(user_id, str) and user_id.upper() == "HOUSE":
             user_id = "1233966655923552370"
         
@@ -1120,13 +1059,12 @@ class Economy(commands.Cog):
             await ctx.send("No balances found!")
             return
 
-        # Filter out the house account and convert user IDs to int for sorting
         user_balances = []
         house_balance = 0
-        total_money = 0  # Initialize total money counter
+        total_money = 0
         
         for user_id, balance in self.currency.items():
-            total_money += balance  # Add each balance to total
+            total_money += balance
             if user_id == "1233966655923552370":
                 house_balance = balance
             else:
@@ -1135,15 +1073,12 @@ class Economy(commands.Cog):
                 except ValueError:
                     continue
 
-        # Sort by balance (highest to lowest)
         sorted_balances = sorted(user_balances, key=lambda x: x[1], reverse=True)
 
-        # Create pages of 10 entries each
         entries_per_page = 10
         pages = []
         current_page = []
         
-        # Add house balance at the top of the first page if it exists
         if house_balance > 0:
             current_page.append(f"🏦 House: <:goldpoints:1319902464115343473> {self.format_amount(house_balance)}")
 
@@ -1168,7 +1103,6 @@ class Economy(commands.Cog):
             await ctx.send("No balances found!")
             return
 
-        # Create embeds for each page
         embeds = []
         for i, page in enumerate(pages, 1):
             embed = discord.Embed(
@@ -1176,16 +1110,13 @@ class Economy(commands.Cog):
                 description=page,
                 color=discord.Color.gold()
             )
-            # Add both page number and total money to footer
             embed.set_footer(text=f"Page {i}/{len(pages)} • Total Balance: {self.format_amount(total_money)}")
             embeds.append(embed)
 
-        # Send the first embed with pagination
         view = PaginationView(embeds)
         message = await ctx.send(embed=embeds[0], view=view)
-        view.message = message  # Store message reference for timeout handling
+        view.message = message
         
-        # Wait 20 seconds then delete the message
 
     
 
@@ -1195,7 +1126,6 @@ class Economy(commands.Cog):
         GP_TO_USD_RATE = 0.0000000196
         """Check your balance or someone else's balance"""
         try:
-            # Check if user is specifically requesting house balance
             if isinstance(user, str) and user.lower() == 'house':
                 house_balance = await self.get_balance('house')
                 house_usd = house_balance * GP_TO_USD_RATE
@@ -1203,7 +1133,7 @@ class Economy(commands.Cog):
                 embed = discord.Embed(
                     title="🏦 House Balance",
                     description="",
-                    color=discord.Color.purple()  # Using purple for house
+                    color=discord.Color.purple()
                 )
                 
                 embed.add_field(
@@ -1233,7 +1163,6 @@ class Economy(commands.Cog):
             balance = await self.get_balance(user_id)
             USD = balance * GP_TO_USD_RATE
             
-            # Get vault balance
             user_id = str(ctx.author.id)
             vault_data = self.load_vault_data()
             user_vault = vault_data.get(user_id, {"balance": 0})
@@ -1257,14 +1186,12 @@ class Economy(commands.Cog):
                     color=discord.Color.gold()
                 )
                 
-                # Wallet balance (left side)
                 embed.add_field(
                     name="Wallet Balance",
                     value=f"<:goldpoints:1319902464115343473> {self.format_amount(balance)} GP",
                     inline=True
                 )
                 
-                # Vault balance (right side)
                 embed.add_field( 
                     name="Vault Balance",
                     value=f"<:goldpoints:1319902464115343473> {self.format_amount(vault_balance)} GP",
@@ -1276,7 +1203,6 @@ class Economy(commands.Cog):
                     value=f"`,withdraw or ,deposit <gp> <rsn>`\n`,staking to see more commands.`",
                     inline=False
                 )                
-                # Add the commands as description
                 embed.set_footer(text=f"Total balance {self.format_amount(vaultplusbalance)} GP / ${total_usd:.2f} USD", icon_url=ctx.author.avatar.url)
 
             await ctx.send(embed=embed)
@@ -1298,7 +1224,6 @@ class Economy(commands.Cog):
                 await ctx.send("Please provide a user and amount! Example: ,add @user 1000 or ,add house 1000")
                 return
 
-            # Split args into user and amount
             args_split = args.rsplit(' ', 1)
             if len(args_split) != 2:
                 await ctx.send("Invalid format! Example: ,add @user 1000 or ,add house 1000")
@@ -1306,24 +1231,20 @@ class Economy(commands.Cog):
 
             user_arg, amount = args_split
 
-            # Convert user mention to Member or keep as string for "house"
             if user_arg.lower() == "house":
                 user = "house"
             else:
-                # Try to get member from mention or name
                 try:
                     user = await commands.MemberConverter().convert(ctx, user_arg)
                 except:
                     await ctx.send("Invalid user! Example : ,add @user 100 or ,add house 1000")
                     return
 
-            # Validate user
             user_id, user_name, valid = await self.validate_user(user)
             if not valid:
                 await ctx.send("Error: Invalid user! Please mention a valid user or type 'house'.")
                 return
 
-            # Parse amount
             try:
                 amount = self.parse_amount(amount)
             except ValueError:
@@ -1334,7 +1255,6 @@ class Economy(commands.Cog):
                 await ctx.send("Amount must be positive!")
                 return
 
-            # Create confirmation view
             view = self.ConfirmView()
             confirm_msg = await ctx.send(
                 f"Are you sure you want to add <:goldpoints:1319902464115343473> {self.format_amount(amount)} to {user_name}'s balance?",
@@ -1344,22 +1264,18 @@ class Economy(commands.Cog):
             await view.wait()
             
             if view.value:
-                # Add balance
                 if user_id not in self.currency:
                     self.currency[user_id] = 0
                 self.currency[user_id] += amount
                 final_balance = self.currency[user_id]
                 
-                # Save changes
                 self.save_currency()
                 target_ctx = copy.copy(ctx)
-                target_ctx.author = user  # Set the author to the target user
+                target_ctx.author = user
                 
-                # Log the transaction for the target user
                 if (isinstance(user, discord.Member) and user.id == self.bot.user.id) or (isinstance(user, str) and user.lower() == "house"):
-                    # This is a house transaction (bot ID was targeted)
                     await self.log_transaction(
-                        ctx=ctx,  # Create a modified context with the bot as author
+                        ctx=ctx,
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
@@ -1367,20 +1283,17 @@ class Economy(commands.Cog):
                         is_house=True
                     )
                 else:
-                    # Create a modified context with the target user as the author
                     modified_ctx = copy.copy(ctx)
-                    modified_ctx.author = user  # Set the author to the target user
+                    modified_ctx.author = user
                     
-                    # This is a regular user transaction
                     await self.log_transaction(
-                        ctx=modified_ctx,  # Use the modified context
+                        ctx=modified_ctx,
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
                         transaction_type="add"
                     )
-                # Add this after the transaction is completed but before the final confirmation message
-                if isinstance(user, discord.Member):  # Only send DM if it's a Discord member (not house)
+                if isinstance(user, discord.Member):
                     try:
                         dm_embed = discord.Embed(
                             title="Your deposit has been completed!",
@@ -1406,14 +1319,11 @@ class Economy(commands.Cog):
                         
                         await user.send(embed=dm_embed)
                     except discord.Forbidden:
-                        # If user has DMs closed
                         await ctx.send(f"Note: Couldn't send DM to {user.name} (DMs might be closed)")
                     except Exception as e:
-                        # Handle any other potential errors
                         await ctx.send(f"Note: Couldn't send DM to {user.name} ({str(e)})")
               
                 
-                # Create success embed
                 embed = discord.Embed(
                     title="Addition Successful!",
                     description=f"Added <:goldpoints:1319902464115343473> {self.format_amount(amount)} to {user_name}'s balance",
@@ -1440,7 +1350,6 @@ class Economy(commands.Cog):
                 await ctx.send("Please provide a user and amount! Example: ,remove @user 1000 or ,remove house 1000")
                 return
 
-            # Split args into user and amount
             args_split = args.rsplit(' ', 1)
             if len(args_split) != 2:
                 await ctx.send("Invalid format! Example: ,remove @user 1000 or ,remove house 1000")
@@ -1448,24 +1357,20 @@ class Economy(commands.Cog):
 
             user_arg, amount = args_split
 
-            # Convert user mention to Member or keep as string for "house"
             if user_arg.lower() == "house":
                 user = "house"
             else:
-                # Try to get member from mention or name
                 try:
                     user = await commands.MemberConverter().convert(ctx, user_arg)
                 except:
                     await ctx.send("Invalid user! Example ,remove @user 1000 or ,remove house 1000")
                     return
 
-            # Validate user
             user_id, user_name, valid = await self.validate_user(user)
             if not valid:
                 await ctx.send("Invalid user! Example ,remove @user 1000 or ,remove house 1000")
                 return
 
-            # Parse amount
             try:
                 amount = self.parse_amount(amount)
             except ValueError:
@@ -1476,13 +1381,11 @@ class Economy(commands.Cog):
                 await ctx.send("Amount must be positive!")
                 return
 
-            # Check if user has enough balance
             current_balance = await self.get_balance(user_id)
             if current_balance < amount:
                 await ctx.send(f"{user_name} doesn't have enough balance! Their balance: <:goldpoints:1319902464115343473> {self.format_amount(current_balance)}")
                 return
 
-            # Create confirmation view
             view = self.ConfirmView()
             confirm_msg = await ctx.send(
                 f"Are you sure you want to remove <:goldpoints:1319902464115343473> {self.format_amount(amount)} from {user_name}'s balance?",
@@ -1492,18 +1395,14 @@ class Economy(commands.Cog):
             await view.wait()
             
             if view.value:
-                # Remove balance
                 self.currency[user_id] -= amount
                 final_balance = self.currency[user_id]
                 
-                # Save changes
                 self.save_currency()
                 target_ctx = copy.copy(ctx)
-                target_ctx.author = user  # Set the author to the target user
+                target_ctx.author = user
                 
-                # Log the transaction for the target user
                 if (isinstance(user, discord.Member) and user.id == self.bot.user.id) or (isinstance(user, str) and user.lower() == "house"):
-                    # This is a house transaction (bot ID was targeted)
                     await self.log_transaction(
                         ctx=ctx,
                         bet_amount=0,
@@ -1513,13 +1412,11 @@ class Economy(commands.Cog):
                         is_house=True
                     )
                 else:
-                    # Create a modified context with the target user as the author
                     modified_ctx = copy.copy(ctx)
-                    modified_ctx.author = user  # Set the author to the target user
+                    modified_ctx.author = user
                     
-                    # This is a regular user transaction
                     await self.log_transaction(
-                        ctx=modified_ctx,  # Use the modified context
+                        ctx=modified_ctx,
                         bet_amount=0,
                         win_amount=amount,
                         final_balance=final_balance,
@@ -1528,7 +1425,7 @@ class Economy(commands.Cog):
          
                 
 
-                if isinstance(user, discord.Member):  # Only send DM if it's a Discord member (not house)
+                if isinstance(user, discord.Member):
                     try:
                         dm_embed = discord.Embed(
                             title="Your withdrawal has been completed!",
@@ -1554,14 +1451,11 @@ class Economy(commands.Cog):
                         
                         await user.send(embed=dm_embed)
                     except discord.Forbidden:
-                        # If user has DMs closed
                         await ctx.send(f"Note: Couldn't send DM to {user.name} (DMs might be closed)")
                     except Exception as e:
-                        # Handle any other potential errors
                         await ctx.send(f"Note: Couldn't send DM to {user.name} ({str(e)})")
 
 
-                # Create success embed
                 embed = discord.Embed(
                     title="Removal Successful!",
                     description=f"Removed <:goldpoints:1319902464115343473> {self.format_amount(amount)} from {user_name}'s balance",
@@ -1588,7 +1482,6 @@ class Economy(commands.Cog):
                 await ctx.send("Please provide a recipient and amount! Example: ,transfer @user 1000 or ,transfer house 1000")
                 return
 
-            # Split args into recipient and amount
             args_split = args.rsplit(' ', 1)
             if len(args_split) != 2:
                 await ctx.send("Invalid format! Example: ,transfer @user 1000 or ,transfer house 1000")
@@ -1596,24 +1489,20 @@ class Economy(commands.Cog):
 
             recipient_arg, amount = args_split
 
-            # Convert recipient mention to Member or keep as string for "house"
             if recipient_arg.lower() == "house":
                 recipient = "house"
             else:
-                # Try to get member from mention or name
                 try:
                     recipient = await commands.MemberConverter().convert(ctx, recipient_arg)
                 except:
                     await ctx.send("Invalid recipient! ,transfer <user> <amount>")
                     return
 
-            # Validate recipient
             recipient_id, recipient_name, valid = await self.validate_user(recipient)
             if not valid:
                 await ctx.send("Error: Invalid recipient! Please mention a valid user or type 'house'.")
                 return
 
-            # Parse amount
             try:
                 amount = self.parse_amount(amount)
             except ValueError:
@@ -1622,7 +1511,6 @@ class Economy(commands.Cog):
 
             sender_id = str(ctx.author.id)
             
-            # Check if sender has enough balance
             sender_balance = await self.get_balance(sender_id)
             
             if sender_id == recipient_id:
@@ -1637,7 +1525,6 @@ class Economy(commands.Cog):
                 await ctx.send(f"You don't have enough balance!\n Your balance: <:goldpoints:1319902464115343473> {self.format_amount(sender_balance)}\n\n Use ,deposit <amount> <rsn> to add more.")
                 return
 
-            # Create confirmation view
             view = self.ConfirmView()
             confirm_msg = await ctx.send(
                 f"Are you sure you want to transfer <:goldpoints:1319902464115343473> {self.format_amount(amount)} to {recipient_name}?",
@@ -1647,50 +1534,43 @@ class Economy(commands.Cog):
             await view.wait()
             
             if view.value:
-                # Remove from sender
                 self.currency[sender_id] -= amount
                 
-                # Add to recipient
                 if recipient_id not in self.currency:
                     self.currency[recipient_id] = 0
                 self.currency[recipient_id] += amount
                 
-                # Save changes
                 self.save_currency()
                 
-                # Get new balances
                 sender_final_balance = await self.get_balance(sender_id)
                 recipient_final_balance = await self.get_balance(recipient_id)
                 
 
                 await self.log_transaction(
-                    ctx=ctx,  # Original context for sender
+                    ctx=ctx,
                     bet_amount=0,
-                    win_amount=-amount,  # Negative because they're sending
+                    win_amount=-amount,
                     final_balance=sender_final_balance,
                     transaction_type="transfer",
                     is_house=False
                 )
 
-                # Log transaction for recipient (if not house)
                 if recipient_arg.lower() == "house":
-                    # Log house transaction
                     await self.log_transaction(
                         ctx=ctx,
                         bet_amount=0,
-                        win_amount=amount,  # Positive because they're receiving
+                        win_amount=amount,
                         final_balance=sender_final_balance,
                         transaction_type="transfer",
                         is_house=True
                     )
                 else:
-                    # Create recipient context and log regular transfer
                     recipient_ctx = copy.copy(ctx)
                     recipient_ctx.author = recipient
                     await self.log_transaction(
-                        ctx=recipient_ctx,  # Use recipient_ctx here
+                        ctx=recipient_ctx,
                         bet_amount=0,
-                        win_amount=amount,  # Positive because they're receiving
+                        win_amount=amount,
                         final_balance=recipient_final_balance,
                         transaction_type="transfer",
                         is_house=False
@@ -1728,7 +1608,6 @@ class Economy(commands.Cog):
         if not logs.get("users"):
             return await ctx.send("No transactions to clear.")
 
-        # If "all" option is specified, ask for confirmation
         if option and option.lower() == 'all':
             confirm_msg = await ctx.send("⚠️ Are you sure you want to clear ALL transaction logs for ALL users? This cannot be undone!\n"
                                     "React with ✅ to confirm or ❌ to cancel.")
@@ -1742,7 +1621,6 @@ class Economy(commands.Cog):
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
                 
                 if str(reaction.emoji) == '✅':
-                    # Clear all transactions but keep the structure
                     logs["users"] = {}
                     with open('logs/transactions.json', 'w') as f:
                         json.dump(logs, f, indent=2)
@@ -1755,7 +1633,6 @@ class Economy(commands.Cog):
                 await ctx.send("<:remove:1328511957208268800> Confirmation timed out. Operation cancelled.")
                 return
 
-        # If no target specified, default to command user
         if not target:
             target = ctx.author
 
@@ -1764,7 +1641,6 @@ class Economy(commands.Cog):
         if user_id not in logs["users"]:
             return await ctx.send(f"No transactions found for {target.display_name}.")
 
-        # Ask for confirmation for individual user clear
         confirm_msg = await ctx.send(f"⚠️ Are you sure you want to clear all transaction logs for {target.display_name}?\n"
                                 "React with ✅ to confirm or ❌ to cancel.")
         await confirm_msg.add_reaction('✅')
@@ -1777,7 +1653,6 @@ class Economy(commands.Cog):
             reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
             
             if str(reaction.emoji) == '✅':
-                # Remove user's transactions
                 del logs["users"][user_id]
                 with open('logs/transactions.json', 'w') as f:
                     json.dump(logs, f, indent=2)
@@ -1795,33 +1670,28 @@ class Economy(commands.Cog):
     async def staking(self, ctx):
         await ctx.message.delete()
 
-        # Get commands from multiple cogs
         commands_list = []
-        cogs_to_include = ['Economy', 'GambleSystem', 'Profile']  # Add the names of cogs you want to include
+        cogs_to_include = ['Economy', 'GambleSystem', 'Profile']
         
         for cog_name in cogs_to_include:
             cog = self.bot.get_cog(cog_name)
             if cog:
                 commands_list.extend(cog.get_commands())
         
-        # Sort all commands alphabetically
         commands_list = sorted(commands_list, key=lambda x: x.name)
 
-        # Rest of your existing code remains the same
         command_descriptions = []
         for cmd in commands_list:
             aliases = f" (aliases: {', '.join(cmd.aliases)})" if cmd.aliases else ""
             description = cmd.help or "No description available"
             command_descriptions.append(f"`,{cmd.name}{aliases}`")
 
-        # Split into pages (5 commands per page)
         pages = []
         page_size = 7
         for i in range(0, len(command_descriptions), page_size):
             page = "\n".join(command_descriptions[i:i + page_size])
             pages.append(page)
 
-        # Create embeds for each page
         embeds = []
         for i, page in enumerate(pages, 1):
             embed = discord.Embed(
@@ -1832,7 +1702,6 @@ class Economy(commands.Cog):
             embed.set_footer(text=f"Page {i}/{len(pages)} • Command list will be deleted after 30s of inactivity", icon_url=ctx.author.avatar.url)
             embeds.append(embed)
 
-        # Send message with pagination
         view = PaginationView(embeds)
         message = await ctx.send(embed=embeds[0], view=view)
         view.message = message
@@ -1850,12 +1719,10 @@ class Economy(commands.Cog):
                 await ctx.send("Please specify your opponent and bet amount! Example: ,challenge @player 1000")
                 return
 
-            # Can't challenge yourself
             if opponent.id == ctx.author.id:
                 await ctx.send("You cannot challenge yourself!")
                 return
 
-            # Parse bet amount
             try:
                 bet_amount = self.parse_amount(bet)
             except ValueError:
@@ -1866,22 +1733,17 @@ class Economy(commands.Cog):
                 await ctx.send("Bet amount must be positive!")
                 return
 
-            # Calculate house tax (5%)
             house_tax = int(bet_amount * 0.05)
             win_amount = bet_amount - house_tax
 
-            # Check challenger's balance
             challenger_id = str(ctx.author.id)
             challenger_balance = await self.get_balance(challenger_id)
 
-            # Check opponent's balance
             opponent_id = str(opponent.id)
             opponent_balance = await self.get_balance(opponent_id)
 
-            # House ID (replace with your actual house account ID)
             house_id = "1233966655923552370"
 
-            # Verify both players have enough balance
             if challenger_balance < bet_amount:
                 await ctx.send(f"You don't have enough balance! Your balance: <:goldpoints:1319902464115343473> {self.format_amount(challenger_balance)}\n\n Use ,deposit <amount> <rsn> to add more.")
                 return
@@ -1890,10 +1752,9 @@ class Economy(commands.Cog):
                 await ctx.send(f"{opponent.name} doesn't have enough balance! Their balance: <:goldpoints:1319902464115343473> {self.format_amount(opponent_balance)}")
                 return
 
-            house_tax = int(bet_amount * 0.05)  # 5% house tax
+            house_tax = int(bet_amount * 0.05)
             win_amount = bet_amount * 2 - house_tax
 
-            # Create challenge embed with tax info
             challenge_embed = discord.Embed(
                 title="🎲 PvP Coin Flip Challenge",
                 description=f"{ctx.author.mention} has challenged {opponent.mention} to a coin flip!",
@@ -1918,7 +1779,6 @@ class Economy(commands.Cog):
                 inline=False
             )
 
-            # Create accept/decline buttons
             class ChallengeView(discord.ui.View):
                 def __init__(self):
                     super().__init__(timeout=30.0)
@@ -1945,11 +1805,9 @@ class Economy(commands.Cog):
                         self.value = False
                         self.stop()
 
-            # Send challenge and wait for response
             view = ChallengeView()
             challenge_msg = await ctx.send(embed=challenge_embed, view=view)
 
-            # Wait for opponent's response
             await view.wait()
 
             if view.value is None:
@@ -1959,55 +1817,47 @@ class Economy(commands.Cog):
                 await challenge_msg.edit(content="Challenge declined!", embed=None, view=None)
                 return
 
-            # Determine result
             import secrets
             result = 'heads' if secrets.randbelow(2) == 0 else 'tails'
             
-            # Determine winner
             winner_id = challenger_id if result != view.choice else opponent_id
             loser_id = opponent_id if result != view.choice else challenger_id
             winner = ctx.author if winner_id == challenger_id else opponent
             loser = opponent if winner_id == challenger_id else ctx.author
 
-            # Create contexts for both players
             winner_ctx = copy.copy(ctx)
             winner_ctx.author = winner
             
             loser_ctx = copy.copy(ctx)
             loser_ctx.author = loser
 
-            # Log transaction for winner
             await self.log_transaction(
                 ctx=winner_ctx,
                 bet_amount=bet_amount,
-                win_amount=win_amount,  # They win the bet minus house tax
+                win_amount=win_amount,
                 final_balance=self.currency[winner_id],
                 transaction_type="game",
                 is_house=False
             )
 
-            # Log transaction for loser
             await self.log_transaction(
                 ctx=loser_ctx,
                 bet_amount=bet_amount,
-                win_amount=-bet_amount,  # They lose their bet
+                win_amount=-bet_amount,
                 final_balance=self.currency[loser_id],
                 transaction_type="game",
                 is_house=False
             )
 
-            self.update_stats(winner_id, bet_amount, win_amount)  # Winner gets win_amount as profit
-            self.update_stats(loser_id, bet_amount, 0)  # Loser gets 0 winnings
+            self.update_stats(winner_id, bet_amount, win_amount)
+            self.update_stats(loser_id, bet_amount, 0)
 
-            # Update balances with house tax
             self.currency[winner_id] = self.currency.get(winner_id, 0) + win_amount
             self.currency[loser_id] = self.currency.get(loser_id, 0) - bet_amount
             self.currency[house_id] = self.currency.get(house_id, 0) + house_tax
 
-            # Save changes
             self.save_currency()  
 
-            # Create result embed
             result_embed = discord.Embed(
                 title="🎲 PvP Coin Flip Result",
                 color=discord.Color.green()
@@ -2045,26 +1895,22 @@ class Economy(commands.Cog):
 
     async def spin_animation(self, embed, msg, final_symbols, weighted_symbols):
         for position in range(3):
-            # Random number of spins for each position (3-5)
             spins = random.randint(3, 5)
-            used_symbols = set()  # Track used symbols to avoid repetition
+            used_symbols = set()
             
             for _ in range(spins):
                 temp_symbols = list(final_symbols)
                 
-                # Generate a new random symbol that hasn't been used yet
                 available_symbols = [s for s in weighted_symbols if s not in used_symbols]
-                if not available_symbols:  # Reset if we run out of unique symbols
+                if not available_symbols:
                     used_symbols.clear()
                     available_symbols = weighted_symbols
                     
                 random_symbol = random.choice(available_symbols)
                 used_symbols.add(random_symbol)
                 
-                # Update the current position with the new symbol
                 temp_symbols[position] = random_symbol
                 
-                # For positions not yet reached, show random spinning symbols
                 for i in range(position + 1, 3):
                     temp_symbols[i] = random.choice(weighted_symbols)
                     
@@ -2073,7 +1919,6 @@ class Economy(commands.Cog):
                 await msg.edit(embed=embed)
                 await asyncio.sleep(0.5)
             
-            # After spins complete, show the actual final symbol for this position
             temp_symbols = list(final_symbols[:position + 1])
             for i in range(position + 1, 3):
                 temp_symbols.append(random.choice(weighted_symbols))
@@ -2088,24 +1933,19 @@ class Economy(commands.Cog):
         weights = [data["weight"] for data in self.symbols.values()]
         
         if guaranteed_match:
-            # Pick a random symbol for the match
             match_symbol = random.choices(symbol_list, weights=weights, k=1)[0]
             
-            # For three matching symbols (3% chance)
             if random.random() < 0.07:
                 return [match_symbol] * 3
                 
-            # For two matching symbols (7% chance)
             elif random.random() < 0.14:
                 result = [match_symbol] * 2
-                # Add one different symbol
                 remaining_symbols = [s for s in symbol_list if s != match_symbol]
                 remaining_weights = [weights[symbol_list.index(s)] for s in remaining_symbols]
                 result.append(random.choices(remaining_symbols, weights=remaining_weights, k=1)[0])
-                random.shuffle(result)  # Randomize position of matches
+                random.shuffle(result)
                 return result
 
-        # No guaranteed matches - generate each reel independently
         result = []
         for _ in range(3):
             symbol = random.choices(symbol_list, weights=weights, k=1)[0]
@@ -2120,22 +1960,18 @@ class Economy(commands.Cog):
     @transaction_limit()
     @user_lock()
     async def slots(self, ctx, amount=None):
-        # Define slot machine symbols with weights and multipliers (total weight = 100)
         symbols = self.symbols
         
-        # Create weighted symbol list
         weighted_symbols = []
         for symbol, data in symbols.items():
             weighted_symbols.extend([symbol] * data["weight"])
 
         if amount is None:
-                    # Help embed code
                     help_embed = discord.Embed(
                         title="<:gamba:1328512027282374718> Slot Machine Guide <:gamba:1328512027282374718>",
                         description="Bet your coins for a chance to win big!\nUse: `,slots <amount>`",
                         color=discord.Color.gold()
                     )
-                    # Add symbol information
                     symbols_info = ""
                     for symbol, data in self.symbols.items():
                         multiplier = data["multiplier"]
@@ -2166,7 +2002,6 @@ class Economy(commands.Cog):
                     return
 
         try:
-            # Get user and house info
             user_id = str(ctx.author.id)
             house_id = str(self.bot.user.id)
             print(f"User ID: {user_id}, House ID: {house_id}")
@@ -2177,7 +2012,6 @@ class Economy(commands.Cog):
             if house_id not in self.currency:
                 self.currency[house_id] = 0   
 
-            # Validate bet and balances
             if amount <= 0:
                 await ctx.send("You must bet at least 1 coin!")
                 return
@@ -2186,39 +2020,32 @@ class Economy(commands.Cog):
                 await ctx.send(f"You don't have enough coins! Your balance: {self.format_amount(user_balance)} <:goldpoints:1319902464115343473> ")
                 return
 
-            # Check house balance
             house_balance = int(self.currency[house_id])
-            max_possible_win = amount * 30  # Maximum possible win (Diamond 30x)
+            max_possible_win = amount * 30
             if house_balance < max_possible_win:
                 await ctx.send("The house doesn't have enough balance to cover potential winnings! Please try a smaller bet.")
                 return
 
-            # Deduct bet ONCE at the start
             self.currency[user_id] -= amount
             self.currency[house_id] += amount
             while_betting_balance = await self.get_balance(user_id)
 
-            # Create and send initial embed
             embed = discord.Embed(title="<:gamba:1328512027282374718> Slot Machine <:gamba:1328512027282374718>", color=discord.Color.gold())
             embed.add_field(name="Spinning...", value="| ❓ | ❓ | ❓ |")
             embed.set_footer(text=f"Balance: {self.format_amount(while_betting_balance)} GP", icon_url=ctx.author.avatar.url)
             msg = await ctx.send(embed=embed)
 
-            # Generate final results
-            guaranteed_match = random.random() < 0.1  # 10% chance for a guaranteed match
+            guaranteed_match = random.random() < 0.1
             final_symbols = self.generate_symbols(guaranteed_match=guaranteed_match)
 
-            # Spinning animation
             await self.spin_animation(embed, msg, final_symbols, weighted_symbols)
 
-            # Calculate matches
             symbol_counts = {}
             for symbol in final_symbols:
                 symbol_counts[symbol] = symbol_counts.get(symbol, 0) + 1
             
             max_matches = max(symbol_counts.values())
 
-            # Calculate and apply winnings
             if max_matches == 3:
                 symbol = max(symbol_counts, key=symbol_counts.get)
                 multiplier = symbols[symbol]["multiplier"]
@@ -2226,11 +2053,9 @@ class Economy(commands.Cog):
                 tax_amount = int(gross_win * 0.05)
                 winnings = gross_win - tax_amount
                 
-                # Add winnings (bet already deducted)
                 self.currency[user_id] += winnings
                 self.currency[house_id] -= winnings
                 
-                # Get final balance after transaction
                 final_balance = int(self.currency[user_id])
                 
                 result = f"🎉 JACKPOT! Triple {symbols[symbol]['name']}! 🎉"
@@ -2244,11 +2069,9 @@ class Economy(commands.Cog):
                 tax_amount = int(gross_win * 0.05)
                 winnings = gross_win - tax_amount
                 
-                # Add winnings (bet already deducted)
                 self.currency[user_id] += winnings
                 self.currency[house_id] -= winnings
                 
-                # Get final balance after transaction
                 final_balance = int(self.currency[user_id])
                 
                 result = f"🎈 Double {symbols[matching_symbol]['name']}! 🎈"
@@ -2256,17 +2079,14 @@ class Economy(commands.Cog):
                 
             else:
                 winnings = 0
-                # Get final balance after bet was deducted
                 final_balance = int(self.currency[user_id])
                 tax_amount = 0
                 result = "No match!"
                 await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
 
-            # Update stats and save
             self.update_stats(user_id, amount, winnings)
             self.save_currency()
 
-            # Create result embed
             result_embed = discord.Embed(
                 title="<:gamba:1328512027282374718> Slot Machine Results <:gamba:1328512027282374718>",
                 color=discord.Color.green() if winnings > 0 else discord.Color.red()
@@ -2315,7 +2135,6 @@ class Economy(commands.Cog):
                 color=discord.Color.gold()
             )
             
-            # Add fields explaining the flowers and their values
             help_embed.add_field(
                 name="Regular Flowers",
                 value=(
@@ -2352,20 +2171,16 @@ class Economy(commands.Cog):
             await ctx.send(embed=help_embed)
             return
 
-        # If bet_amount is provided, continue with the existing game logic
         try:
             print(f"Raw bet_amount: {bet_amount!r}")
             
-            # Make sure bet_amount is a string and strip any whitespace
             bet_amount = str(bet_amount).strip()
             print(f"Processed bet_amount: {bet_amount!r}")
             
-            # Try to parse the amount
             amount = self.parse_amount(bet_amount)
             print(f"Parsed amount: {amount}")
 
                      
-            # Flowers with their values and weights (odds)
             flowers = {
                 "<:rainbow:1326018658648195103>": {"value": 0, "weight": 12},    
                 "<:pastel:1326018646098706564>": {"value": 0, "weight": 12},    
@@ -2378,7 +2193,6 @@ class Economy(commands.Cog):
                 "<:black:1326018632739721327>": {"value": 420, "weight": 0.2}  
             }
 
-            # Validate bet amount first
 
             if amount <= 0:
                 await ctx.send("Please enter a valid bet amount!")
@@ -2387,7 +2201,6 @@ class Economy(commands.Cog):
             print(f"House ID {house_id}")
 
 
-                        # Create buttons for side selection
             class SideButtons(discord.ui.View):
                 def __init__(self):
                     super().__init__(timeout=30)
@@ -2398,25 +2211,24 @@ class Economy(commands.Cog):
                     if interaction.user.id == ctx.author.id:
                         self.value = "player"
                         self.stop()
-                        await interaction.message.delete()  # Delete the message with buttons
+                        await interaction.message.delete()
 
                 @discord.ui.button(label="Cancel", style=discord.ButtonStyle.gray)
                 async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id == ctx.author.id:
                         self.stop()
                         await ctx.message.delete()
-                        await interaction.message.delete()  # Delete the message with buttons  
+                        await interaction.message.delete()
 
                 @discord.ui.button(label="Banker", style=discord.ButtonStyle.blurple)
                 async def banker(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id == ctx.author.id:
                         self.value = "banker"
                         self.stop()
-                        await interaction.message.delete()  # Delete the message with buttons
+                        await interaction.message.delete()
                         
                       
 
-            # Show side selection buttons
             view = SideButtons()
             embed = discord.Embed(
                 title="Choose Your Side",
@@ -2432,17 +2244,15 @@ class Economy(commands.Cog):
 
             selection_message = await ctx.send(embed=embed, view=view)
 
-            # Wait for button press
             await view.wait()
 
-            # If no button was pressed (timeout)
             if view.value is None:
                 await selection_message.delete()
                 await ctx.message.delete()
                 await ctx.send("Game cancelled - no side selected in time!")
                 return
                 
-            side = view.value  # This will be either "player" or "banker"            
+            side = view.value
             if house_id not in self.currency:
                 self.currency[house_id] = 0      
   
@@ -2456,12 +2266,10 @@ class Economy(commands.Cog):
                 await ctx.send("The house doesn't have enough balance to cover potential winnings! Please try a smaller bet.")
                 return             
 
-            # Check if user has enough balance
             user_id = str(ctx.author.id)
             if user_id not in self.currency:
                 self.currency[user_id] = 0
 
-           # If they dont, tell them they dont have enough balance
             
             if self.currency[user_id] < amount:
                 await ctx.send(f"You don't have enough balance for this bet! Your balance: {self.format_amount(await self.get_balance(user_id))} <:goldpoints:1319902464115343473>\n\n Use ,deposit <amount> <rsn> to add more.")
@@ -2501,13 +2309,11 @@ class Economy(commands.Cog):
                 print(f"Picked flower: {chosen_flower} with value: {flowers[chosen_flower]['value']}")
                 return chosen_flower, flowers[chosen_flower]["value"]
 
-            # Initialize game state with placeholder seeds
             player_hand = []
             banker_hand = []
-            player_flowers = ["<:seeds:1326024477145956433>"] * 3  # 3 placeholder seeds
-            banker_flowers = ["<:seeds:1326024477145956433>"] * 3  # 3 placeholder seeds
+            player_flowers = ["<:seeds:1326024477145956433>"] * 3
+            banker_flowers = ["<:seeds:1326024477145956433>"] * 3
 
-            # Create initial embed showing all placeholders
             game_embed = discord.Embed(title="<:seeds:1326024477145956433> Flower Staking Game", color=discord.Color.gold())
             game_embed.add_field(
                 name="Your Bet", 
@@ -2527,7 +2333,6 @@ class Economy(commands.Cog):
             
             game_message = await ctx.send(embed=game_embed)
 
-            # Player's first two cards
             game_embed.add_field(name="Status", value="Drawing player's cards...", inline=False)
             await game_message.edit(embed=game_embed)
             await asyncio.sleep(1)
@@ -2537,7 +2342,6 @@ class Economy(commands.Cog):
                 player_hand.append(p_value)
                 player_flowers[i] = p_flower
 
-                # Clear previous fields and update the embed
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
@@ -2559,13 +2363,12 @@ class Economy(commands.Cog):
 
                 def check_special_flowers(hand_values, flowers_display):
                     for value, flower in zip(hand_values, flowers_display):
-                        if value == 69:  # White Flower
+                        if value == 69:
                             return "win", f"**WHITE FLOWER!** Instant Win! 💰\n", discord.Color.green()
-                        elif value == 420:  # Black Flower
+                        elif value == 420:
                             return "loss", "**BLACK FLOWER!** House Wins! 💀", discord.Color.red()
                     return None, None, None
 
-                # Check player's hand for special flowers
                 result, message, color = check_special_flowers(player_hand, player_flowers)
                 if result:
                     game_embed.color = color
@@ -2624,7 +2427,6 @@ class Economy(commands.Cog):
                 await asyncio.sleep(1)
 
 
-            # Check if the player needs a third card
             player_total = calculate_total(player_hand)
             if needs_third_card(player_total):
                 game_embed.add_field(
@@ -2635,15 +2437,13 @@ class Economy(commands.Cog):
                 await game_message.edit(embed=game_embed)
                 await asyncio.sleep(1)
 
-                # Pick a new flower and value for the third card
-                p_flower, p_value = pick_flower()  # New card for third draw
+                p_flower, p_value = pick_flower()
                 player_hand.append(p_value)
                 player_flowers[2] = p_flower
                 player_total = sum(player_hand) % 10 
                 print(f"Player's hand after third card: {player_hand}")
-                print(f"Final total after third card: {player_total}")  # Assign the third card properly
+                print(f"Final total after third card: {player_total}")
 
-                # Update the embed with the new hand
                 game_embed.clear_fields()
                 game_embed.add_field(
                     name="Your Bet", 
@@ -2663,17 +2463,15 @@ class Economy(commands.Cog):
                 await game_message.edit(embed=game_embed)
                 await asyncio.sleep(1)
 
-            # Now banker's turn
             game_embed.add_field(name="Status", value="Drawing banker's cards...", inline=False)
 
             await game_message.edit(embed=game_embed)
             await asyncio.sleep(1)
 
-            # Banker's two cards
             for i in range(2):
                 b_flower, b_value = pick_flower()
                 banker_hand.append(b_value)
-                banker_flowers[i] = b_flower  # Replace placeholder with actual flower
+                banker_flowers[i] = b_flower
                 
                 game_embed.clear_fields()
                 game_embed.add_field(
@@ -2694,7 +2492,6 @@ class Economy(commands.Cog):
                 await game_message.edit(embed=game_embed)
                 await asyncio.sleep(1)
 
-            # Check if banker needs third card
             banker_total = calculate_total(banker_hand)
             if needs_third_card(banker_total):
                 print(f"Banker's total: {banker_total}, needs third card")
@@ -2708,7 +2505,7 @@ class Economy(commands.Cog):
 
                 b_flower, b_value = pick_flower()
                 banker_hand.append(b_value)
-                banker_flowers[2] = b_flower  # Replace third placeholder
+                banker_flowers[2] = b_flower
                 banker_total = calculate_total(banker_hand)
 
                 game_embed.clear_fields()
@@ -2745,12 +2542,11 @@ class Economy(commands.Cog):
                     winnings = amount * 1.95
                     self.update_stats(user_id, amount, winnings)
                 else:
-                    self.currency[user_id] += amount  # Player wins
+                    self.currency[user_id] += amount
                 
                 self.save_currency()
                 return
 
-            # Final result embed
             final_embed = discord.Embed(title="<:seeds:1326024477145956433> Flower Staking Game", color=discord.Color.gold())
             final_embed.add_field(
                 name="Your Bet", 
@@ -2768,10 +2564,8 @@ class Economy(commands.Cog):
                 inline=False
             )
                
-            # Determine winner and update balances
 
             if player_total == 9 and banker_total == 9:
-                # Tie on 9s, banker wins
                 if side == "banker":
                     final_embed.add_field(
                         name="Result", 
@@ -2786,7 +2580,6 @@ class Economy(commands.Cog):
                     await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
                     
                 else:
-                    # Player bet on player and lost
                     final_embed.add_field(
                         name="Result", 
                         value="Double 9s! Banker wins! <a:xdd:1221066292631568456>", 
@@ -2801,7 +2594,6 @@ class Economy(commands.Cog):
 
             elif player_total > banker_total:
                 if side == "player":
-                    # Player bet on player and won
                     winnings = amount * 2
                     tax_amount = int(winnings * 0.05)
                     net_winnings = winnings - tax_amount
@@ -2822,7 +2614,6 @@ class Economy(commands.Cog):
                         text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} ", icon_url=ctx.author.avatar.url
                     )                    
                 else:
-                    # Player bet on banker and lost
                     final_embed.add_field(
                         name="Result", 
                         value="Player wins! You lose! <a:xdd:1221066292631568456>", 
@@ -2837,8 +2628,7 @@ class Economy(commands.Cog):
 
             elif banker_total > player_total:
                 if side == "banker":
-                    # Player bet on banker and won
-                    winnings = amount * 2  # Slightly lower multiplier for banker
+                    winnings = amount * 2
                     tax_amount = int(winnings * 0.05)
                     net_winnings = winnings - tax_amount
                     self.currency[user_id] += net_winnings
@@ -2858,7 +2648,6 @@ class Economy(commands.Cog):
                         text=f"New Balance: {self.format_amount(await self.get_balance(user_id))} ", icon_url=ctx.author.avatar.url
                     )                    
                 else:
-                    # Player bet on player and lost
                     final_embed.add_field(
                         name="Result", 
                         value="Banker wins! You lose! <a:xdd:1221066292631568456>", 
@@ -2872,8 +2661,7 @@ class Economy(commands.Cog):
                     await self.log_transaction(ctx, amount, -amount, final_balance, is_house=False)
 
             else:
-                # Tie (push)
-                self.currency[user_id] += amount  # Refund the bet
+                self.currency[user_id] += amount
                 self.currency[house_id] -= amount
                 final_balance = await self.get_balance(user_id)
                 await self.log_transaction(ctx, amount, 0, final_balance, is_house=False)
@@ -2889,14 +2677,12 @@ class Economy(commands.Cog):
                 )
 
 
-            # Save the updated currency values
 
 
             self.save_currency()
             await game_message.edit(embed=final_embed)
 
         except Exception as e:
-            # Refund the bet amount in case of an error
             print(f"An error occurred: {str(e)}, refunding bet: {amount}")
             self.currency[user_id] += amount
             self.currency[house_id] -= amount
@@ -2911,11 +2697,10 @@ class Economy(commands.Cog):
 
 
     @commands.command(name="limits")
-    @commands.is_owner()  # Only admins can change limits
+    @commands.is_owner()
     async def set_limits(self, ctx, min_amount: str = None, max_amount: str = None):
         """Set minimum and maximum gambling limits"""
         
-        # If no arguments, show current limits
         if min_amount is None or max_amount is None:
             embed = discord.Embed(title="Current Gambling Limits", color=discord.Color.gold())
             embed.add_field(name="Minimum Bet", value=f"${limits_manager.current_min:,}", inline=False)
@@ -2923,14 +2708,12 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
             return
 
-        # Parse amounts (supporting k, m, b notation)
         try:
 
 
             new_min = self.parse_amount(min_amount)
             new_max = self.parse_amount(max_amount)
 
-            # Validation
             if new_min <= 0 or new_max <= 0:
                 await ctx.send("<:remove:1328511957208268800> Limits must be positive numbers!")
                 return
@@ -2939,12 +2722,10 @@ class Economy(commands.Cog):
                 await ctx.send("<:remove:1328511957208268800> Minimum limit must be less than maximum limit!")
                 return
 
-            # Update limits
             limits_manager.current_min = new_min
             limits_manager.current_max = new_max
             limits_manager.save_limits()
 
-            # Confirm changes
             embed = discord.Embed(title="Gambling Limits Updated", color=discord.Color.green())
             embed.add_field(name="New Minimum Bet", value=f"${new_min:,}", inline=False)
             embed.add_field(name="New Maximum Bet", value=f"${new_max:,}", inline=False)
@@ -2965,21 +2746,17 @@ class Economy(commands.Cog):
     async def set_balance(self, ctx, target: typing.Union[discord.Member, str], amount: str):
         """Set a user's balance or all users' balances to a specific amount"""
         try:
-            # Parse the amount (supporting k, m, b notation)
 
             new_balance = self.parse_amount(amount)
             
             if isinstance(target, str) and target.lower() == "all":
-                # Store old balances for the embed
                 old_balances = self.currency.copy()
                 
-                # Update all balances
                 for user_id in self.currency:
                     self.currency[user_id] = new_balance
                 
                 self.save_currency()
 
-                # Create embed for response
                 embed = discord.Embed(
                     title="All Balances Updated",
                     description=f"Set {len(self.currency)} user balances to {self.format_amount(new_balance)}",
@@ -2989,21 +2766,18 @@ class Economy(commands.Cog):
                     name="Sample Changes",
                     value="\n".join([
                         f"<@{user_id}>: {self.format_amount(old_balances[user_id])} → {self.format_amount(new_balance)}"
-                        for user_id in list(old_balances.keys())[:5]  # Show first 5 users as examples
+                        for user_id in list(old_balances.keys())[:5]
                     ]) + ("\n..." if len(old_balances) > 5 else ""),
                     inline=False
                 )
 
             else:
-                # Original single-user logic
                 user_id = str(target.id)
                 old_balance = self.currency.get(user_id, 0)
                 
-                # Set the new balance
                 self.currency[user_id] = new_balance
                 self.save_currency()
 
-                # Create embed for response
                 embed = discord.Embed(
                     title="Balance Updated",
                     color=discord.Color.green() if new_balance >= 0 else discord.Color.red()
@@ -3050,15 +2824,11 @@ class Economy(commands.Cog):
             color=discord.Color.gold()
         )
         
-        # Get all vault subcommands
         for command in self.vault.walk_commands():
-            # Get command aliases if any
             aliases = f" ({', '.join(command.aliases)})" if command.aliases else ""
             
-            # Get command description
             description = command.help or "No description available"
             
-            # Format command syntax
             if command.signature:
                 syntax = f",vault {command.name} {command.signature}"
             else:
@@ -3087,14 +2857,11 @@ class Economy(commands.Cog):
             last_interest = vault_data[user_id].get("last_interest", current_time)
             balance = vault_data[user_id]["balance"]
 
-            # Calculate hours passed
             hours_passed = (current_time - last_interest) / 3600
             
-            # Calculate interest (1% per day = 0.0417% per hour)
-            hourly_rate = 0.0001042 #/ 24 hours
+            hourly_rate = 0.0001042
             interest = int(balance * hourly_rate * hours_passed)
             
-            # Update balance and last interest time
             vault_data[user_id]["balance"] += interest
             vault_data[user_id]["last_interest"] = current_time
             self.save_vault_data(vault_data)
@@ -3173,43 +2940,35 @@ class Economy(commands.Cog):
                 await ctx.send("Please specify an amount to deposit!")
                 return
                 
-            # Parse amount
             try:
                 amount = self.parse_amount(str(amount))
             except ValueError:
                 await ctx.send("Invalid amount format! Use numbers with K, M, B, or T (e.g., 1.5K, 2M, 3B)")
                 return
 
-            # Check minimum deposit
             if amount < 500000:
                 await ctx.send("Minimum deposit amount is 500k!")
                 return
                 
             user_id = str(ctx.author.id)
             
-            # Check if user has enough money
             if self.currency.get(user_id, 0) < amount:
                 await ctx.send("You don't have enough money!")
                 return
                 
-            # Load vault data
             vault_data = self.load_vault_data()
             
-            # Initialize user's vault if it doesn't exist
             if user_id not in vault_data:
                 vault_data[user_id] = {
-                    "balance": amount,  # Set initial balance
+                    "balance": amount,
                     "locked": False,
                     "lock_until": None
                 }
             else:
-                # Add to existing balance
                 vault_data[user_id]["balance"] = vault_data[user_id]["balance"] + amount
                 
-            # Update wallet balance
             self.currency[user_id] -= amount
             
-            # Save changes
             self.save_vault_data(vault_data)
             self.save_currency()
             
@@ -3230,11 +2989,11 @@ class Economy(commands.Cog):
                 inline=True
             )
             
-            final_balance = self.currency[user_id]  # Vault balance after deposit
+            final_balance = self.currency[user_id]
             await self.log_transaction(
                 ctx=ctx,
                 bet_amount=0,
-                win_amount=amount,  # Amount deposited
+                win_amount=amount,
                 final_balance=final_balance,
                 transaction_type="vault_deposit"
             )            
@@ -3243,7 +3002,6 @@ class Economy(commands.Cog):
         except Exception as e:
             print(f"Deposit error: {e}")
             await ctx.send(f"An error occurred: {str(e)}")
-            # Refund if error occurs
             self.currency[user_id] += amount
             self.save_currency()
 
@@ -3255,7 +3013,6 @@ class Economy(commands.Cog):
                 await ctx.send("Please specify an amount to remove!")
                 return
                 
-            # Parse amount
             try:
                 amount = self.parse_amount(str(amount))
             except ValueError:
@@ -3265,12 +3022,10 @@ class Economy(commands.Cog):
             user_id = str(ctx.author.id)
             vault_data = self.load_vault_data()
             
-            # Check if user has a vault
             if user_id not in vault_data:
                 await ctx.send("You don't have a vault yet!")
                 return
 
-            # Check if vault is locked
             if vault_data[user_id].get("locked", False):
                 lock_time = datetime.fromtimestamp(vault_data[user_id]["lock_until"])
                 if lock_time > datetime.now():
@@ -3290,7 +3045,6 @@ class Economy(commands.Cog):
                     vault_data[user_id]["lock_until"] = None
                     self.save_vault_data(vault_data)
 
-            # Check balance
             if vault_data[user_id]["balance"] < amount:
                 await ctx.send("You don't have enough in your vault!")
                 return
@@ -3299,11 +3053,9 @@ class Economy(commands.Cog):
                 await ctx.send("Minimum withdrawal amount is 500k!")
                 return
 
-            # Update balances
             vault_data[user_id]["balance"] -= amount
             self.currency[user_id] = self.currency.get(user_id, 0) + amount
             
-            # Save changes
             self.save_vault_data(vault_data)
             self.save_currency()
             
@@ -3324,11 +3076,11 @@ class Economy(commands.Cog):
                 inline=True
             )
 
-            final_balance = self.currency[user_id]  # Wallet balance after withdrawal
+            final_balance = self.currency[user_id]
             await self.log_transaction(
                 ctx=ctx,
                 bet_amount=0,
-                win_amount=-amount,  # Negative amount for withdrawal
+                win_amount=-amount,
                 final_balance=final_balance,
                 transaction_type="vault_withdraw"
             )            
@@ -3345,13 +3097,10 @@ class Economy(commands.Cog):
         try:
             await ctx.message.delete()
             
-            # Load vault data from JSON
             vault_data = self.load_vault_data()
             
-            # Convert to list of (user_id, balance) tuples
             vault_list = [(user_id, data['balance']) for user_id, data in vault_data.items()]
             
-            # Sort by balance (highest to lowest)
             vault_list.sort(key=lambda x: x[1], reverse=True)
 
             embed = discord.Embed(
@@ -3360,7 +3109,6 @@ class Economy(commands.Cog):
                 color=discord.Color.gold()
             )
 
-            # Add top 10 players to embed
             for i, (user_id, balance) in enumerate(vault_list[:10], 1):
                 try:
                     user = await self.bot.fetch_user(int(user_id))
@@ -3384,7 +3132,6 @@ class Economy(commands.Cog):
                     inline=False
                 )
 
-            # Add footer with total vaults
             total_vaults = len(vault_list)
             total_wealth = sum(balance for _, balance in vault_list)
             embed.set_footer(text=f"Total Vaults: {total_vaults} | Combined Wealth: {self.format_amount(total_wealth)}")
@@ -3398,20 +3145,17 @@ class Economy(commands.Cog):
 
     def load_last_interest_time(self):
         try:
-            # Check if the .json directory exists, if not create it
             if not os.path.exists('.json'):
                 os.makedirs('.json')
                 
             json_path = '.json/last_interest.json'
             
-            # If file doesn't exist, create it with current time
             if not os.path.exists(json_path):
                 current_time = datetime.now()
                 with open(json_path, 'w') as f:
                     json.dump({'last_interest': current_time.timestamp()}, f)
                 return current_time
                 
-            # If file exists, read from it
             with open(json_path, 'r') as f:
                 data = json.load(f)
                 return datetime.fromtimestamp(data['last_interest'])
@@ -3432,12 +3176,11 @@ class Economy(commands.Cog):
             print("=== Starting Interest Payment Process ===")
             print(f"Processing interest payment for {payment_time}")
             vault_data = self.load_vault_data()
-            house_id = "1233966655923552370"  # Your house ID
+            house_id = "1233966655923552370"
             total_interest = 0
             
             print("\nChecking locked vaults...")
             locked_count = 0
-            # First pass: Calculate total interest needed
             for user_id, data in vault_data.items():
                 if data.get("locked", False):
                     locked_count += 1
@@ -3450,11 +3193,9 @@ class Economy(commands.Cog):
                 print("No locked vaults found!")
                 return False
 
-            # Debug house balance access
 
             
-            # Check if house can afford interest
-            house_balance = int(self.currency.get(str(house_id), 0))  # Convert ID to string
+            house_balance = int(self.currency.get(str(house_id), 0))
             print(f"House ID: {house_id}")
             print(f"House balance found: {house_balance}")
             
@@ -3462,7 +3203,6 @@ class Economy(commands.Cog):
                 print(f"WARNING: House cannot afford interest payments! Need: {total_interest}, Have: {house_balance}")
                 return False
 
-            # Second pass: Apply interest to each locked vault
             print("\nApplying interest payments...")
             for user_id, data in vault_data.items():
                 if data.get("locked", False):
@@ -3472,8 +3212,7 @@ class Economy(commands.Cog):
                     vault_data[user_id]["balance"] = new_balance
                     print(f"User {user_id}: Old balance={current_balance}, Interest={interest}, New balance={new_balance}")
 
-            # Update house balance and save everything
-            self.currency[str(house_id)] = house_balance - total_interest  # Convert ID to string
+            self.currency[str(house_id)] = house_balance - total_interest
             print(f"\nUpdating house balance: {house_balance} -> {self.currency[str(house_id)]}")
             
             self.save_vault_data(vault_data)
@@ -3503,18 +3242,15 @@ class Economy(commands.Cog):
             print(f"Current time: {now}")
             print(f"Time elapsed: {time_elapsed}")
             
-            # Calculate how many payments were missed
             missed_payments = int(time_elapsed.total_seconds() // required_delay.total_seconds())
             print(f"Missed payments: {missed_payments}")
             
             if missed_payments > 0:
                 print(f"Found {missed_payments} missed payment(s)")
                 
-                # Process each missed payment
                 for i in range(missed_payments):
                     payment_time = last_interest_time + (required_delay * (i + 1))
                     
-                    # Don't process future payments
                     if payment_time > now:
                         print(f"Skipping future payment time: {payment_time}")
                         break
@@ -3548,7 +3284,6 @@ class Economy(commands.Cog):
             user_id = str(ctx.author.id)
             vault_data = self.load_vault_data()
 
-            # Check if user has a vault and minimum balance
             if user_id not in vault_data:
                 await ctx.send("You don't have a vault yet!")
                 return
@@ -3557,7 +3292,6 @@ class Economy(commands.Cog):
                 await ctx.send("You need at least 500k in your vault to lock it!")
                 return
 
-            # Check if already locked
             if vault_data[user_id].get("locked", False):
                 lock_until = datetime.fromtimestamp(vault_data[user_id]["lock_until"])
                 if lock_until > datetime.now():
@@ -3572,7 +3306,6 @@ class Economy(commands.Cog):
                     await ctx.send(embed=embed)
                     return
 
-            # Create informational embed
             info_embed = discord.Embed(
                 title="🔒 Vault Lock Information",
                 description=(
@@ -3650,19 +3383,16 @@ class Economy(commands.Cog):
             view = LockDurationView()
             message = await ctx.send(embed=info_embed, view=view)
 
-            # Wait for button interaction
             await view.wait()
             
             if view.value:
                 lock_duration = view.value
                 lock_until = datetime.now() + lock_duration
                 
-                # Save lock data
                 vault_data[user_id]["locked"] = True
                 vault_data[user_id]["lock_until"] = lock_until.timestamp()
                 self.save_vault_data(vault_data)
 
-                # Calculate when it unlocks
                 hours = int(lock_duration.total_seconds() // 3600)
                 minutes = int((lock_duration.total_seconds() % 3600) // 60)
 
@@ -3696,23 +3426,19 @@ class Economy(commands.Cog):
             user_id = str(ctx.author.id)
             vault_data = self.load_vault_data()
             house_id = "1233966655923552370" 
-            # Check if user has a vault
             if user_id not in vault_data:
                 await ctx.send("You don't have a vault yet!")
                 return
 
-            # Check if vault is actually locked
             if not vault_data[user_id].get("locked", False):
                 await ctx.send("Your vault is not locked!")
                 return
 
-            # Check minimum balance requirement
             current_balance = vault_data[user_id]["balance"]
-            if current_balance < 50000000:  # 50M minimum
+            if current_balance < 50000000:
                 await ctx.send("You need at least 50M in your vault to use emergency unlock!")
                 return
 
-            # Calculate 10% fee
             fee = int(current_balance * 0.10) 
             if fee != vault_data[user_id]['balance']:
                 print(f"Fee: {fee}")
@@ -3757,16 +3483,12 @@ class Economy(commands.Cog):
             )
             message = await ctx.send(embed=embed, view=view)
 
-            # Wait for button interaction
             await view.wait()
             
             if view.value is True:
-                # Apply fee
                 vault_data[user_id]["balance"] -= fee
-                # Unlock vault
                 vault_data[user_id]["locked"] = False
                 vault_data[user_id]["lock_until"] = None
-                # Save the changes
                 print(f"House balance before: {self.currency.get(house_id, 0)}")
                 self.currency[house_id] = self.currency.get(house_id, 0) + fee
                 self.save_vault_data(vault_data)

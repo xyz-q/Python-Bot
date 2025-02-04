@@ -23,7 +23,7 @@ class MerchantUpdater(commands.Cog):
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
             
-            stock = {}  # Initialize empty stock dictionary
+            stock = {}
             async with session.get('https://runescape.wiki/w/Travelling_Merchant%27s_Shop/Future', headers=headers) as response:
                 if response.status == 200:
                     html = await response.text()
@@ -31,9 +31,9 @@ class MerchantUpdater(commands.Cog):
                     
                     table = soup.find('table', class_="wikitable sticky-header")
                     if table:
-                        rows = table.find_all('tr')[1:]  # Skip header row
+                        rows = table.find_all('tr')[1:]
                         
-                        for row in rows[:30]:  # Limit to 30 days
+                        for row in rows[:30]:
                             date_cell = row.find('td')
                             if date_cell:
                                 date = date_cell.text.strip()
@@ -50,7 +50,6 @@ class MerchantUpdater(commands.Cog):
 
                     
                     
-                    # Save to JSON file
                     with open('merchant_stock.py', 'w') as f:
                         f.write(f"stock = {repr(stock)}\n")
                     
@@ -60,7 +59,6 @@ class MerchantUpdater(commands.Cog):
     async def before_update(self):
         """Wait for bot to be ready before starting the task"""
         await self.bot.wait_until_ready()
-        # Run once when loaded
         await self.update_merchant_stock()
 
     @commands.command(name="stockupdate", aliases=['merchupdate'])

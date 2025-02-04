@@ -11,10 +11,8 @@ class Timeout(commands.Cog):
     async def timeout(self, ctx, member: discord.Member, duration: int, *, reason=None):
         """Timeout a member for a specified duration (in minutes)"""
         try:
-            # Convert duration to timedelta
             time = timedelta(minutes=duration)
             
-            # Create DM embed
             dm_embed = discord.Embed(
                 title="You've Been Timed Out",
                 description=f"You have been timed out in {ctx.guild.name}, please create a ticket in the server using /ticket if you would like to appeal.",
@@ -25,16 +23,13 @@ class Timeout(commands.Cog):
             if reason:
                 dm_embed.add_field(name="Reason", value=reason, inline=False)
             
-            # Try to send DM to user
             try:
                 await member.send(embed=dm_embed)
             except discord.Forbidden:
                 await ctx.send("Could not send DM to the user.")
             
-            # Apply timeout
             await member.timeout(time, reason=reason)
             
-            # Send confirmation message in channel
             channel_embed = discord.Embed(
                 title="Member Timed Out",
                 description=f"{member.mention} has been timed out for {duration} minutes.",
@@ -56,7 +51,6 @@ class Timeout(commands.Cog):
     async def untimeout(self, ctx, member: discord.Member, *, reason=None):
         """Remove timeout from a member"""
         try:
-            # Create DM embed for untimeout
             dm_embed = discord.Embed(
                 title="Your Timeout Has Been Removed",
                 description=f"Your timeout in {ctx.guild.name} has been removed",
@@ -66,16 +60,13 @@ class Timeout(commands.Cog):
             if reason:
                 dm_embed.add_field(name="Reason", value=reason, inline=False)
             
-            # Try to send DM to user
             try:
                 await member.send(embed=dm_embed)
             except discord.Forbidden:
                 await ctx.send("Could not send DM to the user.")
             
-            # Remove timeout
             await member.timeout(None, reason=reason)
             
-            # Send confirmation message in channel
             channel_embed = discord.Embed(
                 title="Timeout Removed",
                 description=f"Timeout has been removed from {member.mention}",

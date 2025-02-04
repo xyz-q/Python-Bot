@@ -19,10 +19,10 @@ class TravellingMerchant(commands.Cog):
         self.user_preferences = {}
         self.load_preferences()
         self.load_cpreferences()
-        self.subscribed_channels = {}  # Changed from self.subscribed.channels
+        self.subscribed_channels = {}
         self.daily_notification.start()  
         self.daily_channel.start()
-        self.subscribed_channels = []  # Initialize as empty list
+        self.subscribed_channels = []
         self.load_subscribed_channels()  
         self.YOUR_USER_ID = 123456789012345678  
         self.item_emojis = {
@@ -139,16 +139,13 @@ class TravellingMerchant(commands.Cog):
         try:
             from merchant_stock import stock
             
-            # Get current UTC time
             current_time = datetime.now(timezone.utc)
             current_date = current_time.strftime("%d %B %Y")
             
-            # Debug prints
             print(f"Current UTC time: {current_time}")
             print(f"Formatted date: {current_date}")
             print(f"Available stock dates: {list(stock.keys())}")
             
-            # Get the stock for the current date
             if current_date in stock:
                 return stock[current_date]
             else:
@@ -186,7 +183,6 @@ class TravellingMerchant(commands.Cog):
                     for item_name, price in items:
                         emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
                         
-                        # Skip future date calculation for uncharted island map
                         if item_name == "Uncharted island map (Deep Sea Fishing)":
                             embed.add_field(
                                 name=f"{emoji} {item_name}", 
@@ -195,7 +191,6 @@ class TravellingMerchant(commands.Cog):
                             )
                             continue
                         
-                        # Find next occurrence for other items
                         next_date = None
                         today = datetime.now(pytz.UTC).date()
                         
@@ -209,7 +204,6 @@ class TravellingMerchant(commands.Cog):
                                 print(f"Error parsing date {date}: {e}")
                                 continue
                         
-                        # Calculate days until next appearance and format the message
                         if next_date:
                             days_until = (next_date - today).days
                             next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
@@ -258,7 +252,6 @@ class TravellingMerchant(commands.Cog):
         for item_name, price in items:
             emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
             
-            # Skip future date calculation for uncharted island map
             if item_name == "Uncharted island map (Deep Sea Fishing)":
                 embed.add_field(
                     name=f"{emoji} {item_name}", 
@@ -267,7 +260,6 @@ class TravellingMerchant(commands.Cog):
                 )
                 continue
             
-            # Find next occurrence for other items
             next_date = None
             today = datetime.now(pytz.UTC).date()
             
@@ -281,7 +273,6 @@ class TravellingMerchant(commands.Cog):
                     print(f"Error parsing date {date}: {e}")
                     continue
             
-            # Calculate days until next appearance and format the message
             if next_date:
                 days_until = (next_date - today).days
                 next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
@@ -298,7 +289,6 @@ class TravellingMerchant(commands.Cog):
                 inline=False
             )
     
-        # Send to all subscribed users
         for user_id in self.user_preferences:
             try:
                 user = await self.bot.fetch_user(int(user_id))
@@ -388,7 +378,6 @@ class TravellingMerchant(commands.Cog):
             await ctx.send("This server has no custom emojis!")
             return
 
-        # Split into chunks of 15 emojis per field (Discord has a limit of 25 fields)
         chunks = [emoji_list[i:i + 15] for i in range(0, len(emoji_list), 15)]
         
         embed = discord.Embed(
@@ -396,7 +385,6 @@ class TravellingMerchant(commands.Cog):
             color=discord.Color.gold()
         )
 
-        # Add fields for each chunk
         for i, chunk in enumerate(chunks, 1):
             if len(chunks) > 1:
                 name = f"Emojis (Part {i}/{len(chunks)})"
@@ -427,7 +415,7 @@ class TravellingMerchant(commands.Cog):
 
 
 
-    @tasks.loop(time=time(hour=0, minute=0, second=5))  # Using the same format as your daily_notification
+    @tasks.loop(time=time(hour=0, minute=0, second=5))
     async def daily_channel(self):
         """Send daily notifications to subscribed channels"""
         items = await self.get_merchant_stock()
@@ -447,7 +435,6 @@ class TravellingMerchant(commands.Cog):
         for item_name, price in items:
             emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
             
-            # Skip future date calculation for uncharted island map
             if item_name == "Uncharted island map (Deep Sea Fishing)":
                 embed.add_field(
                     name=f"{emoji} {item_name}", 
@@ -456,7 +443,6 @@ class TravellingMerchant(commands.Cog):
                 )
                 continue
             
-            # Find next occurrence for other items
             next_date = None
             today = datetime.now(pytz.UTC).date()
             
@@ -470,7 +456,6 @@ class TravellingMerchant(commands.Cog):
                     print(f"Error parsing date {date}: {e}")
                     continue
             
-            # Calculate days until next appearance and format the message
             if next_date:
                 days_until = (next_date - today).days
                 next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
@@ -487,8 +472,7 @@ class TravellingMerchant(commands.Cog):
                 inline=False
             )
 
-        # Send to all subscribed channels
-        for channel_id in self.subscribed_channels:  # Changed from user_preferences to subscribed_channels
+        for channel_id in self.subscribed_channels:
             try:
                 channel = self.bot.get_channel(int(channel_id))
                 if channel:
@@ -498,35 +482,30 @@ class TravellingMerchant(commands.Cog):
                 print(f"Failed to send notification to channel {channel_id}: {e}")
 
     @commands.command(name="testmerchant")
-    @commands.is_owner()  # Only admins can use this
+    @commands.is_owner()
     async def test_merchant(self, ctx):
         """Test command to manually trigger the merchant notification to all subscribed channels"""
         try:
-            # First, confirm to the user that the test is starting
             await ctx.send("Starting merchant notification test...")
 
-            # Get all subscribed channel IDs (you'll need to implement this based on how you store subscribed channels)
-            subscribed_channels = self.get_subscribed_channels()  # This method needs to exist in your code
+            subscribed_channels = self.get_subscribed_channels()
             
             if not subscribed_channels:
                 await ctx.send("No subscribed channels found!")
                 return
 
-            items = await self.get_merchant_stock()  # Your existing method to get merchant stock
+            items = await self.get_merchant_stock()
             if not items:
                 await ctx.send("No items found in merchant stock.")
                 return
 
-            # Create the embed (using your existing embed creation logic)
             embed = discord.Embed(
                 title="Travelling Merchant's Stock (TEST)",
                 description="*Written by* <@110927272210354176>",
                 color=discord.Color.gold(),
                 timestamp=datetime.now(pytz.UTC)
             )
-            # ... rest of your embed creation code ...
 
-            # Send to all subscribed channels
             success_count = 0
             fail_count = 0
             for channel_id in subscribed_channels:
@@ -542,7 +521,6 @@ class TravellingMerchant(commands.Cog):
                     fail_count += 1
                     print(f"Failed to send to channel {channel_id}: {e}")
 
-            # Report results back to the command user
             await ctx.send(f"Test completed!\n"
                         f"Successfully sent to: {success_count} channels\n"
                         f"Failed to send to: {fail_count} channels")
@@ -559,7 +537,7 @@ class TravellingMerchant(commands.Cog):
                 self.subscribed_channels = data.get('channels', [])
         except FileNotFoundError:
             self.subscribed_channels = []
-            self.save_subscribed_channels()  # Create the file if it doesn't exist
+            self.save_subscribed_channels()
         except json.JSONDecodeError:
             print("Error reading subscribed_channels.json. File might be corrupted.")
             self.subscribed_channels = []

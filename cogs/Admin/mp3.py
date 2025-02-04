@@ -6,7 +6,6 @@ from discord.ext import commands
 class Mp3(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # Define the soundboard directory once in the init
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.soundboard_dir = os.path.join(current_dir, '.mp3')
 
@@ -24,7 +23,6 @@ class Mp3(commands.Cog):
             else:
                 voice_client = ctx.voice_client
 
-            # Use the same directory as mp3list
             mp3_files = [file for file in os.listdir(self.soundboard_dir) if file.endswith('.mp3')]
             matched_files = []
             for keyword in keywords:
@@ -74,7 +72,6 @@ from discord.ext import commands
 class Mp3(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # Define the soundboard directory once in the init
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.soundboard_dir = os.path.join(current_dir, '.mp3')
 
@@ -92,7 +89,6 @@ class Mp3(commands.Cog):
             else:
                 voice_client = ctx.voice_client
 
-            # Use the same directory as mp3list
             mp3_files = [file for file in os.listdir(self.soundboard_dir) if file.endswith('.mp3')]
             matched_files = []
             for keyword in keywords:

@@ -14,17 +14,14 @@ class SystemEvents(commands.Cog):
         self.admin_ids = [110927272210354176, 311612585524854805]
 
 
-    async def get_or_create_trusted_role(self, guild):  # Add self parameter here
-        await asyncio.sleep(0.1)  # Give Discord API time to be ready
+    async def get_or_create_trusted_role(self, guild):
+        await asyncio.sleep(0.1)
         
-        # Try to get the existing role
         trusted_role = discord.utils.get(guild.roles, name='.trusted')
         
-        # If role doesn't exist, create it
         if trusted_role is None:
             print("Can't find trusted role...")
             try:
-                # Create the role with specific permissions
                 print(f"Creating .trusted role in {guild.name}")
                 trusted_role = await guild.create_role(
                     name='.trusted',
@@ -62,9 +59,7 @@ class SystemEvents(commands.Cog):
                 except Exception as e:
                     print(f"\033[91mError sending online message: {str(e)}\033[0m")
 
-            # If you have voice channel connection code, wrap it in try/except
             try:
-                # Your voice channel connection code here
                 pass
             except Exception as e:
                 print(f"\033[91mError connecting to voice: {str(e)}\033[0m")
@@ -79,18 +74,14 @@ class SystemEvents(commands.Cog):
 
             current_time = discord.utils.utcnow()
             
-            # Determine disconnect reason
             disconnect_reason = "Unknown"
             details = []
 
-            # Check if we lost connection due to heartbeat timeout
 
 
-            # Check bot's latency before disconnect
             if self.bot.latency:
                 print(f"Last known latency: {self.bot.latency * 1000:.2f}ms")
 
-            # Check if we have any websocket close code
             if hasattr(self.bot, '_connection') and hasattr(self.bot._connection, '_ws'):
                 ws = self.bot._connection._ws
                 if hasattr(ws, 'close_code'):
@@ -120,19 +111,16 @@ class SystemEvents(commands.Cog):
                     disconnect_reason = code_meanings.get(close_code, f"Unknown close code: {close_code}")
                     print(f"Close code: {close_code}")
 
-            # Log disconnect details
             print(f"\033[93mBot Disconnect \033[0m")
             print(f"\033[93mReason: {disconnect_reason}\033[0m")
             for detail in details:
                 print(f"\033[93m- {detail}\033[0m")
 
-            # Try to send disconnect message to status channel
             channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
             if channel:
                 try:
                     await channel.send("🟢 Connection Resumed!")
                     
-                    # Store message for potential reconnect update
 
                     
                 except Exception as e:
@@ -151,7 +139,6 @@ class SystemEvents(commands.Cog):
             
 
 
-            # Send new reconnect message
             channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
             if channel:
                 try:
@@ -167,13 +154,11 @@ class SystemEvents(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         try:
-            # Log all command errors
             print(f"\033[91mCommand Error: {str(error)}\033[0m")
             traceback.print_exc()
 
             if isinstance(error, commands.CommandNotFound):
                 try:
-                    # Get similar commands
                     valid_commands = [f',{command.name}' for command in self.bot.commands]
                     similar_commands = difflib.get_close_matches(ctx.message.content.lower(), valid_commands)
                     
@@ -219,22 +204,20 @@ class SystemEvents(commands.Cog):
                 warning = await ctx.send("❌ Could not find that role!")  
                 
             elif isinstance(error, commands.NotOwner):
-                print("NotOwner error triggered")  # Debug print
+                print("NotOwner error triggered")
                 warning = await ctx.send(f"❌ You are not <@110927272210354176>")
 
 
             else:
-                # Handle any unhandled errors
                 warning = print(f"⚠️ An unexpected error occurred: {str(error)}")
                 
-            # Clean up error messages after delay
             try:
                 await asyncio.sleep(7)
                 await warning.delete()
                 if ctx.message:
                     await ctx.message.delete()
             except (discord.Forbidden, discord.NotFound, AttributeError):
-                pass  # Ignore if messages are already deleted or can't be deleted
+                pass
 
         except Exception as e:
             print(f"\033[91mError in error handler: {str(e)}\033[0m")
@@ -249,9 +232,7 @@ class SystemEvents(commands.Cog):
             
         blacklist_cog = self.bot.get_cog('Blacklist')
         
-        # Check if user is blacklisted
         if blacklist_cog and message.author.id in blacklist_cog.blacklisted_users:
-            # If the message starts with your command prefix
             if message.content.startswith(","):
                 blacklist = await message.channel.send("❌ You are blacklisted from using this bot.")
                 await message.delete()
@@ -262,7 +243,6 @@ class SystemEvents(commands.Cog):
 
 
         try:
-            # Handle DMs
             if isinstance(message.channel, discord.DMChannel):
                 try:
                     print(f"\033[0;32mDM from {message.author}: {message.content}\033[0m")
@@ -273,34 +253,28 @@ class SystemEvents(commands.Cog):
 
             allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send', ',cf', ',pvpflip', ',ticket', ',vault', ',accept', ',profile', ',history', ',transactions', ',notification')
 
-            # Only process commands that start with ','
             if not message.content.startswith(','):
                 return
 
-            # Check for me
             if message.author.id == 110927272210354176:
                 await self.bot.process_commands(message)
                 print(f"\033[0;32mOwner Command: {message.content} by {message.author}\033[0m")
                 return
 
-            # Check for admin-commands channel
             if message.channel.name == 'admin-commands':
                 print(f"\033[0;32mAdmin Command: {message.content} by {message.author}\033[0m")
                 await self.bot.process_commands(message)
                 return
 
-            # If message starts with prefix, then..
             if message.content.startswith(','):
                 message.content = message.content.lower() 
                 print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
                 
-            # Check if it is allowed in other channels
             if message.content.startswith(allowed_commands):
                 print(f"\033[0;32mAllowed Command: {message.content} by {message.author}\033[0m")
                 await self.bot.process_commands(message)
                 return
 
-            # If it fails these checks, check the context, or who/how you are using the command.
             try:
                 warningmsg = await message.channel.send("❌ Please use commands in #admin-commands, see `,staking` for a list you can anywhere")
                 print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")

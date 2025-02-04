@@ -10,7 +10,6 @@ class MessageReader(commands.Cog):
     @commands.command()
     async def messages(self, ctx, server_id: int, channel_id: int, limit: int = 50):
         try:
-            # Get the guild and channel
             guild = self.bot.get_guild(server_id)
             if not guild:
                 await ctx.send("Server not found! Please check the server ID.")
@@ -21,27 +20,23 @@ class MessageReader(commands.Cog):
                 await ctx.send("Channel not found! Please check the channel ID.")
                 return
 
-            # Fetch messages
             messages_list = [f"Last {limit} messages from #{channel.name} in {guild.name}:\n"]
             
             async for message in channel.history(limit=limit, oldest_first=False):
                 timestamp = message.created_at.strftime("%Y-%m-%d %H:%M:%S")
                 content = message.content if message.content else "[No text content]"
                 
-                # Handle attachments
                 if message.attachments:
                     content += f" [+{len(message.attachments)} attachments]"
                 
-                # Format the message
                 msg_format = f"[{timestamp}] {message.author.name}: {content}"
                 messages_list.append(msg_format)
 
-            # Split messages into chunks to avoid Discord's character limit
             chunks = []
             current_chunk = ""
             
             for msg in messages_list:
-                if len(current_chunk) + len(msg) + 2 > 1900:  # +2 for \n
+                if len(current_chunk) + len(msg) + 2 > 1900:
                     chunks.append(current_chunk)
                     current_chunk = msg + "\n"
                 else:
@@ -50,7 +45,6 @@ class MessageReader(commands.Cog):
             if current_chunk:
                 chunks.append(current_chunk)
 
-            # Send chunks as separate messages
             for chunk in chunks:
                 await ctx.send(f"```\n{chunk}```")
 

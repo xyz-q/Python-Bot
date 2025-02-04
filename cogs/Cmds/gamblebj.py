@@ -101,11 +101,9 @@ class BettingView(discord.ui.View):
 
         self.bet_amount = self.min_bet
         
-        # Disable all buttons
         for item in self.children:
             item.disabled = True
             
-        # Update the message
         embed = discord.Embed(
             title="Blackjack",
             description=f"Bet amount: {self.cog.format_amount(self.bet_amount)}",
@@ -123,11 +121,9 @@ class BettingView(discord.ui.View):
 
         self.bet_amount = self.max_bet
         
-        # Disable all buttons
         for item in self.children:
             item.disabled = True
             
-        # Update the message
         embed = discord.Embed(
             title="Blackjack",
             description=f"Bet amount: {self.cog.format_amount(self.bet_amount)}",
@@ -143,7 +139,6 @@ class BettingView(discord.ui.View):
             await interaction.response.send_message("This is not your game!", ephemeral=True)
             return
 
-        # Create custom bet modal
         modal = CustomBetModal(self.stakes, self.cog)
         await interaction.response.send_modal(modal)
         await modal.wait()
@@ -157,7 +152,6 @@ class BettingView(discord.ui.View):
                 )
                 return
 
-            # Deduct the bet amount
             await self.cog.remove_balance(str(self.ctx.author.id), modal.bet_amount)
             
             self.bet_amount = modal.bet_amount
@@ -225,17 +219,14 @@ class BlackjackGame:
         self.cog = cog
         self.bet_amount = bet_amount
         self.deck = []
-        self.player_hands = [[]]  # List of hands for splitting
+        self.player_hands = [[]]
         self.dealer_hand = []
         self.current_hand = 0
         self.game_over = False
-        self.state = "starting"  # Add this line
+        self.state = "starting"
         self.create_deck()
-# Add these right after your existing BlackjackGame class methods
     async def start_game(self):
-        # Initial deal already happens in __init__
         
-        # Check for natural blackjacks
         dealer_value = self.calculate_hand(self.dealer_hand)
         player_value = self.calculate_hand(self.player_hands[0])
         
@@ -282,7 +273,7 @@ class BlackjackGame:
     def create_deck(self):
         suits = ['♠️', '♥️', '♦️', '♣️']
         values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-        self.deck = [f"{value}{suit}" for suit in suits for value in values] * 6  # 6 decks
+        self.deck = [f"{value}{suit}" for suit in suits for value in values] * 6
         random.shuffle(self.deck)
 
     def deal_card(self):
@@ -293,7 +284,7 @@ class BlackjackGame:
         aces = 0
         
         for card in hand:
-            card_value = card[:-2]  # Remove suit
+            card_value = card[:-2]
             if card_value in ['J', 'Q', 'K']:
                 value += 10
             elif card_value == 'A':
@@ -301,7 +292,6 @@ class BlackjackGame:
             else:
                 value += int(card_value)
         
-        # Add aces
         for _ in range(aces):
             if value + 11 <= 21:
                 value += 11
@@ -314,7 +304,7 @@ class BlackjackGame:
         hand = self.player_hands[self.current_hand]
         if len(hand) != 2:
             return False
-        return hand[0][:-2] == hand[1][:-2]  # Compare card values without suits
+        return hand[0][:-2] == hand[1][:-2]
 
     def format_hand(self, hand, hide_second=False):
         if hide_second and len(hand) > 1:
@@ -324,7 +314,6 @@ class BlackjackGame:
     async def create_game_embed(self, show_dealer=False):
         embed = discord.Embed(title="🎰 Blackjack", color=discord.Color.gold())
         
-        # Show dealer's hand
         dealer_cards = self.format_hand(self.dealer_hand, not show_dealer)
         dealer_value = self.calculate_hand(self.dealer_hand) if show_dealer else "?"
         embed.add_field(
@@ -333,7 +322,6 @@ class BlackjackGame:
             inline=False
         )
 
-        # Show player's hands
         for i, hand in enumerate(self.player_hands):
             current = "👉 " if i == self.current_hand and not self.game_over else ""
             hand_value = self.calculate_hand(hand)
@@ -343,7 +331,6 @@ class BlackjackGame:
                 inline=False
             )
 
-        # Show bet amount
         embed.add_field(
             name="Bet Amount",
             value=self.cog.format_amount(self.bet_amount),
@@ -370,7 +357,7 @@ class GameView(discord.ui.View):
             payout = int(self.game.bet_amount * 2.5)
             await self.cog.add_balance(str(self.ctx.author.id), payout)
             winnings = payout - self.game.bet_amount
-        else:  # dealer_blackjack
+        else:
             winnings = -self.game.bet_amount
                 
         embed = await self.game.create_game_embed(show_dealer=True)
@@ -387,13 +374,11 @@ class GameView(discord.ui.View):
     async def end_game(self, interaction):
         self.game.game_over = True
         
-        # Dealer's turn
         while self.game.calculate_hand(self.game.dealer_hand) < 17:
             self.game.dealer_hand.append(self.game.deal_card())
 
         dealer_value = self.game.calculate_hand(self.game.dealer_hand)
         
-        # Calculate winnings for each hand
         total_winnings = 0
         results = []
         
@@ -420,11 +405,9 @@ class GameView(discord.ui.View):
             total_winnings += winnings
             results.append(f"Hand {i+1}: {result} ({'+' if winnings > bet else ''}{self.cog.format_amount(winnings - bet)})")
 
-        # Add winnings to balance
         if total_winnings > 0:
             await self.cog.add_balance(str(self.ctx.author.id), total_winnings)
 
-        # Create result embed
         embed = await self.game.create_game_embed(show_dealer=True)
         embed.add_field(name="Results", value="\n".join(results), inline=False)
         
@@ -440,11 +423,9 @@ class GameView(discord.ui.View):
 
 
     def update_buttons(self):
-        # Enable/disable buttons based on game state
         hand = self.game.player_hands[self.game.current_hand]
         hand_value = self.game.calculate_hand(hand)
         
-        # Disable all buttons if game is over or bust
         if self.game.game_over or hand_value >= 21:
             for item in self.children:
                 item.disabled = True
@@ -455,7 +436,6 @@ class GameView(discord.ui.View):
 
         self.children[3].disabled = not self.game.can_split()
         
-        # Double button - only available on first action with 2 cards
         self.children[2].disabled = len(hand) != 2
 
     @discord.ui.button(label="Hit", style=discord.ButtonStyle.blurple, emoji="🎯")
@@ -464,11 +444,9 @@ class GameView(discord.ui.View):
             await interaction.response.send_message("This is not your game!", ephemeral=True)
             return
 
-        # Deal a card to current hand
         current_hand = self.game.player_hands[self.game.current_hand]
         current_hand.append(self.game.deal_card())
         
-        # Check for bust
         if self.game.calculate_hand(current_hand) > 21:
             if self.game.current_hand < len(self.game.player_hands) - 1:
                 self.game.current_hand += 1
@@ -498,17 +476,14 @@ class GameView(discord.ui.View):
             await interaction.response.send_message("This is not your game!", ephemeral=True)
             return
 
-        # Check if player has enough balance to double
         balance = await self.cog.get_balance(str(self.ctx.author.id))
         if balance < self.game.bet_amount:
             await interaction.response.send_message("Not enough balance to double!", ephemeral=True)
             return
 
-        # Deduct additional bet
         await self.cog.remove_balance(str(self.ctx.author.id), self.game.bet_amount)
         self.game.bet_amount *= 2
 
-        # Deal one card and end turn
         current_hand = self.game.player_hands[self.game.current_hand]
         current_hand.append(self.game.deal_card())
 
@@ -525,21 +500,17 @@ class GameView(discord.ui.View):
             await interaction.response.send_message("This is not your game!", ephemeral=True)
             return
 
-        # Check if player has enough balance to split
         balance = await self.cog.get_balance(str(self.ctx.author.id))
         if balance < self.game.bet_amount:
             await interaction.response.send_message("Not enough balance to split!", ephemeral=True)
             return
 
-        # Deduct additional bet
         await self.cog.remove_balance(str(self.ctx.author.id), self.game.bet_amount)
         
-        # Split the hand
         current_hand = self.game.player_hands[self.game.current_hand]
         new_hand = [current_hand.pop()]
         self.game.player_hands.append(new_hand)
         
-        # Deal one card to each hand
         current_hand.append(self.game.deal_card())
         new_hand.append(self.game.deal_card())
 
@@ -549,13 +520,11 @@ class GameView(discord.ui.View):
     async def end_game(self, interaction):
         self.game.game_over = True
         
-        # Dealer's turn
         while self.game.calculate_hand(self.game.dealer_hand) < 17:
             self.game.dealer_hand.append(self.game.deal_card())
 
         dealer_value = self.game.calculate_hand(self.game.dealer_hand)
         
-        # Calculate winnings for each hand
         total_winnings = 0
         results = []
         
@@ -582,11 +551,9 @@ class GameView(discord.ui.View):
             total_winnings += winnings
             results.append(f"Hand {i+1}: {result} ({'+' if winnings > bet else ''}{self.cog.format_amount(winnings - bet)})")
 
-        # Add winnings to balance
         if total_winnings > 0:
             await self.cog.add_balance(str(self.ctx.author.id), total_winnings)
 
-        # Create result embed
         embed = await self.game.create_game_embed(show_dealer=True)
         embed.add_field(name="Results", value="\n".join(results), inline=False)
         
@@ -609,13 +576,10 @@ class Blackjack(commands.Cog):
 
 
 
-    # Add these new methods
     async def start_game(self):
-        # Initial deal
         self.player_hands[0] = [self.deal_card(), self.deal_card()]
         self.dealer_hand = [self.deal_card(), self.deal_card()]
         
-        # Check for natural blackjacks
         dealer_value = self.calculate_hand(self.dealer_hand)
         player_value = self.calculate_hand(self.player_hands[0])
         
@@ -633,11 +597,6 @@ class Blackjack(commands.Cog):
         return "continue"
 
     async def player_turn(self):
-        # Enable player action buttons
-        # Wait for player decision
-        # Process action results
-        # Check for bust/21
-        # Move to next hand if split
         pass
 
     async def dealer_turn(self):
@@ -671,11 +630,7 @@ class Blackjack(commands.Cog):
         dealer_total = self.calculate_hand(self.dealer_hand)
         for i, hand in enumerate(self.player_hands):
             player_total = self.calculate_hand(hand)
-            # Calculate and process payouts
-            # Update player balance
-            # Display results
 
-    # Helper method to get Economy cog
     def get_economy_cog(self):
         return self.bot.get_cog('Economy')
 
@@ -689,13 +644,11 @@ class Blackjack(commands.Cog):
             return
         
 
-        # Get user's balance
         balance = await self.economy.get_balance(str(ctx.author.id))
         if balance <= 0:
             await ctx.send("You don't have any money to play!")
             return
 
-        # Create and send stakes view
         stakes_view = BlackjackView(ctx)
         message = await ctx.send(
             embed=discord.Embed(
@@ -707,7 +660,6 @@ class Blackjack(commands.Cog):
         )
         stakes_view.message = message
 
-        # Wait for stakes selection
         await stakes_view.wait()
         
         if stakes_view.value is None:
@@ -718,15 +670,13 @@ class Blackjack(commands.Cog):
             )
             return
 
-        # Set betting limits based on stakes
         if stakes_view.value == "low":
             min_bet = 500_000
             max_bet = 5_000_000
-        else:  # high stakes
+        else:
             min_bet = 5_000_000
             max_bet = 50_000_000
 
-        # Check if user has enough for minimum bet
         if balance < min_bet:
             await message.edit(
                 content=f"You need at least {self.format_amount(min_bet)} to play at these stakes!",
@@ -735,7 +685,6 @@ class Blackjack(commands.Cog):
             )
             return
 
-        # Create and send betting view
         betting_view = BettingView(ctx, self, min_bet, max_bet)
         await message.edit(
             content=None,
@@ -748,7 +697,6 @@ class Blackjack(commands.Cog):
         )
         betting_view.message = message
 
-        # Wait for bet selection
         await betting_view.wait()
 
         if betting_view.bet_amount is None:
@@ -759,7 +707,6 @@ class Blackjack(commands.Cog):
             )
             return
 
-        # Check if user still has enough balance
         current_balance = await self.economy.get_balance(str(ctx.author.id))
         if current_balance < betting_view.bet_amount:
             await message.edit(
@@ -769,10 +716,8 @@ class Blackjack(commands.Cog):
             )
             return
 
-        # Deduct bet amount from balance
         await self.remove_balance(str(ctx.author.id), betting_view.bet_amount)
 
-        # Create and start the game
         game = BlackjackGame(ctx, self, betting_view.bet_amount)
         game_view = GameView(ctx, self, game)
         
@@ -781,10 +726,9 @@ class Blackjack(commands.Cog):
             embed=await game.create_game_embed(),
             view=game_view
         )
-        game_view.message = message  # Store message reference
-        await game_view.start_game()  # Start the game
+        game_view.message = message
+        await game_view.start_game()
 
-        # Wait for game to complete
         await game_view.wait()
 
         if not game.game_over:
@@ -793,7 +737,6 @@ class Blackjack(commands.Cog):
                 embed=None,
                 view=None
             )
-            # Return bet amount since game didn't complete
             await self.add_balance(str(ctx.author.id), betting_view.bet_amount)
 
 async def setup(bot):

@@ -53,7 +53,6 @@ class EmojiCommands(commands.Cog):
     @commands.command()
     async def emojis(self, ctx):
         emoji_list = []
-        # Sort emojis by ID (higher ID = more recent)
         sorted_emojis = sorted(ctx.guild.emojis, key=lambda x: x.id, reverse=True)
         
         for emoji in sorted_emojis:
@@ -68,7 +67,6 @@ class EmojiCommands(commands.Cog):
             await ctx.send("This server has no custom emojis!")
             return
 
-        # Split into chunks if the message is too long
         chunks = [emoji_list[i:i + 10] for i in range(0, len(emoji_list), 10)]
         
         for chunk in chunks:

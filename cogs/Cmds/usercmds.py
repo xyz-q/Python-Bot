@@ -121,10 +121,8 @@ class UserCommands(commands.Cog):
     @commands.is_owner()
     async def change_nickname(self, ctx, member: discord.Member, *, new_nickname=None):
         try:
-            # Store old nickname for confirmation message
             old_nickname = member.display_name
             
-            # Change the nickname
             await member.edit(nick=new_nickname)
             
             if new_nickname:

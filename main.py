@@ -58,22 +58,12 @@ class Client(commands.Bot):
         if message.author.id == 110927272210354176:
             return
 
-        # if message.content.startswith(','):
-            
-        #     trusted_role = discord.utils.get(message.guild.roles, name='.trusted')
-        #     if trusted_role not in message.author.roles:
-        #         print(f"Unauthorized user {message.author} tried to use command: {message.content}")
-        #         await message.delete()
-        #         bot_response = await message.channel.send(f"{message.author.mention}, you are not authorized to use commands in this channel.")
-        #         await asyncio.sleep(4)
-        #         await bot_response.delete()
-        #         return
-                
-        #     return
-
+                   
+                                                                        
+       
         blacklist_cog = self.bot.get_cog('Blacklist')    
         if blacklist_cog and message.author.id in blacklist_cog.blacklisted_users:
-            # If the message starts with your command prefix
+
             if message.content.startswith(","):
                 
                 return

@@ -57,15 +57,13 @@ class HouseProfits(commands.Cog):
         }
 
     @commands.command(name="houseprofits", aliases=["profit", "profits", "houseprofit"])
-    @commands.has_permissions(administrator=True)  # Only administrators can use this command
+    @commands.has_permissions(administrator=True)
     async def house_profits(self, ctx):
         """Display house profit statistics"""
         
-        # Load the house balance from currency.json
         currency_data = self.load_json('.json/currency.json')
         house_balance = currency_data.get('1233966655923552370', 0)
 
-        # Load transaction data
         transaction_data = self.load_json('./logs/transactions.json')
 
         if not transaction_data or not house_balance:
@@ -74,7 +72,6 @@ class HouseProfits(commands.Cog):
 
         results = self.analyze_house_transactions(transaction_data, house_balance)
 
-        # Create an embed for better presentation
         embed = discord.Embed(
             title="House Profits Analysis",
             color=discord.Color.gold()

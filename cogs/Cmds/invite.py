@@ -27,7 +27,7 @@ class InviteCommand(commands.Cog):
         view.add_item(button)
 
         invite_message = await ctx.send(embed=embed, view=view)
-        await asyncio.sleep(15)  # Keep the message for 15 seconds before deleting
+        await asyncio.sleep(15)
         await invite_message.delete()
 
     def generate_oauth2_url(self):

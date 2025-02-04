@@ -35,35 +35,35 @@ def edit_drop_rate():
         print("No saved bosses found.")
         return
 
-    # Show available bosses
+    
     print("\nAvailable bosses:")
     for boss in drops.keys():
         print(f"- {boss}")
     
-    # Select boss
+    
     boss_name = input("\nEnter boss name to edit: ").strip()
     if boss_name not in drops:
         print("Boss not found!")
         return
     
-    # Show items for selected boss
+    
     print(f"\nItems for {boss_name}:")
     for item, rate in drops[boss_name].items():
-        # Convert decimal to fraction for display
+        
         decimal = rate
-        for denominator in range(1, 10001):  # Check denominators up to 10000
+        for denominator in range(1, 10001):  
             numerator = round(decimal * denominator)
             if abs(numerator/denominator - decimal) < 1e-10:
                 print(f"- {item}: {numerator}/{denominator}")
                 break
     
-    # Select item to edit
+    
     item_name = input("\nEnter item name to edit: ").strip()
     if item_name not in drops[boss_name]:
         print("Item not found!")
         return
     
-    # Get new rate
+    
     while True:
         try:
             rate_input = input("Enter new drop rate (e.g., 2/400): ").strip()
@@ -75,10 +75,10 @@ def edit_drop_rate():
         except ValueError:
             print("Invalid input. Format must be 'Numerator/Denominator'. Both numbers must be positive.")
     
-    # Update the rate
+    
     drops[boss_name][item_name] = new_rate
     
-    # Save changes
+    
     with open(SAVE_FILE, 'w') as file:
         json.dump(drops, file, indent=4)
     print(f"\nSuccessfully updated {item_name} drop rate for {boss_name}")

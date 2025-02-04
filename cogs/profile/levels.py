@@ -29,7 +29,6 @@ class LevelSystem(commands.Cog):
 
         level_number, level_data = await self.get_user_level(str(user_id), total_wagered)
         
-        # Calculate progress data
         progress_data = None
         if int(level_number) >= 0:
             next_level = str(int(level_number) + 1)
@@ -55,7 +54,6 @@ class LevelSystem(commands.Cog):
         }
 
     async def get_user_level(self, user_id: str, total_wagered=0):
-        # First check for special levels
         try:
             with open(self.special_levels_file, 'r') as f:
                 special_levels = json.load(f)
@@ -65,10 +63,9 @@ class LevelSystem(commands.Cog):
         except FileNotFoundError:
             pass
         
-        # Regular level calculation
-        current_level = "0"  # Start with default level
+        current_level = "0"
         for level, data in self.levels_data["levels"].items():
-            if int(level) >= 0:  # Only check positive level numbers
+            if int(level) >= 0:
                 if total_wagered >= data["required_wagered"]:
                     current_level = level
                 else:
@@ -86,11 +83,11 @@ class LevelSystem(commands.Cog):
 
     def format_number(self, number: int) -> str:
         """Format number to K/M/B format"""
-        if number >= 10_000_000_000:  # 10 Billion and above
+        if number >= 10_000_000_000:
             return f"{number/1_000_000_000:.2f}B"
-        elif number >= 1_000_000:    # Millions (including 1-9.9B)
+        elif number >= 1_000_000:
             return f"{int(number/1_000_000)}M"
-        elif number >= 1_000:        # Thousands
+        elif number >= 1_000:
             return f"{number/1_000:.1f}K"
         return str(number)
 
@@ -99,36 +96,30 @@ class LevelSystem(commands.Cog):
     def create_progress_bar(self, percent, total_segments=7):
         """Create a progress bar with 1 start, 1 end, and 6 inside emojis"""
         
-        # Determine how many segments should be filled
-        filled_segments = int((percent / 100) * 6)  # Only the 6 inside emojis
+        filled_segments = int((percent / 100) * 6)
         
-        # Emojis for start, middle, and end
         emojis = {
-            "empty_start": "<:proem1:1334607797995966554>",  # Empty start (left)
-            "empty_end": "<:proem3:1334607901402075168>",  # Empty end (right)
-            "empty_middle": "<:proem2:1334607862370140200>",  # Empty middle
-            "full_start": "<:profu1:1334607942556848168>",  # Full start (left)
-            "full_end": "<:profu3:1334608009069854812>",  # Full end (right)
-            "full_middle": "<:profu2:1334607976610267257>"   # Full middle
+            "empty_start": "<:proem1:1334607797995966554>",
+            "empty_end": "<:proem3:1334607901402075168>",
+            "empty_middle": "<:proem2:1334607862370140200>",
+            "full_start": "<:profu1:1334607942556848168>",
+            "full_end": "<:profu3:1334608009069854812>",
+            "full_middle": "<:profu2:1334607976610267257>"
         }
         
-        # Build the progress bar with start, middle, and end
         progress = []
         
-        # Start section
         if filled_segments > 0:
             progress.append(emojis["full_start"])
         else:
             progress.append(emojis["empty_start"])
 
-        # Inside section (6 emojis)
         for i in range(6):
             if filled_segments > i:
-                progress.append(emojis["full_middle"])  # Full inside
+                progress.append(emojis["full_middle"])
             else:
-                progress.append(emojis["empty_middle"])  # Empty inside
+                progress.append(emojis["empty_middle"])
 
-        # End section
         if filled_segments == 6:
             progress.append(emojis["full_end"])
         else:
@@ -141,7 +132,6 @@ class LevelSystem(commands.Cog):
     @commands.command()
     async def level(self, ctx, member: discord.Member = None):
         """Show level for yourself or another user"""
-        # If no member is specified, use the command author
         target_user = member or ctx.author
         user_id = str(target_user.id)
         
@@ -159,10 +149,8 @@ class LevelSystem(commands.Cog):
             color=discord.Color.gold()
         )
         
-        # Set the user's avatar as the thumbnail
         embed.set_thumbnail(url=target_user.display_avatar.url)
         
-        # Display level info
         next_level = str(int(level_number) + 1)
         level_display = f"{level_data['icon']} Level - {level_data['name']}"
         next_level_data = self.levels_data["levels"][next_level]
@@ -171,7 +159,6 @@ class LevelSystem(commands.Cog):
         embed.add_field(name="Total Wagered", value=self.format_number(total_wagered), inline=True)
         embed.add_field(name="Total Needed", value=self.format_number(required_total), inline=True)
 
-        # Only show progress for regular levels
         if int(level_number) >= 0:
             next_level = str(int(level_number) + 1)
             if next_level in self.levels_data["levels"]:
@@ -208,7 +195,6 @@ class LevelSystem(commands.Cog):
     async def levels(self, ctx):
         embed = discord.Embed(title="Gambling Levels", color=discord.Color.gold())
         
-        # First show special levels
         special_levels = {k: v for k, v in self.levels_data["levels"].items() if int(k) < 0}
         if special_levels:
             special_text = ""
@@ -216,7 +202,6 @@ class LevelSystem(commands.Cog):
                 special_text += f"{data['icon']} Level {level} - {data['name']}\n"
             embed.add_field(name="Special Levels", value=special_text, inline=False)
 
-        # Then show regular levels
         for level, data in self.levels_data["levels"].items():
             if int(level) >= 0:
                 required = data["required_wagered"]
@@ -325,7 +310,6 @@ class LevelSystem(commands.Cog):
 
             embed = discord.Embed(title="All Users' Levels", color=discord.Color.gold())
             
-            # Get and sort all users
             all_users = []
             for user_id, user_stats in stats.items():
                 try:
@@ -344,14 +328,11 @@ class LevelSystem(commands.Cog):
                 except discord.NotFound:
                     continue
 
-            # Sort users
             all_users.sort(key=lambda x: (-x['level_number'], -x['total_wagered']))
 
-            # Pagination
             users_per_page = 10
             total_pages = max(1, (len(all_users) + users_per_page - 1) // users_per_page)
             
-            # Validate page number
             page = max(1, min(page, total_pages))
             
             start_idx = (page - 1) * users_per_page
@@ -381,14 +362,3 @@ async def setup(bot):
     await bot.add_cog(LevelSystem(bot))
 
 
-# Example of how to access the LevelSystem cog from another cog:
-# class AnotherCog(commands.Cog):
-#     @commands.command()
-#     async def somecommand(self, ctx):
-#         level_cog = self.bot.get_cog('LevelSystem')
-#         if level_cog:
-#             user_data = await level_cog.get_user_data(ctx.author.id)
-#             # Use the data however you need
-#             level = user_data['level_number']
-#             total_wagered = user_data['total_wagered']
-#             # etc...

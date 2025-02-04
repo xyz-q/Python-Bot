@@ -15,11 +15,9 @@ class WelcomeView(View):
         self.message = None
 
     async def on_timeout(self):
-        # Disable all buttons when timeout occurs
         for item in self.children:
             item.disabled = True
         
-        # Update the embed to show it's timed out
         embed = self.message.embeds[0]
         embed.color = discord.Color.red()
         embed.set_footer(text="This menu has expired. Use ,welcome to start again.")
@@ -49,7 +47,6 @@ class WelcomeView(View):
             color=discord.Color.gold()
         )
         
-        # Add current settings if they exist
         guild_id = str(self.ctx.guild.id)
         if guild_id in self.cog.settings:
             welcome_channel = self.ctx.bot.get_channel(self.cog.settings[guild_id]["welcome_channel"])
@@ -119,7 +116,6 @@ class ChannelSetupModal(discord.ui.Modal, title="Channel Setup"):
             
             self.cog.save_settings(self.cog.settings)
             
-            # Send ephemeral confirmation
             embed = discord.Embed(
                 title="✅ Channel Setup Complete",
                 description=f"Welcome Channel: {welcome_channel.mention}\nLeave Channel: {leave_channel.mention}",
@@ -127,7 +123,6 @@ class ChannelSetupModal(discord.ui.Modal, title="Channel Setup"):
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
-            # Update the main menu
             await self.view.update_view()
             
         except ValueError:
@@ -135,7 +130,6 @@ class ChannelSetupModal(discord.ui.Modal, title="Channel Setup"):
         except discord.NotFound:
             await interaction.response.send_message("One or both channels not found!", ephemeral=True)
 
-# Similar modifications for WelcomeMessageModal and LeaveMessageModal
 class WelcomeMessageModal(discord.ui.Modal, title="Welcome Message Setup"):
     def __init__(self, cog, view):
         super().__init__()
@@ -160,14 +154,12 @@ class WelcomeMessageModal(discord.ui.Modal, title="Welcome Message Setup"):
         self.cog.save_settings(self.cog.settings)
         await self.view.update_view()
 
-        # Format the message with the user's information
         formatted_message = self.message.value.format(
             user=interaction.user.mention,
             username=interaction.user.name,
             server=interaction.guild.name
         )
         
-        # Create preview embed that looks exactly like the real welcome message
         preview_embed = discord.Embed(
             title=f"{interaction.user.display_name} pulled up.",
             description=formatted_message,
@@ -177,14 +169,12 @@ class WelcomeMessageModal(discord.ui.Modal, title="Welcome Message Setup"):
             preview_embed.set_thumbnail(url=interaction.user.avatar.url)
         preview_embed.set_footer(text=f"Member #{len(interaction.guild.members)}")
 
-        # Create the confirmation embed
         confirmation_embed = discord.Embed(
             title="✅ Welcome Message Updated",
             description="Your new welcome message has been saved. Here's how it will look:",
             color=discord.Color.green()
         )
         
-        # Send both embeds - the confirmation and the preview
         await interaction.response.send_message(embeds=[confirmation_embed, preview_embed], ephemeral=True)
 
 class LeaveMessageModal(discord.ui.Modal, title="Leave Message Setup"):
@@ -209,14 +199,12 @@ class LeaveMessageModal(discord.ui.Modal, title="Leave Message Setup"):
         self.cog.settings[guild_id]["leave_message"] = self.message.value
         self.cog.save_settings(self.cog.settings)
         await self.view.update_view()
-        # Format the message with the user's information
         formatted_message = self.message.value.format(
             user=interaction.user.name,
             username=interaction.user.name,
             server=interaction.guild.name
         )
         
-        # Create preview embed that looks exactly like the real leave message
         preview_embed = discord.Embed(
             title=f"{interaction.user.display_name} has left.",
             description=formatted_message,
@@ -226,14 +214,12 @@ class LeaveMessageModal(discord.ui.Modal, title="Leave Message Setup"):
             preview_embed.set_thumbnail(url=interaction.user.avatar.url)
         preview_embed.set_footer(text=f"Members: {len(interaction.guild.members)}")
 
-        # Create the confirmation embed
         confirmation_embed = discord.Embed(
             title="✅ Leave Message Updated",
             description="Your new leave message has been saved. Here's how it will look:",
             color=discord.Color.green()
         )
         
-        # Send both embeds - the confirmation and the preview
         await interaction.response.send_message(embeds=[confirmation_embed, preview_embed], ephemeral=True)
 
 
@@ -261,7 +247,6 @@ class Welcome(commands.Cog):
 
 
 
-    # Keep your existing load_settings and save_settings methods
 
     @commands.command(name="welcome")
     @commands.has_permissions(administrator=True)
@@ -273,7 +258,6 @@ class Welcome(commands.Cog):
             color=discord.Color.gold()
         )
         
-        # Add current settings if they exist
         guild_id = str(ctx.guild.id)
         if guild_id in self.settings:
             welcome_channel = self.bot.get_channel(self.settings[guild_id]["welcome_channel"])
@@ -304,7 +288,7 @@ class Welcome(commands.Cog):
         
         view = WelcomeView(self, ctx)
         message = await ctx.send(embed=embed, view=view)
-        view.message = message  # Store message reference for updates
+        view.message = message
         
         
 
@@ -326,7 +310,6 @@ class Welcome(commands.Cog):
                 server=member.guild.name
             )
             
-            # Get total member count
             member_count = len(member.guild.members)
             
             embed = discord.Embed(
@@ -336,7 +319,7 @@ class Welcome(commands.Cog):
             )
             if member.avatar:
                 embed.set_thumbnail(url=member.avatar.url)
-            embed.set_footer(text=f"Member #{member_count}")  # Changed footer here
+            embed.set_footer(text=f"Member #{member_count}")
             await channel.send(embed=embed)
 
     @commands.Cog.listener()

@@ -15,7 +15,6 @@ class CommandStats(commands.Cog):
         """Load stats from JSON file if it exists"""
         if os.path.exists(self.stats_file):
             with open(self.stats_file, 'r') as f:
-                # Convert string keys back to integers for user IDs
                 data = json.load(f)
                 self.stats = defaultdict(lambda: defaultdict(int))
                 for user_id, commands in data.items():
@@ -24,7 +23,6 @@ class CommandStats(commands.Cog):
     def _save_stats(self):
         """Save stats to JSON file"""
         with open(self.stats_file, 'w') as f:
-            # Convert defaultdict to regular dict for JSON serialization
             json.dump({str(k): dict(v) for k, v in self.stats.items()}, f, indent=4)
 
     @commands.Cog.listener()
@@ -53,11 +51,11 @@ class CommandStats(commands.Cog):
 
     def format_number(self, number: int) -> str:
         """Format number to K/M/B format"""
-        if number >= 10_000_000_000:  # 10 Billion and above
+        if number >= 10_000_000_000:
             return f"{number/1_000_000_000:.2f}B"
-        elif number >= 1_000_000:    # Millions (including 1-9.9B)
+        elif number >= 1_000_000:
             return f"{int(number/1_000_000)}M"
-        elif number >= 1_000:        # Thousands
+        elif number >= 1_000:
             return f"{number/1_000:.1f}K"
         return str(number)
 
@@ -72,11 +70,9 @@ class CommandStats(commands.Cog):
         embed = discord.Embed(title=f"Command Stats for {ctx.author.name}",
                             color=discord.Color.gold())
         
-        # Add total commands used
         total_commands = self.get_total_commands(ctx.author.id)
         embed.add_field(name="Total Commands Used", value=str(total_commands), inline=False)
         
-        # Add individual command stats
         command_stats = "\n".join(f"`{cmd}`: {count}" for cmd, count in user_stats.items())
         embed.add_field(name="Command Usage", value=command_stats or "No commands used", inline=False)
         

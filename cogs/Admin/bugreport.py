@@ -9,8 +9,7 @@ class BugReport(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.bug_reports_file = ".json/bug_reports.json"
-        # Set the user ID who should receive bug report DMs
-        self.report_receiver_id = 110927272210354176  # Replace with your user ID
+        self.report_receiver_id = 110927272210354176
         if not os.path.exists(self.bug_reports_file):
             with open(self.bug_reports_file, "w") as f:
                 json.dump([], f)
@@ -49,7 +48,6 @@ class BugReport(commands.Cog):
         )
 
         async def on_submit(self, interaction: discord.Interaction):
-            # Create bug report entry
             bug_report = {
                 "report_id": str(len(self.get_all_reports()) + 1),
                 "author_id": interaction.user.id,
@@ -61,10 +59,8 @@ class BugReport(commands.Cog):
                 "status": "Open"
             }
 
-            # Save to JSON file
             self.save_report(bug_report)
 
-            # Create embed for DM
             embed = discord.Embed(
                 title="New Bug Report",
                 color=discord.Color.red(),
@@ -76,10 +72,8 @@ class BugReport(commands.Cog):
             embed.add_field(name="Description", value=bug_report["description"], inline=False)
             embed.add_field(name="Steps to Reproduce", value=bug_report["steps"], inline=False)
 
-            # Get the cog instance to access the bot and receiver ID
             cog = interaction.client.get_cog("BugReport")
             try:
-                # Try to fetch the user and send DM
                 receiver = await interaction.client.fetch_user(cog.report_receiver_id)
                 await receiver.send(embed=embed)
             except discord.HTTPException as e:
@@ -125,46 +119,37 @@ class BugReport(commands.Cog):
             try:
                 report = self.reports[self.current_page]
                 
-                # Create notification embed
                 notification_embed = discord.Embed(
                     title=f"Bug Report #{report['report_id']} Accepted",
                     description=f"Your bug report '{report['title']}' has been accepted and will be worked on.\n Thank you for your help <3",
                     color=discord.Color.green()
                 )
 
-                # Try to notify the user who reported the bug
                 try:
                     user = await interaction.client.fetch_user(report['author_id'])
                     await user.send(embed=notification_embed)
                 except discord.HTTPException:
                     print(f"Could not DM user {report['author_name']}")
 
-                # Load current reports from file
                 with open(".json/bug_reports.json", "r") as f:
                     all_reports = json.load(f)
 
-                # Remove the report
                 all_reports = [r for r in all_reports if r['report_id'] != report['report_id']]
                 
-                # Save updated reports back to file
                 with open(".json/bug_reports.json", "w") as f:
                     json.dump(all_reports, f, indent=4)
 
-                # Update the view's reports list
                 self.reports = all_reports
                 self.max_pages = len(all_reports)
 
                 if not all_reports:
-                    # If no reports left, delete the message
                     await interaction.message.delete()
                     await interaction.response.send_message("All bug reports have been handled!", ephemeral=True)
                     return
 
-                # Adjust current page if needed
                 if self.current_page >= len(all_reports):
                     self.current_page = len(all_reports) - 1
 
-                # Create new embed for the next report
                 next_report = all_reports[self.current_page]
                 new_embed = discord.Embed(
                     title=f"Bug Report #{next_report['report_id']}",
@@ -178,7 +163,6 @@ class BugReport(commands.Cog):
                 )
                 new_embed.set_footer(text=f"Page {self.current_page + 1}/{len(all_reports)}")
 
-                # Update the message
                 await interaction.response.edit_message(embed=new_embed, view=self)
 
             except Exception as e:
@@ -192,41 +176,34 @@ class BugReport(commands.Cog):
             await interaction.message.delete()
 
         async def save_and_notify(self, interaction, report, action):
-            # Save updated status to JSON file
             with open(".json/bug_reports.json", "r") as f:
                 all_reports = json.load(f)
             
-            # Find and update the report
             for r in all_reports:
                 if r['report_id'] == report['report_id']:
                     r['status'] = report['status']
                     break
             
-            # Save back to file
             with open(".json/bug_reports.json", "w") as f:
                 json.dump(all_reports, f, indent=4)
 
-            # Create notification embed
             notification_embed = discord.Embed(
                 title=f"Bug Report #{report['report_id']} {action.title()}",
                 description=f"Your bug report '{report['title']}' has been {action}.",
                 color=discord.Color.gold()
             )
 
-            # Try to notify the user who reported the bug
             try:
                 user = await interaction.client.fetch_user(report['author_id'])
                 await user.send(embed=notification_embed)
             except discord.HTTPException:
                 print(f"Could not DM user {report['author_name']}")
 
-            # Update the current message
             await self.update_message(interaction)
 
         async def update_message(self, interaction):
             report = self.reports[self.current_page]
             
-            # Set color based on status
             color = discord.Color.red()
             if report['status'] == "Accepted":
                 color = discord.Color.green()

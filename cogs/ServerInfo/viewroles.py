@@ -6,20 +6,17 @@ class RoleViewer(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def viewroles(self, ctx, server_id: str, user: discord.Member = None):  # Added 'self' parameter
-        # Check if the command is being used in DMs
+    async def viewroles(self, ctx, server_id: str, user: discord.Member = None):
         if ctx.guild is not None:
             await ctx.send("This command can only be used in DMs!")
             return
 
         try:
-            # Get the server using the provided ID
-            guild = self.bot.get_guild(int(server_id))  # Changed bot to self.bot
+            guild = self.bot.get_guild(int(server_id))
             if not guild:
                 await ctx.send("Could not find the specified server.")
                 return
 
-            # If no user is specified, use the command invoker
             if user is None:
                 member = guild.get_member(ctx.author.id)
             else:
@@ -29,8 +26,7 @@ class RoleViewer(commands.Cog):
                 await ctx.send("Could not find the specified user in that server.")
                 return
 
-            # Create a formatted list of roles
-            roles = [role.name for role in member.roles[1:]]  # [1:] to exclude @everyone
+            roles = [role.name for role in member.roles[1:]]
             roles_text = "\n".join(roles) if roles else "No roles"
             
             message = f"Roles for {member.name} in {guild.name}:\n{roles_text}"

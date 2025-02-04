@@ -16,7 +16,6 @@ class FirstSeen(commands.Cog):
         if os.path.exists(self.data_file):
             with open(self.data_file, 'r') as f:
                 data = json.load(f)
-                # Convert string keys back to integers and strings to datetime
                 self.first_seen = {
                     int(user_id): datetime.fromisoformat(timestamp)
                     for user_id, timestamp in data.items()
@@ -25,7 +24,6 @@ class FirstSeen(commands.Cog):
     def _save_data(self):
         """Save first-seen data to JSON file"""
         with open(self.data_file, 'w') as f:
-            # Convert datetime objects to ISO format strings
             data = {
                 str(user_id): timestamp.isoformat()
                 for user_id, timestamp in self.first_seen.items()
@@ -35,7 +33,7 @@ class FirstSeen(commands.Cog):
     @commands.Cog.listener()
     async def on_command(self, ctx):
         """Record first time a user uses any command"""
-        if not ctx.author.bot:  # Ignore bot commands
+        if not ctx.author.bot:
             user_id = ctx.author.id
             if user_id not in self.first_seen:
                 self.first_seen[user_id] = datetime.now()
@@ -62,14 +60,12 @@ class FirstSeen(commands.Cog):
             )
             embed.set_thumbnail(url=target_user.display_avatar.url)
             
-            # Add first seen date
             embed.add_field(
                 name="First Seen",
                 value=f"<t:{int(timestamp.timestamp())}:F>",
                 inline=False
             )
             
-            # Add relative time
             embed.add_field(
                 name="Time Since",
                 value=f"<t:{int(timestamp.timestamp())}:R>",
@@ -81,20 +77,17 @@ class FirstSeen(commands.Cog):
             await ctx.send(f"{target_user.name} hasn't used any bot commands yet!")
 
     @commands.command()
-    @commands.is_owner() # Only allows administrators to use this command
+    @commands.is_owner()
     async def setfirstseen(self, ctx, member: discord.Member, *, date_str: str):
         """Set a user's first seen date manually (Admin only)
         Format: YYYY-MM-DD HH:MM:SS
         Example: !setfirstseen @User 2023-01-01 12:00:00"""
         try:
-            # Parse the provided date string
             new_date = datetime.fromisoformat(date_str)
             
-            # Update the first seen date for the user
             self.first_seen[member.id] = new_date
-            self._save_data()  # Save the changes to file
+            self._save_data()
             
-            # Confirm the change with an embed
             embed = discord.Embed(
                 title="First Seen Date Updated",
                 color=member.color,

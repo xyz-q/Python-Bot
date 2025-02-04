@@ -12,20 +12,19 @@ class Blacklist(commands.Cog):
     def _load_blacklist(self):
         """Load the blacklist from file with error handling"""
         try:
-            # Ensure the directory exists
             os.makedirs(os.path.dirname(self.blacklist_file), exist_ok=True)
             
             if os.path.exists(self.blacklist_file):
                 with open(self.blacklist_file, "r") as f:
                     data = json.load(f)
-                print(f"Loaded blacklist: {data}")  # Debug print
+                print(f"Loaded blacklist: {data}")
                 return data
             else:
-                print("No blacklist file found, creating new one")  # Debug print
+                print("No blacklist file found, creating new one")
                 self._save_blacklist([])
                 return []
         except Exception as e:
-            print(f"Error loading blacklist: {e}")  # Debug print
+            print(f"Error loading blacklist: {e}")
             return []
 
     def _save_blacklist(self, blacklist=None):
@@ -34,22 +33,20 @@ class Blacklist(commands.Cog):
             blacklist = self.blacklisted_users
             
         try:
-            # Ensure the directory exists
             os.makedirs(os.path.dirname(self.blacklist_file), exist_ok=True)
             
             with open(self.blacklist_file, "w") as f:
                 json.dump(blacklist, f, indent=4)
-            print(f"Saved blacklist: {blacklist}")  # Debug print
+            print(f"Saved blacklist: {blacklist}")
             return True
         except Exception as e:
-            print(f"Error saving blacklist: {e}")  # Debug print
+            print(f"Error saving blacklist: {e}")
             return False
 
     @commands.command()
     @commands.is_owner()
     async def blacklist(self, ctx, user: discord.User = None):
         if user is None:
-            # Show current blacklist
             embed = discord.Embed(title="Blacklisted Users", color=discord.Color.red())
             if self.blacklisted_users:
                 users_list = []
@@ -62,9 +59,8 @@ class Blacklist(commands.Cog):
             await ctx.send(embed=embed)
             return
 
-        user_id = int(user.id)  # Convert to int for consistency
+        user_id = int(user.id)
         
-        # Debug prints
         print(f"Current blacklist before change: {self.blacklisted_users}")
         print(f"Attempting to modify blacklist for user: {user_id}")
 
@@ -83,10 +79,8 @@ class Blacklist(commands.Cog):
             else:
                 await ctx.send("❌ Failed to save blacklist changes.")
 
-        # Debug print
         print(f"Current blacklist after change: {self.blacklisted_users}")
 
-        # Reload the blacklist to verify changes
         self.blacklisted_users = self._load_blacklist()
         print(f"Reloaded blacklist: {self.blacklisted_users}")
 

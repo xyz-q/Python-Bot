@@ -11,7 +11,7 @@ class Statistics(commands.Cog):
         self.uptime_file = ".json/uptime_stats.json"
         self.command_stats_file = ".json/command_stats.json"
         self.load_uptime_stats()
-        self.update_runtime.start()  # Start the background task
+        self.update_runtime.start()
         
     def load_uptime_stats(self):
         try:
@@ -43,22 +43,18 @@ class Statistics(commands.Cog):
         """Update the runtime every 17 seconds"""
         self.total_seconds += 17
 
-        # Update minutes if we have 60 or more seconds
         while self.total_seconds >= 60:
             self.total_seconds -= 60
             self.total_minutes += 1
 
-        # Update hours if we have 60 or more minutes
         while self.total_minutes >= 60:
             self.total_minutes -= 60
             self.total_hours += 1
 
-        # Update days if we have 24 or more hours
         while self.total_hours >= 24:
             self.total_hours -= 24
             self.total_days += 1
 
-        # Save the updated stats
         self.save_uptime_stats()
 
     def load_command_stats(self):
@@ -73,7 +69,6 @@ class Statistics(commands.Cog):
         total_commands = 0
         command_breakdown = {}
 
-        # Calculate totals for each command across all users
         for user_id, commands in stats.items():
             for command, count in commands.items():
                 total_commands += count
@@ -96,21 +91,18 @@ class Statistics(commands.Cog):
             timestamp=datetime.utcnow()
         )
 
-        # Add total uptime field
         embed.add_field(
             name="Total Running Time",
             value=uptime,
             inline=False
         )
 
-        # Add total commands field
         embed.add_field(
             name="Total Commands Used",
             value=str(total_commands),
             inline=False
         )
 
-        # Add top 10 most used commands
         sorted_commands = sorted(command_breakdown.items(), key=lambda x: x[1], reverse=True)[:10]
         top_commands = "\n".join(f"`{cmd}`: {count}" for cmd, count in sorted_commands)
         
@@ -135,7 +127,7 @@ class Statistics(commands.Cog):
 
     def cog_unload(self):
         """Called when the cog is unloaded"""
-        self.update_runtime.cancel()  # Stop the background task
+        self.update_runtime.cancel()
         self.save_uptime_stats()
 
     @update_runtime.before_loop
