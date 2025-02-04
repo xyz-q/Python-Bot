@@ -12,353 +12,6 @@ from cogs.Cmds.gamble import has_account
 import asyncio
 import asyncio
 
-
-class TicketView(discord.ui.View):
-    def __init__(self, bot, cog, user, command_message):
-        super().__init__(timeout=60)
-        self.bot = bot
-        self.cog = cog
-        self.user = user
-        self.command_message = command_message
-        self.page = 0
-        self.is_admin = str(user.id) in map(str, cog.admin_ids)
-        self.current_view = "main"
-        self.message = None
-
-        # Get reference to admin button and set its state
-        for child in self.children:
-            if isinstance(child, discord.ui.Button) and child.label == "Admin View":
-                child.disabled = not self.is_admin
-                child.style = discord.ButtonStyle.grey if not self.is_admin else discord.ButtonStyle.green
-        
-        # Hide navigation buttons initially
-        self.previous_button.disabled = True
-        self.next_button.disabled = True
-        self.previous_button.style = discord.ButtonStyle.gray
-        self.next_button.style = discord.ButtonStyle.gray
-
-    async def on_timeout(self):
-        # Disable all buttons
-        for item in self.children:
-            item.disabled = True
-
-            
-        # Update embed to show timeout
-        if self.message:
-            embed = self.message.embeds[0]
-            embed.color = discord.Color.red()
-            embed.description = "❌ This menu has timed out."
-            
-            try:
-                await self.message.edit(embed=embed, view=self)
-            except:
-                pass
-
-    def get_max_pages(self):
-        if self.current_view == "admin":
-            all_tickets = []
-            for t_type in ["deposit", "withdraw"]:
-                for ticket_id, ticket in self.cog.tickets[t_type].items():
-                    all_tickets.append((t_type, ticket_id, ticket))
-            return max(0, len(all_tickets) - 1)
-        else:
-            user_tickets = []
-            for t_type in ["deposit", "withdraw"]:
-                for ticket_id, ticket in self.cog.tickets[t_type].items():
-                    if str(ticket['user_id']) == str(self.user.id):
-                        user_tickets.append((t_type, ticket_id, ticket))
-            return max(0, len(user_tickets) - 1)
-
-    def update_button_visibility(self):
-        max_pages = self.get_max_pages()
-        
-        if self.current_view == "main":
-            self.list_button.label = "List Tickets"
-            self.list_button.emoji = "📋"
-            self.admin_view_button.label = "Admin View"
-            self.admin_view_button.emoji = "🔧"
-            self.show_navigation(False)
-            self.list_button.disabled = False
-            self.admin_view_button.disabled = False
-        elif self.current_view == "list":
-            self.list_button.label = "Main"
-            self.list_button.emoji = "🏠"
-            self.show_navigation(True)
-            self.list_button.disabled = False
-            self.admin_view_button.disabled = True
-            
-            # Update navigation button styles
-            if self.page <= 0:
-                self.previous_button.disabled = True
-                self.previous_button.style = discord.ButtonStyle.grey
-            else:
-                self.previous_button.disabled = False
-                self.previous_button.style = discord.ButtonStyle.blurple
-
-            if self.page >= max_pages:
-                self.next_button.disabled = True
-                self.next_button.style = discord.ButtonStyle.grey
-            else:
-                self.next_button.disabled = False
-                self.next_button.style = discord.ButtonStyle.blurple
-
-        elif self.current_view == "admin":
-            self.admin_view_button.label = "Main"
-            self.admin_view_button.emoji = "🏠"
-            self.show_navigation(True)
-            self.list_button.disabled = True
-            self.admin_view_button.disabled = False
-            
-            # Update navigation button styles
-            if self.page <= 0:
-                self.previous_button.disabled = True
-                self.previous_button.style = discord.ButtonStyle.grey
-            else:
-                self.previous_button.disabled = False
-                self.previous_button.style = discord.ButtonStyle.blurple
-
-            if self.page >= max_pages:
-                self.next_button.disabled = True
-                self.next_button.style = discord.ButtonStyle.grey
-            else:
-                self.next_button.disabled = False
-                self.next_button.style = discord.ButtonStyle.blurple
-
-    def get_user_ticket_counts(self):
-        deposit_count = 0
-        withdraw_count = 0
-        for ticket_id, ticket in self.cog.tickets['deposit'].items():
-            if str(ticket['user_id']) == str(self.user.id):
-                deposit_count += 1
-        for ticket_id, ticket in self.cog.tickets['withdraw'].items():
-            if str(ticket['user_id']) == str(self.user.id):
-                withdraw_count += 1
-        return deposit_count, withdraw_count
-
-    def get_total_ticket_counts(self):
-        return len(self.cog.tickets['deposit']), len(self.cog.tickets['withdraw'])
-
-    def create_embed(self):
-        deposit_count, withdraw_count = self.get_user_ticket_counts()
-        total_deposits, total_withdraws = self.get_total_ticket_counts()
-
-        embed = discord.Embed(
-            title="🎫 Ticket System",
-            color=discord.Color.gold()
-        )
-
-        # User's Ticket Information
-        embed.add_field(
-            name="Your Active Tickets",
-            value=f"```\n"
-                  f"Deposit Tickets:  {deposit_count}\n"
-                  f"Withdraw Tickets: {withdraw_count}\n"
-                  f"Total Tickets:    {deposit_count + withdraw_count}\n"
-                  f"```",
-            inline=False
-        )
-
-        if self.is_admin:
-            # Admin System Overview
-            embed.add_field(
-                name="System Overview",
-                value=f"```\n"
-                      f"Total Deposits:    {total_deposits}\n"
-                      f"Total Withdraws:   {total_withdraws}\n"
-                      f"Total Tickets:     {total_deposits + total_withdraws}\n"
-                      f"```",
-                inline=False
-            )
-
-        # Quick Help
-        embed.add_field(
-            name="Quick Actions",
-            value="• Use `List Tickets` to view your active tickets\n"
-
-                  + ("• Use `Admin View` to see all system tickets\n" if self.is_admin else ""),
-            inline=False
-        )
-
-        return embed
-
-    def create_list_embed(self):
-        # Get user's tickets
-        user_tickets = []
-        for t_type in ["deposit", "withdraw"]:
-            for ticket_id, ticket in self.cog.tickets[t_type].items():
-                if str(ticket['user_id']) == str(self.user.id):
-                    user_tickets.append((t_type, ticket_id, ticket))
-
-        if not user_tickets:
-            embed = discord.Embed(
-                title="🎫 Your Tickets",
-                description="You have no pending tickets!",
-                color=discord.Color.gold()
-            )
-            return embed
-
-        # Get current ticket (1 per page)
-        current_ticket = user_tickets[self.page]
-        t_type, ticket_id, ticket = current_ticket
-        
-        embed = discord.Embed(
-            title="🎫 Your Tickets",
-            description=f"Showing ticket {self.page + 1} of {len(user_tickets)}",
-            color=discord.Color.gold()
-        )
-
-        embed.add_field(
-            name=f"{t_type.title()} Ticket #{ticket_id}",
-            value=f"**Amount**\n<:goldpoints:1319902464115343473> {self.cog.format_amount2(ticket['amount'])}\n\n"
-                f"**RSN**\n{ticket['rsn']}\n\n"
-                f"**Date**\n{ticket['date']}",
-            inline=False
-        )
-        quick_actions = f"<:remove:1328511957208268800> `,ticket cancel {ticket_id} <reason>`"
-        embed.add_field(name="Quick Actions", value=quick_actions, inline=False)
-
-        embed.set_footer(text=f"Use arrow buttons to navigate")
-        return embed
-
-    def create_admin_embed(self):
-        # Get all tickets for admin view
-        tickets_list = []
-        for t_type in ["deposit", "withdraw"]:
-            for ticket_id, ticket in self.cog.tickets[t_type].items():
-                tickets_list.append((t_type, ticket_id, ticket))
-
-        if not tickets_list:
-            embed = discord.Embed(
-                title="🎫 Pending Tickets",
-                description="No pending tickets found!",
-                color=discord.Color.gold()
-            )
-            return embed
-
-        # Get current ticket (1 per page)
-        current_ticket = tickets_list[self.page]
-        t_type, ticket_id, ticket = current_ticket
-        
-        embed = discord.Embed(
-            title="🎫 Pending Tickets",
-            description=f"Showing ticket {self.page + 1} of {len(tickets_list)}",
-            color=discord.Color.gold()
-        )
-
-        embed.add_field(
-            name=f"{t_type.title()} Ticket #{ticket_id}",
-            value=f"**User**\n{ticket['user_name']}\n\n"
-                f"**Amount**\n<:goldpoints:1319902464115343473> {self.cog.format_amount2(ticket['amount'])}\n\n"
-                f"**RSN**\n{ticket['rsn']}\n\n"
-                f"**Date**\n{ticket['date']}",
-            inline=False
-        )
-        quick_actions = f"<:add:1328511998647861390> `,ticket accept {ticket_id}`\n<:remove:1328511957208268800> `,ticket decline {ticket_id}`"
-        embed.add_field(name="Quick Actions", value=quick_actions, inline=False)
-
-        embed.set_footer(text=f"Use arrow buttons to navigate")
-        return embed
-    
-    def show_navigation(self, show: bool):
-        self.previous_button.disabled = not show
-        self.next_button.disabled = not show
-        if show:
-            self.previous_button.style = discord.ButtonStyle.blurple
-            self.next_button.style = discord.ButtonStyle.blurple
-        else:
-            self.previous_button.style = discord.ButtonStyle.grey
-            self.next_button.style = discord.ButtonStyle.grey
-
-    @discord.ui.button(label="List Tickets", style=discord.ButtonStyle.blurple, emoji="📋")
-    async def list_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_view == "main":
-            self.current_view = "list"
-            embed = self.create_list_embed()
-        else:
-            self.current_view = "main"
-            embed = self.create_embed()
-        
-        self.update_button_visibility()
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.grey, emoji="⬅️", row=1)
-    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.page -= 1
-        embed = self.create_admin_embed() if self.current_view == "admin" else self.create_list_embed()
-        self.update_button_visibility()
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.grey, emoji="➡️", row=1)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.page += 1
-        embed = self.create_admin_embed() if self.current_view == "admin" else self.create_list_embed()
-        self.update_button_visibility()
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.button(label="Admin View", style=discord.ButtonStyle.green, emoji="🔧")
-    async def admin_view_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_view == "main":
-            self.current_view = "admin"
-            embed = self.create_admin_embed()
-        else:
-            self.current_view = "main"
-            embed = self.create_embed()
-        
-        self.update_button_visibility()
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.button(label="Close Menu", style=discord.ButtonStyle.red, emoji="❌", row=2)
-    async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.message.delete()
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        # Check if "Main" button was clicked
-        if interaction.data.get("custom_id"):
-            if interaction.data["custom_id"] == "list_button" and self.list_button.label == "Main":
-                await self.return_to_main(interaction, "list")
-                return False
-            elif interaction.data["custom_id"] == "admin_view_button" and self.admin_view_button.label == "Main":
-                await self.return_to_main(interaction, "admin")
-                return False
-        return True
-
-
-class CancelTicketModal(discord.ui.Modal, title="Cancel Ticket"):
-    def __init__(self, cog, view):
-        super().__init__()
-        self.cog = cog
-        self.view = view
-
-        self.ticket_id = discord.ui.TextInput(
-            label="Ticket ID",
-            placeholder="Enter the ticket ID to cancel",
-            required=True,
-            min_length=1,
-            max_length=10
-        )
-        self.add_item(self.ticket_id)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        ticket_id = self.ticket_id.value
-        found = False
-
-        # Check both deposit and withdraw tickets
-        for t_type in ["deposit", "withdraw"]:
-            if ticket_id in self.cog.tickets[t_type]:
-                ticket = self.cog.tickets[t_type][ticket_id]
-                if str(ticket['user_id']) == str(interaction.user.id):
-                    del self.cog.tickets[t_type][ticket_id]
-                    self.cog.save_tickets()
-                    found = True
-                    break
-
-        if found:
-            embed = self.view.create_embed()
-            await interaction.response.edit_message(embed=embed, view=self.view)
-            await interaction.followup.send(f"✅ Ticket {ticket_id} has been cancelled!", ephemeral=True)
-        else:
-            await interaction.response.send_message("❌ Invalid ticket ID or you don't own this ticket!", ephemeral=True)
-
 class AdminTicketView(View):
     def __init__(self, bot, user_id, timer_msg, ticket_data, public_msg, cog, ticket_type, user_timer, dm_timer, user_embed, admin_embed):
         super().__init__(timeout=None)
@@ -812,16 +465,50 @@ class GambleSystem(commands.Cog):
 
 
 
-    # Modify the existing ticket command
     @commands.group(invoke_without_command=True, aliases=["tickets"])
     async def ticket(self, ctx):
-        await ctx.message.delete()
-        """View and manage your tickets"""
-        view = TicketView(self.bot, self, ctx.author, ctx.message)  # Added ctx.message here
-        embed = view.create_embed()
-        view.message = await ctx.send(embed=embed, view=view)  # Store the message in view
-        await asyncio.sleep(600)
-        await view.message.delete()  # Wait for 60 seconds
+        """Ticket management system"""
+        embed = discord.Embed(
+            title="🎫 Ticket System Commands",
+            description="Here are all available ticket commands:",
+            color=discord.Color.gold()
+        )
+        
+        # Get all commands from the cog
+        user_commands = []
+        admin_commands = []
+        
+        # Iterate through all commands in the cog
+        for command in ctx.command.walk_commands():
+            # Get the command signature and help text
+            signature = f",ticket {command.name} {command.signature}".strip()
+            help_text = command.help or "No description available"
+            command_text = f"`{signature}` - {help_text}"
+            
+            # Check if it's an admin command (you might want to adjust this logic)
+            if command.name in ['accept', 'decline', 'admin']:
+                admin_commands.append(command_text)
+            else:
+                user_commands.append(command_text)
+        
+        # Add user commands field if there are any
+        if user_commands:
+            embed.add_field(
+                name="User Commands",
+                value="\n".join(user_commands),
+                inline=False
+            )
+        
+        # Add admin commands field if user is admin and there are admin commands
+        if str(ctx.author.id) in map(str, self.admin_ids) and admin_commands:
+            embed.add_field(
+                name="Admin Commands",
+                value="\n".join(admin_commands),
+                inline=False
+            )
+        
+        embed.set_footer(text="Use ,deposit <amount> <rsn> or ,withdraw <amount> <rsn> to create new tickets")
+        await ctx.send(embed=embed)
 
 
     @ticket.command(name="list")
