@@ -12,10 +12,30 @@ from cogs.Cmds.gamble import has_account
 import asyncio
 import asyncio
 
+class ConfirmView(View):
+    def __init__(self, timeout=30):
+        super().__init__(timeout=timeout)
+        self.value = None
+
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, emoji="✅")
+    async def confirm(self, interaction: discord.Interaction, button: Button):
+        self.value = True
+        self.stop()
+        await interaction.response.defer()
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, emoji="❌")
+    async def cancel(self, interaction: discord.Interaction, button: Button):
+        self.value = False
+        self.stop()
+        await interaction.response.defer()
+
+    async def on_timeout(self):
+        self.value = None
+        self.stop()
 
 class TicketView(discord.ui.View):
     def __init__(self, bot, cog, user, command_message):
-        super().__init__(timeout=60)
+        super().__init__(timeout=90)
         self.bot = bot
         self.cog = cog
         self.user = user
@@ -180,6 +200,22 @@ class TicketView(discord.ui.View):
         )
 
         return embed
+
+    async def update_view(self):
+        """Update the view after ticket changes"""
+        if self.current_view == "admin":
+            embed = self.create_admin_embed()
+        else:
+            embed = self.create_list_embed()
+        
+        # Check if we need to adjust the page number
+        max_pages = self.get_max_pages()
+        if self.page > max_pages:
+            self.page = max_pages
+
+        # Update the message with new embed
+        if self.message:
+            await self.message.edit(embed=embed, view=self)
 
     def create_list_embed(self):
         # Get user's tickets
@@ -560,6 +596,7 @@ class GambleSystem(commands.Cog):
         self.MAX_WITHDRAW = 250_000_000
         self.USER_ID_LIMIT = 1_000_000_000_000
         self.active_sessions = {}
+        self.active_views = set()
 
 
     def is_house_name(self, name: str) -> bool:
@@ -802,7 +839,7 @@ class GambleSystem(commands.Cog):
             self.last_ticket_id = 0
             self.save_tickets()
 
-    def save_tickets(self):
+    async def save_tickets(self):
         data = {
             "tickets": self.tickets,
             "last_ticket_id": self.last_ticket_id
@@ -820,8 +857,15 @@ class GambleSystem(commands.Cog):
         view = TicketView(self.bot, self, ctx.author, ctx.message)  # Added ctx.message here
         embed = view.create_embed()
         view.message = await ctx.send(embed=embed, view=view)  # Store the message in view
-        await asyncio.sleep(600)
-        await view.message.delete()  # Wait for 60 seconds
+        self.active_views.add(view)  # Add view to active views
+
+        # Clean up view when it's done
+        await view.wait()
+        self.active_views.discard(view)
+        await asyncio.sleep(5)
+        await view.message.delete()
+        
+
 
 
     @ticket.command(name="list")
@@ -1092,6 +1136,7 @@ class GambleSystem(commands.Cog):
 
     @ticket.command(name="decline")
     async def decline_ticket(self, ctx, ticket_id: str, *, reason: str):
+        await ctx.message.delete()
         """Decline a ticket with a reason"""
         if str(ctx.author.id) not in map(str, self.admin_ids):
             await ctx.send("<:remove:1328511957208268800> You don't have permission to use this command!")
@@ -1138,12 +1183,21 @@ class GambleSystem(commands.Cog):
 
         # Remove ticket
         del self.tickets[ticket_type][ticket_id]
-        self.save_tickets()
-        await ctx.send(f"<:remove:1328511957208268800> Ticket #{ticket_id} has been declined! Reason: {reason}")
+        await self.save_tickets()
+        declinemsg = await ctx.send(f"<:add:1328511998647861390> Ticket #{ticket_id} has been declined! Reason: {reason}")
+        await asyncio.sleep(7)
+        await declinemsg.delete()
 
-
+        for view in self.active_views.copy():  # Use .copy() to avoid modification during iteration
+            try:
+                await view.update_view()
+            except Exception as e:
+                print(f"Failed to update view: {e}")
+                self.active_views.discard(view)
+                
     @ticket.command(name="cancel")
     async def Cancel(self, ctx, ticket_id, *, reason=None):
+        await ctx.message.delete()
         if not reason:
             return await ctx.send(f"<:remove:1328511957208268800> Please provide a reason for cancellation!\nUsage: `!ticket cancel <ticket_id> <reason>`")
 
@@ -1169,8 +1223,17 @@ class GambleSystem(commands.Cog):
         del self.tickets[ticket_type][ticket_id]
         self.save_tickets()
         
+        for view in self.active_views.copy():  # Use .copy() to avoid modification during iteration
+            try:
+                await view.update_view()
+            except Exception as e:
+                print(f"Failed to update view: {e}")
+                self.active_views.discard(view)        
+
         # Send confirmation to the user
-        await ctx.send(f"<:add:1328511998647861390> Ticket `{ticket_id}` has been cancelled!\nReason: {reason}")
+        cancelmsg = await ctx.send(f"<:add:1328511998647861390> Ticket `{ticket_id}` has been cancelled!\nReason: {reason}")
+        await asyncio.sleep(7)
+        await cancelmsg.delete()
         
         # Send notifications to admins with reason
         for admin_id in self.admin_ids:
@@ -1189,6 +1252,8 @@ class GambleSystem(commands.Cog):
                 embed.add_field(name="Reason", value=reason, inline=False)
                 
                 await admin.send(embed=embed)
+                for view in self.active_views:
+                    await view.update_view()                
             except Exception as e:
                 print(f"Failed to notify admin {admin_id}: {e}")
 
@@ -1231,10 +1296,10 @@ class GambleSystem(commands.Cog):
             value=rsn,
             inline=False
         )
-        confirm_embed.set_footer(text="Type 'confirm' to proceed or 'cancel' to abort")
-
-        # Send confirmation message
-        confirm_msg = await ctx.send(embed=confirm_embed)
+        
+        # Create and send view with buttons
+        view = ConfirmView(timeout=30)
+        confirm_msg = await ctx.send(embed=confirm_embed, view=view)
         
         # Delete the original command message
         try:
@@ -1242,119 +1307,90 @@ class GambleSystem(commands.Cog):
         except:
             pass
 
-        def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
-
-        messages_to_delete = []
+        # Wait for button interaction
+        await view.wait()
         
-        try:
-            while True:
-                response = await self.bot.wait_for('message', timeout=30.0, check=check)
-                messages_to_delete.append(response)
-                
-                if response.content.lower() in ['confirm', 'cancel']:
-                    # Delete all collected messages
-                    try:
-                        await ctx.channel.delete_messages(messages_to_delete)
-                    except:
-                        for msg in messages_to_delete:
-                            try:
-                                await msg.delete()
-                            except:
-                                pass
-                    
-                    if response.content.lower() == 'cancel':
-                        await confirm_msg.edit(content="<:remove:1328511957208268800> Deposit request cancelled.", embed=None)
-                        return
-                    
-                    # If confirmed, delete confirmation message and proceed with original deposit logic
-                    await confirm_msg.delete()
+        # Handle timeout
+        if view.value is None:
+            await confirm_msg.edit(content="<:remove:1328511957208268800> Confirmation timed out. Please try again.", embed=None, view=None)
+            return
+        
+        # Handle cancellation
+        if view.value is False:
+            await confirm_msg.edit(content="<:remove:1328511957208268800> Deposit request cancelled.", embed=None, view=None)
+            return
+        
+        # If confirmed, delete confirmation message and proceed
+        await confirm_msg.delete()
                     
                     # Generate ticket ID
-                    ticket_id = self.generate_ticket_id()
-                    ticket_data = {
-                        "user_id": str(ctx.author.id),
-                        "user_name": str(ctx.author),
-                        "amount": formatted_amount,
-                        "rsn": rsn,
-                        "date": discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
-                    }
-                    
-                    # Save ticket data
-                    self.tickets["deposit"][ticket_id] = ticket_data
-                    self.save_tickets()
+        ticket_id = self.generate_ticket_id()
+        ticket_data = {
+            "user_id": str(ctx.author.id),
+            "user_name": str(ctx.author),
+            "amount": formatted_amount,
+            "rsn": rsn,
+            "date": discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+        }
+        
+        # Save ticket data
+        self.tickets["deposit"][ticket_id] = ticket_data
+        self.save_tickets()
 
-                    # User notification embed
-                    user_embed = discord.Embed(
-                        title="<:add:1328511998647861390> Deposit Request Sent",
-                        description="Your deposit request has been sent to an administrator.",
-                        color=discord.Color.green()
-                    )
-                    user_embed.add_field(
-                        name="Amount",
-                        value=f"<:goldpoints:1319902464115343473> {self.format_amount2(formatted_amount)}",
-                        inline=False
-                    )
-                    user_embed.add_field(
-                        name="RSN",
-                        value=rsn,
-                        inline=False
-                    )
-                    user_embed.add_field(
-                        name="Ticket ID",
-                        value=f"#{ticket_id}",
-                        inline=False
-                    )
-                    user_embed.set_footer(text="Please wait for an administrator to process your request.")
-                    await ctx.send(embed=user_embed)
+        # User notification embed
+        user_embed = discord.Embed(
+            title="<:add:1328511998647861390> Deposit Request Sent",
+            description="Your deposit request has been sent to an administrator.",
+            color=discord.Color.green()
+        )
+        user_embed.add_field(
+            name="Amount",
+            value=f"<:goldpoints:1319902464115343473> {self.format_amount2(formatted_amount)}",
+            inline=False
+        )
+        user_embed.add_field(
+            name="RSN",
+            value=rsn,
+            inline=False
+        )
+        user_embed.add_field(
+            name="Ticket ID",
+            value=f"#{ticket_id}",
+            inline=False
+        )
+        user_embed.set_footer(text="Please wait for an administrator to process your request.")
+        await ctx.send(embed=user_embed)
 
-                    # Admin notification embed
-                    for admin_id in self.admin_ids:
-                        admin = self.bot.get_user(admin_id)
-                        if admin:
-                            admin_embed = discord.Embed(
-                                title="<:add:1328511998647861390> New Deposit Request",
-                                description=f" A new deposit request has been submitted.",
-                                color=discord.Color.green()
-                            )
-                            admin_embed.add_field(
-                                name="User",
-                                value=ctx.author.mention,
-                                inline=False
-                            )
-                            admin_embed.add_field(
-                                name="Amount",
-                                value=f"<:goldpoints:1319902464115343473> {self.format_amount2(formatted_amount)}",
-                                inline=False
-                            )
-                            admin_embed.add_field(
-                                name="Ticket ID",
-                                value=f"#{ticket_id}",
-                                inline=False
-                            )
+        # Admin notification embed
+        for admin_id in self.admin_ids:
+            admin = self.bot.get_user(admin_id)
+            if admin:
+                admin_embed = discord.Embed(
+                    title="<:add:1328511998647861390> New Deposit Request",
+                    description=f" A new deposit request has been submitted.",
+                    color=discord.Color.green()
+                )
+                admin_embed.add_field(
+                    name="User",
+                    value=ctx.author.mention,
+                    inline=False
+                )
+                admin_embed.add_field(
+                    name="Amount",
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount2(formatted_amount)}",
+                    inline=False
+                )
+                admin_embed.add_field(
+                    name="Ticket ID",
+                    value=f"#{ticket_id}",
+                    inline=False
+                )
 
-                            try:
-                                await admin.send(embed=admin_embed)
-                            except discord.Forbidden:
-                                continue
+                try:
+                    await admin.send(embed=admin_embed)
+                except discord.Forbidden:
+                    continue
 
-                    break
-                else:
-                    # If message isn't confirm/cancel, send temporary error
-                    error_msg = await ctx.send("<:remove:1328511957208268800> Please type 'confirm' or 'cancel'", delete_after=2)
-                    messages_to_delete.append(error_msg)
-                    
-        except asyncio.TimeoutError:
-            try:
-                await ctx.channel.delete_messages(messages_to_delete)
-            except:
-                for msg in messages_to_delete:
-                    try:
-                        await msg.delete()
-                    except:
-                        pass
-            await confirm_msg.edit(content="<:remove:1328511957208268800> Confirmation timed out. Please try again.", embed=None)
-            return
 
 
 
@@ -1389,10 +1425,10 @@ class GambleSystem(commands.Cog):
             value=rsn,
             inline=False
         )
-        confirm_embed.set_footer(text="Type 'confirm' to proceed or 'cancel' to abort")
 
-        # Send confirmation message
-        confirm_msg = await ctx.send(embed=confirm_embed)
+        # Create and send view with buttons
+        view = ConfirmView(timeout=30)
+        confirm_msg = await ctx.send(embed=confirm_embed, view=view)
         
         # Delete the original command message
         try:
@@ -1400,119 +1436,90 @@ class GambleSystem(commands.Cog):
         except:
             pass
 
-        def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
-
-        messages_to_delete = []
+        # Wait for button interaction
+        await view.wait()
         
-        try:
-            while True:
-                response = await self.bot.wait_for('message', timeout=30.0, check=check)
-                messages_to_delete.append(response)
-                
-                if response.content.lower() in ['confirm', 'cancel']:
-                    # Delete all collected messages
-                    try:
-                        await ctx.channel.delete_messages(messages_to_delete)
-                    except:
-                        for msg in messages_to_delete:
-                            try:
-                                await msg.delete()
-                            except:
-                                pass
-                    
-                    if response.content.lower() == 'cancel':
-                        await confirm_msg.edit(content="<:remove:1328511957208268800> Withdraw request cancelled.", embed=None)
-                        return
-                    
-                    # If confirmed, delete confirmation message and proceed with original withdraw logic
-                    await confirm_msg.delete()
-                    
-                    # Generate ticket ID
-                    ticket_id = self.generate_ticket_id()
-                    ticket_data = {
-                        "user_id": str(ctx.author.id),
-                        "user_name": str(ctx.author),
-                        "amount": formatted_amount,
-                        "rsn": rsn,
-                        "date": discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
-                    }
-                    
-                    # Save ticket data
-                    self.tickets["withdraw"][ticket_id] = ticket_data
-                    self.save_tickets()
-
-                    # User notification embed
-                    user_embed = discord.Embed(
-                        title="<:add:1328511998647861390> Withdraw Request Sent",
-                        description="Your withdraw request has been sent to an administrator.",
-                        color=discord.Color.green()
-                    )
-                    user_embed.add_field(
-                        name="Amount",
-                        value=f"<:goldpoints:1319902464115343473> {self.format_amount2(formatted_amount)}",
-                        inline=False
-                    )
-                    user_embed.add_field(
-                        name="RSN",
-                        value=rsn,
-                        inline=False
-                    )
-                    user_embed.add_field(
-                        name="Ticket ID",
-                        value=f"#{ticket_id}",
-                        inline=False
-                    )
-                    user_embed.set_footer(text="Please wait for an administrator to process your request.")
-                    await ctx.send(embed=user_embed)
-
-                    # Admin notification embed
-                    for admin_id in self.admin_ids:
-                        admin = self.bot.get_user(admin_id)
-                        if admin:
-                            admin_embed = discord.Embed(
-                                title="<:add:1328511998647861390> New Withdraw Request",
-                                description=f"A new withdraw request has been submitted.",
-                                color=discord.Color.green()
-                            )
-                            admin_embed.add_field(
-                                name="User",
-                                value=ctx.author.mention,
-                                inline=False
-                            )
-                            admin_embed.add_field(
-                                name="Amount",
-                                value=f"<:goldpoints:1319902464115343473> {self.format_amount2(formatted_amount)}",
-                                inline=False
-                            )
-                            admin_embed.add_field(
-                                name="Ticket ID",
-                                value=f"#{ticket_id}",
-                                inline=False
-                            )
-
-                            try:
-                                await admin.send(embed=admin_embed)
-                            except discord.Forbidden:
-                                continue
-
-                    break
-                else:
-                    # If message isn't confirm/cancel, send temporary error
-                    error_msg = await ctx.send("<:remove:1328511957208268800> Please type 'confirm' or 'cancel'", delete_after=2)
-                    messages_to_delete.append(error_msg)
-                    
-        except asyncio.TimeoutError:
-            try:
-                await ctx.channel.delete_messages(messages_to_delete)
-            except:
-                for msg in messages_to_delete:
-                    try:
-                        await msg.delete()
-                    except:
-                        pass
-            await confirm_msg.edit(content="<:remove:1328511957208268800> Confirmation timed out. Please try again.", embed=None)
+        # Handle timeout
+        if view.value is None:
+            await confirm_msg.edit(content="<:remove:1328511957208268800> Confirmation timed out. Please try again.", embed=None, view=None)
             return
+        
+        # Handle cancellation
+        if view.value is False:
+            await confirm_msg.edit(content="<:remove:1328511957208268800> Withdraw request cancelled.", embed=None, view=None)
+            return
+        
+        # If confirmed, delete confirmation message and proceed
+        await confirm_msg.delete()
+        
+        # Generate ticket ID
+        ticket_id = self.generate_ticket_id()
+        ticket_data = {
+            "user_id": str(ctx.author.id),
+            "user_name": str(ctx.author),
+            "amount": formatted_amount,
+            "rsn": rsn,
+            "date": discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+        }
+        
+        # Save ticket data
+        self.tickets["withdraw"][ticket_id] = ticket_data
+        self.save_tickets()
+
+        # User notification embed
+        user_embed = discord.Embed(
+            title="<:add:1328511998647861390> Withdraw Request Sent",
+            description="Your withdraw request has been sent to an administrator.",
+            color=discord.Color.green()
+        )
+        user_embed.add_field(
+            name="Amount",
+            value=f"<:goldpoints:1319902464115343473> {self.format_amount2(formatted_amount)}",
+            inline=False
+        )
+        user_embed.add_field(
+            name="RSN",
+            value=rsn,
+            inline=False
+        )
+        user_embed.add_field(
+            name="Ticket ID",
+            value=f"#{ticket_id}",
+            inline=False
+        )
+        user_embed.set_footer(text="Please wait for an administrator to process your request.")
+        await ctx.send(embed=user_embed)
+
+        # Admin notification embed
+        for admin_id in self.admin_ids:
+            admin = self.bot.get_user(admin_id)
+            if admin:
+                admin_embed = discord.Embed(
+                    title="<:add:1328511998647861390> New Withdraw Request",
+                    description=f"A new withdraw request has been submitted.",
+                    color=discord.Color.green()
+                )
+                admin_embed.add_field(
+                    name="User",
+                    value=ctx.author.mention,
+                    inline=False
+                )
+                admin_embed.add_field(
+                    name="Amount",
+                    value=f"<:goldpoints:1319902464115343473> {self.format_amount2(formatted_amount)}",
+                    inline=False
+                )
+                admin_embed.add_field(
+                    name="Ticket ID",
+                    value=f"#{ticket_id}",
+                    inline=False
+                )
+
+                try:
+                    await admin.send(embed=admin_embed)
+                except discord.Forbidden:
+                    continue
+
 
 
     @commands.Cog.listener()
