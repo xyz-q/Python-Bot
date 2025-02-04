@@ -73,11 +73,11 @@ class NotificationSystem(commands.Cog):
         data = self.get_data()
         if data["message"] and str(message.author.id) not in data["readers"]:
             embed = discord.Embed(
-                title="Notification!",
-                description="There's a new message out! Use `,notification`  and clear this message.",
+                title="You have an unread\n notification!",
+                description="Use `,notification` to\n see it.",
                 color=discord.Color.gold()
             )
-            
+            embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1336128418747514921.gif")            
             try:
                 await asyncio.sleep(0.5)
                 
@@ -154,6 +154,31 @@ class NotificationSystem(commands.Cog):
         }
         self.save_data(new_data)
         await ctx.send("✅ Notification cleared!", ephemeral=True)
+
+
+    @commands.command()
+    async def inspect_embed(self, ctx, message_id: int):
+        try:
+            # Use ctx.channel to get the channel
+            message = await ctx.channel.fetch_message(message_id)
+            if message.embeds:
+                embed = message.embeds[0]
+                # Print embed details
+                print(f"Title: {embed.title}")
+                print(f"Description: {embed.description}")
+                print(f"Color: {embed.color}")
+                if embed.thumbnail:
+                    print(f"Thumbnail URL: {embed.thumbnail.url}")
+                if embed.image:
+                    print(f"Image URL: {embed.image.url}")
+                if embed.fields:
+                    for field in embed.fields:
+                        print(f"Field - Name: {field.name}, Value: {field.value}")
+                await ctx.send("Embed details printed to console!")
+        except discord.NotFound:
+            await ctx.send("Message not found!")
+
+
 
 async def setup(bot):
     await bot.add_cog(NotificationSystem(bot))
