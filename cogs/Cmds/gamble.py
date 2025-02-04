@@ -97,7 +97,7 @@ def has_account():
                     "   Please use `,accept` if you agree to these.",                    
                 inline=False
             )
-            embed.set_footer(text="    2025 N.I.C.E™ Inc")
+            embed.set_footer(text="    2025 N.I.C.E™ Inc", icon_url=ctx.author.avatar.url)
             TOSEMBED = await ctx.send(embed=embed)
             await asyncio.sleep(25)
             await TOSEMBED.delete()
