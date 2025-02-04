@@ -343,7 +343,7 @@ class TicketView(discord.ui.View):
         self.update_button_visibility()
         await interaction.response.edit_message(embed=embed, view=self)
 
-    @discord.ui.button(label="Close Menu", style=discord.ButtonStyle.red, emoji="❌", row=2)
+    @discord.ui.button(label="Close Menu", style=discord.ButtonStyle.red, row=2)
     async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.message.delete()
 
