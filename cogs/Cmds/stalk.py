@@ -45,7 +45,7 @@ class Stalk(commands.Cog):
         else:
             await ctx.send("The bot is not currently stalking anyone.")
 
-    @tasks.loop(seconds=4)
+    @tasks.loop(seconds=0.5)
     async def follow_user(self):
         if self.followed_user and self.followed_user.voice:
             guild = self.followed_user.guild
