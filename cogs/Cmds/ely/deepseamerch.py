@@ -415,7 +415,7 @@ class TravellingMerchant(commands.Cog):
 
 
 
-    @tasks.loop(time=time(hour=0, minute=0, second=5))
+    @tasks.loop(time=time(hour=0, minute=5, second=5))
     async def daily_channel(self):
         """Send daily notifications to subscribed channels"""
         items = await self.get_merchant_stock()
