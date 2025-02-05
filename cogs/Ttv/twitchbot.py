@@ -30,12 +30,16 @@ class TwitchConfigView(View):
             self.add_item(SetIntervalButton(self.cog))
             self.add_item(AutoMessagesButton(self.cog)) 
         elif self.page == "commands":
+            self.add_item(AddCommandButton(self.cog))
+            self.add_item(DeleteCommandButton(self.cog))
+            
             self.add_item(BackToMainButton(self.cog))
         elif self.page == "auto_messages":
             self.add_item(AddAutoMessageButton(self.cog))
             self.add_item(RemoveAutoMessageButton(self.cog))
             self.add_item(FollowMessageButton(self.cog))
             self.add_item(BackToMainButton(self.cog))            
+
 
 class SetChannelButton(discord.ui.Button):
     def __init__(self, cog):
@@ -140,6 +144,9 @@ class TwitchCommandsButton(discord.ui.Button):
 
             view = TwitchConfigView(self.cog, page="commands")
             await interaction.response.edit_message(embed=embed, view=view)
+            await asyncio.sleep(120)
+            new_embed = await self.cog.create_main_embed(interaction.user)
+            await interaction.message.edit(embed=new_embed, view=TwitchConfigView(self.cog))            
             
         except Exception as e:
             print(f"Error in TwitchCommandsButton callback: {str(e)}")
@@ -153,7 +160,130 @@ class TwitchCommandsButton(discord.ui.Button):
             except:
                 pass
 
+class AddCommandModal(discord.ui.Modal, title="Add Custom Command"):
+    def __init__(self, cog):
+        super().__init__()
+        self.cog = cog
+        
+        self.cmd_name = discord.ui.TextInput(
+            label="Command Name",
+            placeholder="Enter command name without prefix",
+            min_length=1,
+            max_length=20,
+            required=True
+        )
+        self.response = discord.ui.TextInput(
+            label="Command Response",
+            placeholder="What should the bot say when command is used?",
+            style=discord.TextStyle.paragraph,
+            required=True
+        )
+        self.add_item(self.cmd_name)
+        self.add_item(self.response)
 
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            user_id = str(interaction.user.id)
+            if user_id not in self.cog.config['user_channels']:
+                await interaction.response.send_message("You need to set up your Twitch channel first!", ephemeral=True)
+                return
+
+            channel = self.cog.config['user_channels'][user_id]
+            cmd_name = self.cmd_name.value.lower()
+            response = self.response.value
+
+            if cmd_name in self.cog.twitch_bot.commands:
+                await interaction.response.send_message(f"Cannot override default command: ,{cmd_name}", ephemeral=True)
+                return
+
+            if 'custom_commands' not in self.cog.config:
+                self.cog.config['custom_commands'] = {}
+            
+            if channel not in self.cog.config['custom_commands']:
+                self.cog.config['custom_commands'][channel] = {}
+
+            self.cog.config['custom_commands'][channel][cmd_name] = response
+            self.cog.save_config()
+
+            # Trigger the TwitchCommandsButton callback to refresh the view
+            await TwitchCommandsButton(self.cog).callback(interaction)
+            
+        except Exception as e:
+            print(f"Error in AddCommandModal on_submit: {str(e)}")
+            await interaction.response.send_message("An error occurred", ephemeral=True)
+
+
+class DeleteCommandModal(discord.ui.Modal, title="Delete Custom Command"):
+    def __init__(self, cog):
+        super().__init__()
+        self.cog = cog
+        
+        self.cmd_name = discord.ui.TextInput(
+            label="Command Name",
+            placeholder="Enter command name to delete",
+            min_length=1,
+            max_length=20,
+            required=True
+        )
+        self.add_item(self.cmd_name)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            user_id = str(interaction.user.id)
+            if user_id not in self.cog.config['user_channels']:
+                await interaction.response.send_message("You need to set up your Twitch channel first!", ephemeral=True)
+                return
+
+            channel = self.cog.config['user_channels'][user_id]
+            cmd_name = self.cmd_name.value.lower()
+
+            if cmd_name in self.cog.twitch_bot.commands:
+                await interaction.response.send_message(f"Cannot delete default command: ,{cmd_name}", ephemeral=True)
+                return
+
+            if (self.cog.config.get('custom_commands', {}).get(channel, {}).get(cmd_name)):
+                del self.cog.config['custom_commands'][channel][cmd_name]
+                self.cog.save_config()
+                
+                # Trigger the TwitchCommandsButton callback to refresh the view
+                await TwitchCommandsButton(self.cog).callback(interaction)
+            else:
+                await interaction.response.send_message(f"Command ,{cmd_name} not found!", ephemeral=True)
+
+        except Exception as e:
+            print(f"Error in DeleteCommandModal on_submit: {str(e)}")
+            await interaction.response.send_message("An error occurred", ephemeral=True)
+
+
+class AddCommandButton(discord.ui.Button):
+    def __init__(self, cog, row=None):
+        super().__init__(label="Add Command", style=discord.ButtonStyle.green, row=row)
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        # Check if user is mod or channel owner
+        user_id = str(interaction.user.id)
+        if user_id not in self.cog.config['user_channels']:
+            await interaction.response.send_message("You need to set up your Twitch channel first!", ephemeral=True)
+            return
+            
+        modal = AddCommandModal(self.cog)
+        await interaction.response.send_modal(modal)
+
+class DeleteCommandButton(discord.ui.Button):
+    def __init__(self, cog, row=None):
+        super().__init__(label="Delete Command", style=discord.ButtonStyle.red, row=row)
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        # Check if user is mod or channel owner
+        user_id = str(interaction.user.id)
+        if user_id not in self.cog.config['user_channels']:
+            await interaction.response.send_message("You need to set up your Twitch channel first!", ephemeral=True)
+            return
+            
+        modal = DeleteCommandModal(self.cog)
+        await interaction.response.send_modal(modal)
 
 
 class BackToMainButton(discord.ui.Button):
@@ -342,6 +472,9 @@ class AutoMessagesButton(discord.ui.Button):
 
             view = TwitchConfigView(self.cog, page="auto_messages")
             await interaction.response.edit_message(embed=embed, view=view)
+            await asyncio.sleep(120)
+            new_embed = await self.cog.create_main_embed(interaction.user)
+            await interaction.message.edit(embed=new_embed, view=TwitchConfigView(self.cog))             
             
         except Exception as e:
             print(f"Error in AutoMessagesButton callback: {str(e)}")
@@ -873,7 +1006,7 @@ class TwitchCog(commands.Cog):
             twitchembed = await ctx.send(embed=embed, view=view)
             
             # Auto refresh status every 60 seconds
-            for _ in range(3):  # Will refresh 3 times (3 minutes total)
+            for _ in range(1):  # Will refresh 3 times (3 minutes total)
                 await asyncio.sleep(180)
                 try:
                     new_embed = await self.create_main_embed(ctx.author)
