@@ -71,16 +71,16 @@ class SystemEvents(commands.Cog):
     @commands.Cog.listener()
     async def on_disconnect(self):
         try:
-
             current_time = discord.utils.utcnow()
-            
             disconnect_reason = "Unknown"
-            details = []
+            details = []  
 
+            # Add timestamp to details
+            details.append(f"Disconnect Time: {current_time.strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
-
+            # Add latency info
             if self.bot.latency:
-                print(f"Last known latency: {self.bot.latency * 1000:.2f}ms")
+                details.append(f"Last known latency: {self.bot.latency * 1000:.2f}ms")
 
             if hasattr(self.bot, '_connection') and hasattr(self.bot._connection, '_ws'):
                 ws = self.bot._connection._ws
@@ -89,7 +89,6 @@ class SystemEvents(commands.Cog):
                         1000: "Normal closure",
                         1001: "Going away",
                         1006: "Abnormal closure",
-                        1009: "Message too big",
                         1011: "Internal error",
                         1012: "Service restart",
                         4000: "Unknown error",
@@ -98,7 +97,7 @@ class SystemEvents(commands.Cog):
                         4003: "Not authenticated",
                         4004: "Authentication failed",
                         4005: "Already authenticated",
-                        4007: "Invalid seq",
+                        4007: "Invalid sequence",
                         4008: "Rate limited",
                         4009: "Session timeout",
                         4010: "Invalid shard",
@@ -109,7 +108,7 @@ class SystemEvents(commands.Cog):
                     }
                     close_code = ws.close_code
                     disconnect_reason = code_meanings.get(close_code, f"Unknown close code: {close_code}")
-                    print(f"Close code: {close_code}")
+                    details.append(f"Close code: {close_code} ({disconnect_reason})")
 
             print(f"\033[93mBot Disconnect \033[0m")
             print(f"\033[93mReason: {disconnect_reason}\033[0m")
@@ -119,10 +118,12 @@ class SystemEvents(commands.Cog):
             channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
             if channel:
                 try:
-                    await channel.send("🟢 Connection Resumed!")
-                    
-
-                    
+                    disconnect_msg = (
+                        "🔴 Bot Disconnected!\n"
+                        f"Reason: {disconnect_reason}\n"
+                        + "\n".join(f"• {detail}" for detail in details)
+                    )
+                    await channel.send(disconnect_msg)
                 except Exception as e:
                     print(f"\033[91mError sending disconnect message: {str(e)}\033[0m")
                     traceback.print_exc()
@@ -130,6 +131,7 @@ class SystemEvents(commands.Cog):
         except Exception as e:
             print(f"\033[91mError in on_disconnect: {str(e)}\033[0m")
             traceback.print_exc()
+
 
     @commands.Cog.listener()
     async def on_resumed(self):
@@ -294,6 +296,44 @@ class SystemEvents(commands.Cog):
             traceback.print_exc()
 
 
+
+    @commands.command()
+    @commands.is_owner()
+    async def testsys(self, ctx, event_type: str = "disconnect", code: int = None):
+        """Test system events
+        Usage: ,testsys <disconnect|resume> [code]"""
+        try:
+            if event_type.lower() == "disconnect":
+                if code:
+                    # Create a mock WebSocket close code
+                    class MockWebSocket:
+                        def __init__(self, close_code):
+                            self.close_code = close_code
+
+                    # Store the original ws
+                    original_ws = self.bot._connection._ws if hasattr(self.bot._connection, '_ws') else None
+                    
+                    # Set our mock ws with the test code
+                    self.bot._connection._ws = MockWebSocket(code)
+                    
+                    await ctx.send(f"Testing disconnect event with code {code}...")
+                    await self.on_disconnect()
+                    
+                    # Restore original ws
+                    self.bot._connection._ws = original_ws
+                else:
+                    await ctx.send("Testing normal disconnect event...")
+                    await self.on_disconnect()
+                
+            elif event_type.lower() == "resume":
+                await ctx.send("Testing resume event...")
+                await self.on_resumed()
+                
+            else:
+                await ctx.send("Invalid event type. Use 'disconnect' or 'resume'")
+                
+        except Exception as e:
+            await ctx.send(f"Error during test: {str(e)}")
 
 
 

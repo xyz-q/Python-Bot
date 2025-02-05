@@ -49,7 +49,7 @@ class VoiceCommands(commands.Cog):
                 return
             channel = ctx.author.voice.channel
 
-        await channel.connect()
+        await channel.connect(reconnect=True, self_deaf=True)
         await ctx.send(f"Joined {channel.name}")
 
     @commands.command()
