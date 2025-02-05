@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 import os
 import asyncio
+from github import Github
 
 class BugReport(commands.Cog):
     def __init__(self, bot):
@@ -103,7 +104,9 @@ class BugReport(commands.Cog):
             self.reports = reports
             self.current_page = current_page
             self.max_pages = len(reports)
-
+            self.github = Github(os.getenv('GITHUB_TOKEN'))
+            self.repo_name = "xyz-q/Python-Bot"
+            
         @discord.ui.button(label="Previous", style=discord.ButtonStyle.gray)
         async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
             self.current_page = max(0, self.current_page - 1)
@@ -119,18 +122,46 @@ class BugReport(commands.Cog):
             try:
                 report = self.reports[self.current_page]
                 
-                notification_embed = discord.Embed(
-                    title=f"Bug Report #{report['report_id']} Accepted",
-                    description=f"Your bug report '{report['title']}' has been accepted and will be worked on.\n Thank you for your help <3",
-                    color=discord.Color.green()
-                )
+                # Create GitHub issue
+                try:
+                    repo = self.github.get_repo(self.repo_name)
+                    issue_title = f"Bug Report: {report['title']}"
+                    issue_body = (
+                        f"**Reporter:** {report['author_name']}\n"
+                        f"**Description:**\n{report['description']}\n\n"
+                        f"**Steps to Reproduce:**\n{report['steps']}\n\n"
+                        f"**Date Reported:** {report['timestamp']}\n"
+                        f"**Discord User ID:** {report['author_id']}"
+                    )
+                    issue = repo.create_issue(title=issue_title, body=issue_body, labels=['bug'])
+                    
+                    # Update notification embed to include issue link
+                    notification_embed = discord.Embed(
+                        title=f"Bug Report #{report['report_id']} Accepted",
+                        description=(
+                            f"Your bug report '{report['title']}' has been accepted and will be worked on.\n"
+                            f"GitHub Issue: {issue.html_url}\n"
+                            f"Thank you for your help <3"
+                        ),
+                        color=discord.Color.green()
+                    )
+                except Exception as e:
+                    print(f"Failed to create GitHub issue: {e}")
+                    # Fall back to original notification if GitHub creation fails
+                    notification_embed = discord.Embed(
+                        title=f"Bug Report #{report['report_id']} Accepted",
+                        description=f"Your bug report '{report['title']}' has been accepted and will be worked on.\nThank you for your help <3",
+                        color=discord.Color.green()
+                    )
 
+                # Rest of your existing accept_button code...
                 try:
                     user = await interaction.client.fetch_user(report['author_id'])
                     await user.send(embed=notification_embed)
                 except discord.HTTPException:
                     print(f"Could not DM user {report['author_name']}")
 
+                # Update the JSON file
                 with open(".json/bug_reports.json", "r") as f:
                     all_reports = json.load(f)
 
@@ -139,6 +170,7 @@ class BugReport(commands.Cog):
                 with open(".json/bug_reports.json", "w") as f:
                     json.dump(all_reports, f, indent=4)
 
+                # Update the view
                 self.reports = all_reports
                 self.max_pages = len(all_reports)
 
@@ -150,6 +182,7 @@ class BugReport(commands.Cog):
                 if self.current_page >= len(all_reports):
                     self.current_page = len(all_reports) - 1
 
+                # Update to next report
                 next_report = all_reports[self.current_page]
                 new_embed = discord.Embed(
                     title=f"Bug Report #{next_report['report_id']}",
