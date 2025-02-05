@@ -3,7 +3,6 @@ from discord.ext import commands, tasks
 import requests
 from discord import ui
 import json
-from dotenv import load_dotenv
 import os
 
 
