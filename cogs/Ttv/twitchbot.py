@@ -7,6 +7,7 @@ import json
 import os
 import random
 from dotenv import load_dotenv
+import asyncio
 
 
 class TwitchConfigView(View):
@@ -73,43 +74,70 @@ class TwitchCommandsButton(discord.ui.Button):
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
-        embed = discord.Embed(
-            title="Twitch Bot Commands",
-            description="Available commands in Twitch chat:",
-            color=discord.Color.purple()
-        )
-        
-        commands_list = []
-        for command in self.cog.twitch_bot.commands.values():
-            if command.hidden:
-                continue
-                
-            name = f",{command.name}"
-            if command.aliases:
-                name += f" (aliases: ,{',, ,'.join(command.aliases)})"
-                
-            description = command.description or "No description available"
+        try:
+            embed = discord.Embed(
+                title="Twitch Bot Commands",
+                description="Available commands in Twitch chat:",
+                color=discord.Color.purple()
+            )
             
-            if getattr(command, 'mod_only', False):
-                description += " (Mods Only)"
+            commands_list = []
+            
+            # Debug print
+            
+            
+            # Get commands from the bot instance
+            for cmd_name in self.cog.twitch_bot.commands:
+                name = f",{cmd_name}"
                 
-            commands_list.append(f"{name} - {description}")
+                # Add to commands list with basic description
+                if cmd_name in ["so", "addcmd", "delcmd", "setdiscord"]:
+                    commands_list.append(f"{name} (Mods Only)")
+                else:
+                    commands_list.append(name)
 
-        if commands_list:
-            embed.add_field(name="Default Commands", value="\n".join(commands_list), inline=False)
-        else:
-            embed.add_field(name="Default Commands", value="No commands available", inline=False)
+            if commands_list:
+                embed.add_field(
+                    name="Default Commands", 
+                    value="\n".join(sorted(commands_list)), 
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="Default Commands", 
+                    value="No commands available", 
+                    inline=False
+                )
 
-        user_id = str(interaction.user.id)
-        if user_id in self.cog.config['user_channels']:
-            channel = self.cog.config['user_channels'][user_id]
-            custom_commands = self.cog.config.get('custom_commands', {}).get(channel, {})
-            if custom_commands:
-                cmd_list = [f",{cmd} - {response}" for cmd, response in custom_commands.items()]
-                embed.add_field(name="Custom Commands", value="\n".join(cmd_list), inline=False)
+            # Custom commands
+            user_id = str(interaction.user.id)
+            if user_id in self.cog.config['user_channels']:
+                channel = self.cog.config['user_channels'][user_id]
+                custom_commands = self.cog.config.get('custom_commands', {}).get(channel, {})
+                if custom_commands:
+                    cmd_list = [f",{cmd} - {response}" for cmd, response in custom_commands.items()]
+                    embed.add_field(
+                        name="Custom Commands", 
+                        value="\n".join(sorted(cmd_list)), 
+                        inline=False
+                    )
 
-        view = TwitchConfigView(self.cog, page="commands")
-        await interaction.response.edit_message(embed=embed, view=view)
+            view = TwitchConfigView(self.cog, page="commands")
+            await interaction.response.edit_message(embed=embed, view=view)
+            
+        except Exception as e:
+            print(f"Error in TwitchCommandsButton callback: {str(e)}")
+            try:
+                error_embed = discord.Embed(
+                    title="Error",
+                    description="An error occurred while fetching commands.",
+                    color=discord.Color.red()
+                )
+                await interaction.response.edit_message(embed=error_embed)
+            except:
+                pass
+
+
 
 
 class BackToMainButton(discord.ui.Button):
@@ -124,7 +152,7 @@ class BackToMainButton(discord.ui.Button):
 
 class SetIntervalButton(discord.ui.Button):
     def __init__(self, cog):
-        super().__init__(label="Set Interval", style=discord.ButtonStyle.blurple)
+        super().__init__(label="Set Interval", style=discord.ButtonStyle.blurple, row=2)
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
@@ -274,7 +302,7 @@ class TwitchCog(commands.Cog):
         }
 
         try:
-            with open('twitch_config.json', 'r') as f:
+            with open('.json/twitch_config.json', 'r') as f:
                 self.config = json.load(f)
                 for key, value in default_config.items():
                     if key not in self.config:
@@ -286,18 +314,21 @@ class TwitchCog(commands.Cog):
 
     def save_config(self):
         try:
-            with open('twitch_config.json', 'w') as f:
+            with open('.json/twitch_config.json', 'w') as f:
                 json.dump(self.config, f, indent=4)
         except Exception as e:
             print(f"Error saving config: {e}")
 
     @commands.command(name='twitchconfig', aliases=['twitch', 'twitchbot'])
     async def twitchconfig(self, ctx):
+        await ctx.message.delete()
         """Configure Twitch bot settings"""
         try:
             embed = await self.create_main_embed(ctx.author)
             view = TwitchConfigView(self)
-            await ctx.send(embed=embed, view=view)
+            twitchembed = await ctx.send(embed=embed, view=view)
+            await asyncio.sleep(180)
+            await twitchembed.delete()
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
             
@@ -319,16 +350,6 @@ class TwitchCog(commands.Cog):
                 )
                 self.setup_commands()
 
-            def save_config(self):
-                with open('config.json', 'w') as f:
-                    json.dump(self.config, f, indent=4)
-
-            def load_config(self):
-                try:
-                    with open('config.json', 'r') as f:
-                        self.config = json.load(f)
-                except FileNotFoundError:
-                    self.config = {}
 
 
             def setup_commands(self):
@@ -342,182 +363,149 @@ class TwitchCog(commands.Cog):
                         if getattr(command, 'hidden', False):
                             continue
                         
-                        # Just use the command name without trying to access help/description
                         if cmd_name in ["so", "addcmd", "delcmd"]:  # Mod commands
                             commands_list.append(f",{cmd_name} (Mods Only)")
                         else:
                             commands_list.append(f",{cmd_name}")
 
                     # Send in chunks
-                    await ctx.send("📋 Available Commands:")
+                    await ctx.send(f"@{ctx.author.name} 📋 Available Commands:")
                     chunks = [commands_list[i:i + 3] for i in range(0, len(commands_list), 3)]
                     for chunk in chunks:
-                        await ctx.send(" | ".join(chunk))
+                        await ctx.send("| ".join(chunk))
 
                     # Show custom commands
                     custom_cmds = ctx.bot.config.get('custom_commands', {}).get(ctx.channel.name, {})
                     if custom_cmds:
-                        await ctx.send("📋 Custom Commands: " + " | ".join(f"!{cmd}" for cmd in custom_cmds.keys()))
-
+                        await ctx.send(f"@{ctx.author.name} 📋 Custom Commands: " + " | ".join(f",{cmd}" for cmd in custom_cmds.keys()))
 
                 @self.command(name="setdiscord")
-                async def set_discord_link(self, ctx: twitch_commands.Context, *, link: str = None):
+                async def set_discord_link(ctx, *, content: str):
                     """Set the Discord invite link (Mods Only)"""
-                    print(f"Command received from channel: {ctx.channel.name}")
-                    print(f"Command sent by: {ctx.author.name}")
-                    
                     if not (ctx.author.is_mod or ctx.author.name == ctx.channel.name):
-                        print(f"Permission check failed - User: {ctx.author.name}, Mod: {ctx.author.is_mod}, Channel: {ctx.channel.name}")
                         return
 
-                    # Get the message parts
+                    if not content:
+                        await ctx.send(f"@{ctx.author.name} Usage: ,setdiscord <discord invite link>")
+                        return
+
+                    if "discord.gg" not in content and "discord.com" not in content:
+                        await ctx.send(f"@{ctx.author.name} ❌ Please provide a valid Discord invite link")
+                        return
+
                     try:
-                        # Try to get the actual Discord link from the input
-                        if not link or link.isspace() or ord(link[0]) > 126:  # Check for invalid characters
-                            await ctx.send("Usage: !setdiscord https://discord.gg/invite")
-                            return
-                            
-                        # Clean the link more aggressively
-                        cleaned_link = ''
-                        for char in link:
-                            if 32 <= ord(char) <= 126:  # Only allow standard ASCII printable characters
-                                cleaned_link += char
-                                
-                        cleaned_link = cleaned_link.strip()
-                        print(f"Cleaned link: {repr(cleaned_link)}")
-                        
-                        if not cleaned_link:
-                            await ctx.send("Usage: !setdiscord https://discord.gg/invite")
-                            return
+                        with open('.json/discord_links.json', 'r') as f:
+                            discord_links = json.load(f)
+                    except (FileNotFoundError, json.JSONDecodeError):
+                        discord_links = {}
 
-                        # Basic Discord invite link validation
-                        if not (cleaned_link.startswith('https://discord.gg/') or cleaned_link.startswith('discord.gg/')):
-                            print(f"Link validation failed: {cleaned_link}")
-                            await ctx.send("❌ Please provide a valid Discord invite link (e.g., https://discord.gg/invite)")
-                            return
-
-                        try:
-                            with open('discord_links.json', 'r') as f:
-                                discord_links = json.load(f)
-                                print(f"Current discord_links.json content: {discord_links}")
-                        except (FileNotFoundError, json.JSONDecodeError):
-                            print("No existing discord_links.json found or file is empty")
-                            discord_links = {}
-
-                        discord_links[ctx.channel.name] = cleaned_link
-                        print(f"Updated discord_links dictionary: {discord_links}")
-                        
-                        with open('discord_links.json', 'w') as f:
+                    discord_links[ctx.channel.name] = content
+                    
+                    try:
+                        with open('.json/discord_links.json', 'w') as f:
                             json.dump(discord_links, f, indent=4)
-                            print("Successfully wrote to discord_links.json")
-                            
-                        await ctx.send(f"✅ Discord invite link set to: {cleaned_link}")
-                        
                     except Exception as e:
-                        print(f"Error processing command: {e}")
-                        await ctx.send("❌ Error processing command. Please try again with a valid Discord invite link.")
-
-
+                        print(f"Error writing to file: {e}")
+                        return
+                        
+                    await ctx.send(f"@{ctx.author.name} ✅ Discord invite link set!")
 
                 @self.command(name="discord")
-                async def discord_command(self, ctx: twitch_commands.Context):
-                    """Get the Discord server link"""
-                    print(f"Discord command received from channel: {ctx.channel.name}")
-                    
+                async def discord_command(ctx):
+                    """Display the Discord invite link"""
                     try:
-                        with open('discord_links.json', 'r') as f:
+                        with open('.json/discord_links.json', 'r') as f:
                             discord_links = json.load(f)
-                            print(f"Current discord_links.json content: {discord_links}")
-                            link = discord_links.get(ctx.channel.name, 'No Discord link set')
-                            print(f"Found link for channel: {link}")
+                            
+                        channel_name = ctx.channel.name
+                        if channel_name in discord_links:
+                            await ctx.send(f"@{ctx.author.name} Join our Discord! {discord_links[channel_name]}")
+                        else:
+                            await ctx.send(f"@{ctx.author.name} No Discord link has been set for this channel!")
+                            
                     except (FileNotFoundError, json.JSONDecodeError):
-                        print("No discord_links.json found or file is empty")
-                        link = 'No Discord link set'
-                    
-                    if link != 'No Discord link set':
-                        await ctx.send(f"Join our Discord server! {link}")
-                    else:
-                        await ctx.send(link)
-
-
-
+                        await ctx.send(f"@{ctx.author.name} No Discord link has been set for this channel!")
+                    except Exception as e:
+                        print(f"Error: {e}")
+                        await ctx.send(f"@{ctx.author.name} Error retrieving Discord link!")
 
                 @self.command(name="lurk")
-                async def lurk_command(ctx: twitch_commands.Context):
+                async def lurk_command(ctx):
                     """Let everyone know you're lurking"""
-                    await ctx.send(f"Thanks for lurking, {ctx.author.name}! Enjoy your stay 👀")
+                    await ctx.send(f"Thanks for lurking, @{ctx.author.name}! Enjoy your stay 👀")
 
                 @self.command(name="socials")
-                async def socials_command(ctx: twitch_commands.Context):
+                async def socials_command(ctx):
                     """Display social media links"""
-                    if ctx.channel.name in self.config.get('social_links', {}):
-                        await ctx.send(f"Follow {ctx.channel.name} on: {self.config['social_links'][ctx.channel.name]}")
+                    if ctx.channel.name in ctx.bot.config.get('social_links', {}):
+                        await ctx.send(f"@{ctx.author.name} Follow {ctx.channel.name} on: {ctx.bot.config['social_links'][ctx.channel.name]}")
                     else:
-                        await ctx.send("No social links set for this channel!")
+                        await ctx.send(f"@{ctx.author.name} No social links set for this channel!")
 
                 @self.command(name="so")
-                async def shoutout_command(ctx: twitch_commands.Context, target: str = None):
+                async def shoutout_command(ctx, target: str = None):
                     """Give a shoutout to another streamer (Mods Only)"""
                     if not (ctx.author.is_mod or ctx.author.name == ctx.channel.name):
                         return
                     
                     if not target:
-                        await ctx.send("Please specify a user to shoutout!")
+                        await ctx.send(f"@{ctx.author.name} Please specify a user to shoutout!")
                         return
                         
                     target = target.lstrip('@')
-                    await ctx.send(f"Go check out @{target} at twitch.tv/{target} ! They're awesome!")
+                    await ctx.send(f"@{ctx.author.name} gives a shoutout to @{target}! Go check them out at twitch.tv/{target} ! They're awesome!")
 
                 @self.command(name="addcmd")
-                async def add_command(ctx: twitch_commands.Context, cmd_name: str = None, *, response: str = None):
+                async def add_command(ctx, cmd_name: str = None, *, response: str = None):
                     """Add a custom command (Mods Only)"""
                     if not (ctx.author.is_mod or ctx.author.name == ctx.channel.name):
                         return
 
                     if not cmd_name or not response:
-                        await ctx.send("Usage: ,addcmd <command_name> <response>")
+                        await ctx.send(f"@{ctx.author.name} Usage: ,addcmd <command_name> <response>")
                         return
 
                     cmd_name = cmd_name.lower()
-                    if cmd_name in self.commands:
-                        await ctx.send(f"Cannot override default command: ,{cmd_name}")
+                    if cmd_name in ctx.bot.commands:
+                        await ctx.send(f"@{ctx.author.name} Cannot override default command: ,{cmd_name}")
                         return
 
-                    if 'custom_commands' not in self.config:
-                        self.config['custom_commands'] = {}
+                    if 'custom_commands' not in ctx.bot.config:
+                        ctx.bot.config['custom_commands'] = {}
                     
-                    if ctx.channel.name not in self.config['custom_commands']:
-                        self.config['custom_commands'][ctx.channel.name] = {}
+                    if ctx.channel.name not in ctx.bot.config['custom_commands']:
+                        ctx.bot.config['custom_commands'][ctx.channel.name] = {}
 
-                    self.config['custom_commands'][ctx.channel.name][cmd_name] = response
-                    self.parent_cog.save_config()
-                    await ctx.send(f"Command ,{cmd_name} has been added!")
+                    ctx.bot.config['custom_commands'][ctx.channel.name][cmd_name] = response
+                    ctx.bot.parent_cog.save_config()
+                    await ctx.send(f"@{ctx.author.name} Command ,{cmd_name} has been added!")
 
                 @self.command(name="delcmd")
-                async def delete_command(ctx: twitch_commands.Context, cmd_name: str = None):
+                async def delete_command(ctx, cmd_name: str = None):
                     """Delete a custom command (Mods Only)"""
                     if not (ctx.author.is_mod or ctx.author.name == ctx.channel.name):
                         return
 
                     if not cmd_name:
-                        await ctx.send("Usage: ,delcmd <command_name>")
+                        await ctx.send(f"@{ctx.author.name} Usage: ,delcmd <command_name>")
                         return
 
                     cmd_name = cmd_name.lower()
-                    if cmd_name in self.commands:
-                        await ctx.send(f"Cannot delete default command: ,{cmd_name}")
+                    if cmd_name in ctx.bot.commands:
+                        await ctx.send(f"@{ctx.author.name} Cannot delete default command: ,{cmd_name}")
                         return
 
-                    if (self.config.get('custom_commands', {}).get(ctx.channel.name, {}).get(cmd_name)):
-                        del self.config['custom_commands'][ctx.channel.name][cmd_name]
-                        self.parent_cog.save_config()
-                        await ctx.send(f"Command ,{cmd_name} has been deleted!")
+                    if (ctx.bot.config.get('custom_commands', {}).get(ctx.channel.name, {}).get(cmd_name)):
+                        del ctx.bot.config['custom_commands'][ctx.channel.name][cmd_name]
+                        ctx.bot.parent_cog.save_config()
+                        await ctx.send(f"@{ctx.author.name} Command ,{cmd_name} has been deleted!")
                     else:
-                        await ctx.send(f"Command ,{cmd_name} not found!")
+                        await ctx.send(f"@{ctx.author.name} Command ,{cmd_name} not found!")
 
             async def event_ready(self):
+                await asyncio.sleep(10)
                 print(f'Logged into Twitch | {self.nick}')
-                print(f"Monitoring channels: {self.channel_list}")
+
 
             async def event_message(self, message):
                 if message.echo:
