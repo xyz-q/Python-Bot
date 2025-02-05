@@ -1115,7 +1115,7 @@ class TwitchCog(commands.Cog):
             print("No config found")
             return
                     
-        print("Starting auto message check...")
+
         for channel_name in self.config.get('channels', {}).keys():
 
             channel = self.twitch_bot.get_channel(channel_name)
