@@ -78,13 +78,20 @@ class SystemEvents(commands.Cog):
             # Add timestamp to details
             details.append(f"Disconnect Time: {current_time.strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
-            # Add latency info
-            if self.bot.latency:
-                details.append(f"Last known latency: {self.bot.latency * 1000:.2f}ms")
+            # Add latency info - with validation
+            if hasattr(self.bot, 'latency') and self.bot.latency is not None:
+                latency = self.bot.latency * 1000
+                if latency > 0:  # Only add if we have a valid latency
+                    details.append(f"Last known latency: {latency:.2f}ms")
+                else:
+                    details.append("Last known latency: Not available")
+            else:
+                details.append("Last known latency: Not available")
 
+            # Improved WebSocket close code handling
             if hasattr(self.bot, '_connection') and hasattr(self.bot._connection, '_ws'):
                 ws = self.bot._connection._ws
-                if hasattr(ws, 'close_code'):
+                if hasattr(ws, 'close_code') and ws.close_code is not None:
                     code_meanings = {
                         1000: "Normal closure",
                         1001: "Going away",
@@ -109,12 +116,22 @@ class SystemEvents(commands.Cog):
                     close_code = ws.close_code
                     disconnect_reason = code_meanings.get(close_code, f"Unknown close code: {close_code}")
                     details.append(f"Close code: {close_code} ({disconnect_reason})")
+                else:
+                    disconnect_reason = "No close code available"
+                    details.append("Close code: Not available")
+            else:
+                disconnect_reason = "WebSocket connection not found"
+                details.append("Connection details: Not available")
 
-            print(f"\033[93mBot Disconnect \033[0m")
+            # Console output with better formatting
+            print("\n" + "="*50)
+            print(f"\033[93mBot Disconnect Event\033[0m")
             print(f"\033[93mReason: {disconnect_reason}\033[0m")
             for detail in details:
                 print(f"\033[93m- {detail}\033[0m")
+            print("="*50 + "\n")
 
+            # Discord channel notification
             channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
             if channel:
                 try:
