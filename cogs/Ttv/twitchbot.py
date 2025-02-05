@@ -1112,54 +1112,37 @@ class TwitchCog(commands.Cog):
     @tasks.loop(seconds=10)
     async def auto_message_task(self):
         if not hasattr(self, 'config'):
-            print("No config found")
             return
                     
-
         for channel_name in self.config.get('channels', {}).keys():
-
             channel = self.twitch_bot.get_channel(channel_name)
             if channel:
-
                 stream = await self.twitch_bot.fetch_streams(user_logins=[channel_name])
-
                 
                 if stream:
-                    # Check last message
                     last_message = self.channel_last_message.get(channel_name)
-
                     
-                    # Only send message if we have no last message record
-                    # or if the last message wasn't from the bot or channel owner
                     should_send = True
                     if last_message and 'author' in last_message:
                         if last_message['author'].lower() in [self.twitch_bot.nick.lower(), channel_name.lower()]:
-
                             should_send = False
 
                     if should_send:
-                        # Get channel messages or default if none exist
                         messages = self.config['auto_messages'].get(channel_name, [])
-                        if not messages:
-                            messages = self.config['auto_messages'].get('default', [])
                         
-
+                        if not messages and 'default' in self.config['auto_messages']:
+                            messages = self.config['auto_messages']['default']
                         
                         if messages:
                             message = random.choice(messages)
-  
                             if self.last_messages.get(channel_name) != message:
                                 await channel.send(message)
-                                # Update last message data when bot sends a message
                                 self.channel_last_message[channel_name] = {
                                     'author': self.twitch_bot.nick,
                                     'content': message,
                                     'timestamp': time.time()
                                 }
                                 self.last_messages[channel_name] = message
-                                
-                            else:
-                                return
 
 
 
