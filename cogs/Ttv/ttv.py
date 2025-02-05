@@ -3,7 +3,8 @@ from discord.ext import commands, tasks
 import requests
 from discord import ui
 import json
-
+from dotenv import load_dotenv
+import os
 
 class StreamButton(ui.View):
     def __init__(self, stream_url):
@@ -32,7 +33,9 @@ class Twitch(commands.Cog):
         with open('.json/ttv.json', 'w') as file:
             json.dump(self.configurations, file, indent=4)
 
-    def check_stream_status(self, twitch_username, twitch_client_id, twitch_access_token):
+    def check_stream_status(self, twitch_username):
+        twitch_client_id = os.getenv('TWITCH_CLIENT_ID')
+        twitch_access_token = os.getenv('TWITCH_ACCESS_TOKEN')        
         url = f"https://api.twitch.tv/helix/streams?user_login={twitch_username}"
         headers = {
             "Client-ID": twitch_client_id,
@@ -56,7 +59,7 @@ class Twitch(commands.Cog):
                 print(f"Error: Discord channel with ID {config['discord_channel_id']} not found.")
                 continue
 
-            is_live = self.check_stream_status(config['twitch_username'], config['twitch_client_id'], config['twitch_access_token'])
+            is_live = self.check_stream_status(config['twitch_username'])
 
             if is_live:
                 title = is_live.get('title', 'No title available')
@@ -95,7 +98,6 @@ class Twitch(commands.Cog):
 
     @commands.command()
     async def ttv(self, ctx, twitch_username: str, channel: discord.TextChannel = None):
-        """Add or remove a Twitch user and associate it with a Discord channel"""
         config = next((c for c in self.configurations if c['twitch_username'] == twitch_username), None)
 
         if channel is None:
@@ -110,16 +112,17 @@ class Twitch(commands.Cog):
             if config and channel.id == config['discord_channel_id']:
                 await ctx.send(f"Twitch user {twitch_username} is already configured for notifications on this channel")
             else:
+                # Only store necessary information in the JSON
                 new_config = {
                     'twitch_username': twitch_username,
                     'discord_channel_id': channel.id,
-                    'twitch_client_id': 'gp762nuuoqcoxypju8c569th9wz7q5',
-                    'twitch_access_token': '3aem92vd1y6x0ad67xlcj731rreyfp',
-                    'previous_status': None
+                    'previous_status': 'offline'
                 }
                 self.configurations.append(new_config)
                 self.save_configurations()
                 await ctx.send(f"Added Twitch user {twitch_username} for notifications in {channel.mention}")
+
+
 
 
 

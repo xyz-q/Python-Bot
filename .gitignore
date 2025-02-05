@@ -13,5 +13,5 @@ currency.json
 *.json
 data/vaults.txt
 !.json/
-
+.env*
 !.json/levels.json
