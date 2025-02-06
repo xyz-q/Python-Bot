@@ -29,16 +29,34 @@ class TwitchConfigView(View):
             self.add_item(TwitchCommandsButton(self.cog))
             self.add_item(SetIntervalButton(self.cog))
             self.add_item(AutoMessagesButton(self.cog)) 
+            self.add_item(CloseButton(self.cog))           
+            
         elif self.page == "commands":
             self.add_item(AddCommandButton(self.cog))
             self.add_item(DeleteCommandButton(self.cog))
+            self.add_item(CloseButton(self.cog))
             
             self.add_item(BackToMainButton(self.cog))
         elif self.page == "auto_messages":
             self.add_item(AddAutoMessageButton(self.cog))
             self.add_item(RemoveAutoMessageButton(self.cog))
             self.add_item(FollowMessageButton(self.cog))
-            self.add_item(BackToMainButton(self.cog))            
+            self.add_item(BackToMainButton(self.cog))    
+            self.add_item(CloseButton(self.cog))        
+
+
+class CloseButton(discord.ui.Button):
+    def __init__(self, cog):  # Add cog parameter
+        super().__init__(
+            label="",
+            style=discord.ButtonStyle.red,
+            emoji="✖️",
+            row=4
+        )
+        self.cog = cog  # Store the cog reference
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.message.delete()
 
 
 class SetChannelButton(discord.ui.Button):

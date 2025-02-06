@@ -180,6 +180,19 @@ class SystemEvents(commands.Cog):
         except Exception as e:
             print(f"\033[91mError in on_resumed: {str(e)}\033[0m")
             traceback.print_exc()
+            
+    @commands.Cog.listener()
+    async def on_app_command_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+        error = getattr(error, 'original', error)
+        
+        # Ignore message not found errors
+        if isinstance(error, discord.NotFound) and error.code == 10008:  # 10008 is the error code for Unknown Message
+            return
+            
+        # Handle other errors as needed
+        else:
+            # Log the error or handle it differently
+            print(f'Unhandled error: {error}')
 
 
     @commands.Cog.listener()
@@ -238,6 +251,8 @@ class SystemEvents(commands.Cog):
                 print("NotOwner error triggered")
                 warning = await ctx.send(f"❌ You are not <@110927272210354176>")
 
+            elif isinstance(error, discord.NotFound) and error.code == 10008:  # 10008 is the error code for Unknown Message
+                return
 
             else:
                 warning = print(f"⚠️ An unexpected error occurred: {str(error)}")
@@ -249,6 +264,8 @@ class SystemEvents(commands.Cog):
                     await ctx.message.delete()
             except (discord.Forbidden, discord.NotFound, AttributeError):
                 pass
+
+
 
         except Exception as e:
             print(f"\033[91mError in error handler: {str(e)}\033[0m")
