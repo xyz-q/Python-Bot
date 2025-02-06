@@ -134,7 +134,7 @@ class VoSCog(commands.Cog):
             start_time = current_time.strftime("%H:00")
             end_time = current_time.strftime("%H:59")            
             embed = discord.Embed(
-                title="<:prif:1336983731952550022> **Current Voice of Seren** ",
+                title="<:prif:1336983731952550022> **Last Tracked Voice of Seren** ",
                 description=f"Active from `{start_time}` to `{end_time}` UTC",
                 color=discord.Color.gold()
             )
