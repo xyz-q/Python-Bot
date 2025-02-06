@@ -374,9 +374,9 @@ class CancelTicketModal(discord.ui.Modal, title="Cancel Ticket"):
         if found:
             embed = self.view.create_embed()
             await interaction.response.edit_message(embed=embed, view=self.view)
-            await interaction.followup.send(f"✅ Ticket {ticket_id} has been cancelled!", ephemeral=True)
+            await interaction.followup.send(f"✅ Ticket {ticket_id} has been cancelled!", ephemeral=True, delete_after=8)
         else:
-            await interaction.response.send_message("❌ Invalid ticket ID or you don't own this ticket!", ephemeral=True)
+            await interaction.response.send_message("❌ Invalid ticket ID or you don't own this ticket!", ephemeral=True, delete_after=8)
 
 class AdminTicketView(View):
     def __init__(self, bot, user_id, timer_msg, ticket_data, public_msg, cog, ticket_type, user_timer, dm_timer, user_embed, admin_embed):

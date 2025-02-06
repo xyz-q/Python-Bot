@@ -82,7 +82,7 @@ class BugReport(commands.Cog):
 
             await interaction.response.send_message(
                 "Bug report submitted successfully! Thank you for your report.", 
-                ephemeral=True
+                ephemeral=True, delete_after=8
             )
 
         def get_all_reports(self):
@@ -176,7 +176,7 @@ class BugReport(commands.Cog):
 
                 if not all_reports:
                     await interaction.message.delete()
-                    await interaction.response.send_message("All bug reports have been handled!", ephemeral=True)
+                    await interaction.response.send_message("All bug reports have been handled!", ephemeral=True, delete_after=8)
                     return
 
                 if self.current_page >= len(all_reports):
@@ -200,7 +200,7 @@ class BugReport(commands.Cog):
 
             except Exception as e:
                 print(f"Error in accept_button: {e}")
-                await interaction.response.send_message("An error occurred while processing the report.", ephemeral=True)
+                await interaction.response.send_message("An error occurred while processing the report.", ephemeral=True, delete_after=8)
 
 
 

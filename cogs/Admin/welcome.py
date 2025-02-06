@@ -121,14 +121,14 @@ class ChannelSetupModal(discord.ui.Modal, title="Channel Setup"):
                 description=f"Welcome Channel: {welcome_channel.mention}\nLeave Channel: {leave_channel.mention}",
                 color=discord.Color.green()
             )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=8, delete_after=8)
             
             await self.view.update_view()
             
         except ValueError:
-            await interaction.response.send_message("Please enter valid channel IDs!", ephemeral=True)
+            await interaction.response.send_message("Please enter valid channel IDs!", ephemeral=True, delete_after=8, delete_after=8)
         except discord.NotFound:
-            await interaction.response.send_message("One or both channels not found!", ephemeral=True)
+            await interaction.response.send_message("One or both channels not found!", ephemeral=True, delete_after=8, delete_after=8)
 
 class WelcomeMessageModal(discord.ui.Modal, title="Welcome Message Setup"):
     def __init__(self, cog, view):
@@ -146,7 +146,7 @@ class WelcomeMessageModal(discord.ui.Modal, title="Welcome Message Setup"):
     async def on_submit(self, interaction: discord.Interaction):
         guild_id = str(interaction.guild.id)
         if guild_id not in self.cog.settings:
-            await interaction.response.send_message("Please setup channels first!", ephemeral=True)
+            await interaction.response.send_message("Please setup channels first!", ephemeral=True, delete_after=8, delete_after=8)
             
             return
         
@@ -175,7 +175,7 @@ class WelcomeMessageModal(discord.ui.Modal, title="Welcome Message Setup"):
             color=discord.Color.green()
         )
         
-        await interaction.response.send_message(embeds=[confirmation_embed, preview_embed], ephemeral=True)
+        await interaction.response.send_message(embeds=[confirmation_embed, preview_embed], ephemeral=True, delete_after=8, delete_after=8)
 
 class LeaveMessageModal(discord.ui.Modal, title="Leave Message Setup"):
     def __init__(self, cog, view):
@@ -193,7 +193,7 @@ class LeaveMessageModal(discord.ui.Modal, title="Leave Message Setup"):
     async def on_submit(self, interaction: discord.Interaction):
         guild_id = str(interaction.guild.id)
         if guild_id not in self.cog.settings:
-            await interaction.response.send_message("Please setup channels first!", ephemeral=True)
+            await interaction.response.send_message("Please setup channels first!", ephemeral=True, delete_after=8, delete_after=8)
             return
         
         self.cog.settings[guild_id]["leave_message"] = self.message.value
@@ -220,7 +220,7 @@ class LeaveMessageModal(discord.ui.Modal, title="Leave Message Setup"):
             color=discord.Color.green()
         )
         
-        await interaction.response.send_message(embeds=[confirmation_embed, preview_embed], ephemeral=True)
+        await interaction.response.send_message(embeds=[confirmation_embed, preview_embed], ephemeral=True, delete_after=8, delete_after=8)
 
 
 

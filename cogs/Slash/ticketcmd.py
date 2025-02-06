@@ -11,7 +11,7 @@ class TicketModal(discord.ui.Modal, title="Ticket Submission"):
         description = self.description.value
         if interaction.guild:
             if isinstance(interaction.channel, discord.DMChannel):
-                await interaction.response.send_message("Slash commands are not available in DMs.", ephemeral=True)
+                await interaction.response.send_message("Slash commands are not available in DMs.", ephemeral=True, delete_after=8)
                 return
 
             ticket_channel = discord.utils.get(interaction.guild.text_channels, name="tickets")
@@ -22,13 +22,13 @@ class TicketModal(discord.ui.Modal, title="Ticket Submission"):
                 embed.add_field(name="Submitted by", value=interaction.user.name, inline=False)
                 view = TicketButtons(interaction.user, subject, description)
                 await ticket_channel.send(embed=embed, view=view)
-                await interaction.response.send_message("Your ticket has been submitted!", ephemeral=True)
+                await interaction.response.send_message("Your ticket has been submitted!", ephemeral=True, delete_after=8)
             else:
                 await interaction.response.send_message("Ticket channel not found. Please contact an administrator.",
-                                                        ephemeral=True)
+                                                        ephemeral=True, delete_after=8)
         else:
             await interaction.response.send_message("Tickets have to be sent in a guild, silly! :3 /setup for more info",
-                                                    ephemeral=True)
+                                                    ephemeral=True, delete_after=8)
 
 class TicketButtons(discord.ui.View):
     def __init__(self, ticket_user: discord.User, subject: str, description: str):
@@ -68,7 +68,7 @@ class TicketButtons(discord.ui.View):
             content=f"Hello {self.ticket_user.mention}, a support member will be with you shortly.",
             embed=embed, view=close_view)
         await interaction.response.send_message(f"Ticket accepted and channel created: {ticket_channel.mention}",
-                                                ephemeral=True)
+                                                ephemeral=True, delete_after=8)
         await interaction.message.delete()
         await self.ticket_user.send(f"Ticket accepted {ticket_channel.mention} by {interaction.user.name}.")
 
@@ -79,7 +79,7 @@ class TicketButtons(discord.ui.View):
             await self.ticket_user.send(f"Your ticket has been rejected by {interaction.user.name}.")
             await interaction.message.delete()
         else:
-            await interaction.response.send_message("You do not have permission to reject this ticket.", ephemeral=True)
+            await interaction.response.send_message("You do not have permission to reject this ticket.", ephemeral=True, delete_after=8)
 
 class CloseTicketButton(discord.ui.View):
     def __init__(self, ticket_user: discord.User):
@@ -96,7 +96,7 @@ class CloseTicketButton(discord.ui.View):
             if category and len(category.channels) == 0:
                 await category.delete(reason="Category empty after ticket closed")
         else:
-            await interaction.response.send_message("You do not have permission to close this ticket.", ephemeral=True)
+            await interaction.response.send_message("You do not have permission to close this ticket.", ephemeral=True, delete_after=8)
 
 class ticketcmd(commands.Cog):
     def __init__(self, bot):

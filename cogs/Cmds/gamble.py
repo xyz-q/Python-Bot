@@ -35,10 +35,10 @@ class DayInput(discord.ui.Modal, title="Custom Time Input"):
         try:
             days = float(self.days.value)
             if days < 1:
-                await interaction.response.send_message("Time must be at least 1 day!", ephemeral=True)
+                await interaction.response.send_message("Time must be at least 1 day!", ephemeral=True, delete_after=8)
                 return
             if days > 25:
-                await interaction.response.send_message("Time cannot exceed 25 days!", ephemeral=True)
+                await interaction.response.send_message("Time cannot exceed 25 days!", ephemeral=True, delete_after=8)
                 return
             
             self.view.value = timedelta(days=days)
@@ -47,7 +47,7 @@ class DayInput(discord.ui.Modal, title="Custom Time Input"):
             self.view.stop()
             
         except ValueError:
-            await interaction.response.send_message("Please enter a valid number!", ephemeral=True)
+            await interaction.response.send_message("Please enter a valid number!", ephemeral=True, delete_after=8)
             
 def has_account():
     message_sent = set()
@@ -401,7 +401,7 @@ class TransactionPaginator(discord.ui.View):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user != self.ctx.author:
-            await interaction.response.send_message("This pagination menu is not for you!", ephemeral=True)
+            await interaction.response.send_message("This pagination menu is not for you!", ephemeral=True, delete_after=8)
             return False
         self.message = interaction.message
         return True
@@ -3330,7 +3330,7 @@ class Economy(commands.Cog):
                 @discord.ui.button(label="12 Hours", style=discord.ButtonStyle.blurple)
                 async def hour(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id != ctx.author.id:
-                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True, delete_after=8)
                         return
                     self.value = timedelta(hours=12)
                     self.disable_all_buttons()
@@ -3340,7 +3340,7 @@ class Economy(commands.Cog):
                 @discord.ui.button(label="3 Days", style=discord.ButtonStyle.blurple)
                 async def day(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id != ctx.author.id:
-                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True, delete_after=8)
                         return
                     self.value = timedelta(days=3)
                     self.disable_all_buttons()
@@ -3350,7 +3350,7 @@ class Economy(commands.Cog):
                 @discord.ui.button(label="1 Week", style=discord.ButtonStyle.blurple)
                 async def week(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id != ctx.author.id:
-                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True, delete_after=8)
                         return
                     self.value = timedelta(weeks=1)
                     self.disable_all_buttons()
@@ -3360,7 +3360,7 @@ class Economy(commands.Cog):
                 @discord.ui.button(label="Custom Time", style=discord.ButtonStyle.gray)
                 async def custom(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id != ctx.author.id:
-                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True, delete_after=8)
                         return
                     
                     modal = DayInput(self)
@@ -3369,7 +3369,7 @@ class Economy(commands.Cog):
                 @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
                 async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id != ctx.author.id:
-                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True, delete_after=8)
                         return
                     self.value = None
                     self.disable_all_buttons()
@@ -3451,7 +3451,7 @@ class Economy(commands.Cog):
                 @discord.ui.button(label="Confirm Unlock", style=discord.ButtonStyle.green, emoji="✅")
                 async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id != ctx.author.id:
-                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True, delete_after=8)
                         return
                     self.value = True
                     self.disable_all_buttons()
@@ -3461,7 +3461,7 @@ class Economy(commands.Cog):
                 @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, emoji="❌")
                 async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
                     if interaction.user.id != ctx.author.id:
-                        await interaction.response.send_message("This is not your vault!", ephemeral=True)
+                        await interaction.response.send_message("This is not your vault!", ephemeral=True, delete_after=8)
                         return
                     self.value = False
                     self.disable_all_buttons()

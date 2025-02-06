@@ -204,7 +204,7 @@ class AdminCommands(commands.Cog):
                 if interaction.user.id == ctx.author.id:
                     await interaction.message.delete()
                 else:
-                    await interaction.response.send_message("You can't delete this message!", ephemeral=True)
+                    await interaction.response.send_message("You can't delete this message!", ephemeral=True, delete_after=8)
 
             delete_button.callback = delete_callback
             

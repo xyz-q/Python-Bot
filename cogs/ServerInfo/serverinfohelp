@@ -27,7 +27,7 @@ class dmhelp(commands.Cog):
     @commands.dm_only()
     @commands.hybrid_command(name="dmhelp", description="dmhelp")
     async def dmhelp(self, interaction: discord.Interaction):
-        await interaction.response.send_message('\n'.join(dmhelplist), ephemeral=True)
+        await interaction.response.send_message('\n'.join(dmhelplist), ephemeral=True, delete_after=8)
 
 
 

@@ -15,6 +15,8 @@ class VIPView(View):
         self.ctx = ctx
         self.is_subscribed = is_subscribed
         self.message = None
+
+        # Add subscription-specific buttons
         if not is_subscribed:
             subscribe_button = Button(
                 label="Subscribe to VIP", 
@@ -34,11 +36,28 @@ class VIPView(View):
 
             cancel_button = Button(
                 label="Cancel VIP", 
-                style=discord.ButtonStyle.red,
+                style=discord.ButtonStyle.gray,
                 custom_id="cancel"
             )
             cancel_button.callback = self.cancel_callback
             self.add_item(cancel_button)
+
+        # Add close button (appears for everyone)
+        close_button = Button(
+            label="✖", 
+            style=discord.ButtonStyle.red,
+            custom_id="close"
+        )
+        close_button.callback = self.close_callback
+        self.add_item(close_button)
+
+    async def close_callback(self, interaction: discord.Interaction):
+        # Delete the message with the view
+        await interaction.message.delete()
+
+
+
+
 
     async def on_timeout(self):
         print("attempting to delete vipview")
@@ -52,13 +71,13 @@ class VIPView(View):
 
     async def subscribe_callback(self, interaction):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your menu!", ephemeral=True)
+            await interaction.response.send_message("This is not your menu!", ephemeral=True, delete_after=8)
             return
 
         vip_price = self.cog.vip_price
         
         if not await self.cog.process_vip_payment(str(interaction.user.id), vip_price):
-            await interaction.response.send_message(f"Insufficient funds! You need {vip_price:,} coins.", ephemeral=True)
+            await interaction.response.send_message(f"Insufficient funds! You need {vip_price:,} coins.", ephemeral=True, delete_after=8)
             return
 
         self.cog.vip_data[str(interaction.user.id)] = {
@@ -69,12 +88,12 @@ class VIPView(View):
 
         await self.cog.update_user_level(str(interaction.user.id), True)
         
-        await interaction.response.send_message("Successfully subscribed to VIP!", ephemeral=True)
+        await interaction.response.send_message("Successfully subscribed to VIP!", ephemeral=True, delete_after=8)
         await self.update_vip_message(interaction)
 
     async def status_callback(self, interaction):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your menu!", ephemeral=True)
+            await interaction.response.send_message("This is not your menu!", ephemeral=True, delete_after=8)
             return
 
         vip_info = self.cog.vip_data[str(interaction.user.id)]
@@ -85,11 +104,11 @@ class VIPView(View):
         embed.add_field(name="Next Payment", value=next_payment.strftime("%Y-%m-%d"))
         embed.add_field(name="Perks", value="\n".join(f"• {perk}" for perk in self.cog.vip_perks), inline=False)
         
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=8)
 
     async def cancel_callback(self, interaction):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your menu!", ephemeral=True)
+            await interaction.response.send_message("This is not your menu!", ephemeral=True, delete_after=8)
             return
 
         user_id = str(interaction.user.id)
@@ -97,10 +116,10 @@ class VIPView(View):
             del self.cog.vip_data[user_id]
             self.cog.save_vip_data()
             await self.cog.update_user_level(user_id, False)
-            await interaction.response.send_message("Your VIP subscription has been cancelled.", ephemeral=True)
+            await interaction.response.send_message("Your VIP subscription has been cancelled.", ephemeral=True, delete_after=8)
             await self.update_vip_message(interaction)
         else:
-            await interaction.response.send_message("You don't have an active subscription!", ephemeral=True)
+            await interaction.response.send_message("You don't have an active subscription!", ephemeral=True, delete_after=8)
 
     async def update_vip_message(self, interaction):
         is_subscribed = str(interaction.user.id) in self.cog.vip_data

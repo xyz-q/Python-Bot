@@ -80,7 +80,7 @@ class CSFloatSearch2(commands.Cog):
             listings = response.json()
 
             if not listings:
-                await interaction.response.send_message(f"No listings found for '{query}' on CSFloat. Are you sure the name is correct? There could also be a float cap.", ephemeral=True)
+                await interaction.response.send_message(f"No listings found for '{query}' on CSFloat. Are you sure the name is correct? There could also be a float cap.", ephemeral=True, delete_after=8)
                 return
 
             wear_prices = {

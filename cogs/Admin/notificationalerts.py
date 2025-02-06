@@ -76,7 +76,7 @@ class NotificationSystem(commands.Cog):
                 
                 notif = await ctx.send(
                     embed=embed,
-                    ephemeral=True
+                    ephemeral=True, delete_after=8
                 )
                 await asyncio.sleep(12)
                 await notif.delete()
@@ -112,7 +112,7 @@ class NotificationSystem(commands.Cog):
             embed.add_field(name=" ", value="Please use `,report` to send any bugs my way.", inline=False)
             embed.set_footer(text=f"You were #{reader_number} to read this alert!")
 
-        notifembed = await ctx.send(embed=embed, ephemeral=True)
+        notifembed = await ctx.send(embed=embed, ephemeral=True, delete_after=8)
         await asyncio.sleep(25)
         await notifembed.delete()
 
@@ -133,7 +133,7 @@ class NotificationSystem(commands.Cog):
         )
         embed.add_field(name="Content", value=message, inline=False)
         
-        await ctx.send(embed=embed, ephemeral=True)
+        await ctx.send(embed=embed, ephemeral=True, delete_after=8)
 
     @commands.command(name="clearnotification", aliases=['clearnotif', 'notifclear'])
     @commands.is_owner()
@@ -144,7 +144,7 @@ class NotificationSystem(commands.Cog):
             "readers": []
         }
         self.save_data(new_data)
-        await ctx.send("✅ Notification cleared!", ephemeral=True)
+        await ctx.send("✅ Notification cleared!", ephemeral=True, delete_after=8)
 
 
     @commands.command()

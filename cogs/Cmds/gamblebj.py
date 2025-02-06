@@ -32,7 +32,7 @@ class BlackjackView(discord.ui.View):
     )
     async def select_stakes(self, interaction: discord.Interaction, select: discord.ui.Select):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your game!", ephemeral=True)
+            await interaction.response.send_message("This is not your game!", ephemeral=True, delete_after=8)
             return
 
         self.selected_stakes = select.values[0]
@@ -78,7 +78,7 @@ class BlackjackView(discord.ui.View):
     @discord.ui.button(label="Start Game", style=discord.ButtonStyle.green, disabled=True)
     async def start_game(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your game!", ephemeral=True)
+            await interaction.response.send_message("This is not your game!", ephemeral=True, delete_after=8)
             return
 
         self.started = True
@@ -96,7 +96,7 @@ class BettingView(discord.ui.View):
     @discord.ui.button(label="Min Bet", style=discord.ButtonStyle.blurple)
     async def min_bet(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your game!", ephemeral=True)
+            await interaction.response.send_message("This is not your game!", ephemeral=True, delete_after=8)
             return
 
         self.bet_amount = self.min_bet
@@ -116,7 +116,7 @@ class BettingView(discord.ui.View):
     @discord.ui.button(label="Max Bet", style=discord.ButtonStyle.blurple)
     async def max_bet(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your game!", ephemeral=True)
+            await interaction.response.send_message("This is not your game!", ephemeral=True, delete_after=8)
             return
 
         self.bet_amount = self.max_bet
@@ -136,7 +136,7 @@ class BettingView(discord.ui.View):
     @discord.ui.button(label="Custom Bet", style=discord.ButtonStyle.green)
     async def custom_bet(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your game!", ephemeral=True)
+            await interaction.response.send_message("This is not your game!", ephemeral=True, delete_after=8)
             return
 
         modal = CustomBetModal(self.stakes, self.cog)
@@ -148,7 +148,7 @@ class BettingView(discord.ui.View):
             if balance < modal.bet_amount:
                 await interaction.followup.send(
                     f"You don't have enough balance! You need {self.cog.format_amount(modal.bet_amount)}", 
-                    ephemeral=True
+                    ephemeral=True, delete_after=8
                 )
                 return
 
@@ -160,7 +160,7 @@ class BettingView(discord.ui.View):
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, row=1)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your game!", ephemeral=True)
+            await interaction.response.send_message("This is not your game!", ephemeral=True, delete_after=8)
             return
 
         self.bet_amount = None
@@ -191,14 +191,14 @@ class CustomBetModal(discord.ui.Modal, title="Place Your Bet"):
             if amount < min_bet:
                 await interaction.response.send_message(
                     f"Minimum bet is {self.cog.format_amount(min_bet)}!", 
-                    ephemeral=True
+                    ephemeral=True, delete_after=8
                 )
                 return
 
             if amount > max_bet:
                 await interaction.response.send_message(
                     f"Maximum bet is {self.cog.format_amount(max_bet)}!", 
-                    ephemeral=True
+                    ephemeral=True, delete_after=8
                 )
                 return
 
@@ -208,7 +208,7 @@ class CustomBetModal(discord.ui.Modal, title="Place Your Bet"):
         except ValueError:
             await interaction.response.send_message(
                 "Invalid amount format! Use numbers with K, M, B, or T (e.g., 1.5K, 2M, 3B)", 
-                ephemeral=True
+                ephemeral=True, delete_after=8
             )
 
 
@@ -441,7 +441,7 @@ class GameView(discord.ui.View):
     @discord.ui.button(label="Hit", style=discord.ButtonStyle.blurple, emoji="🎯")
     async def hit(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your game!", ephemeral=True)
+            await interaction.response.send_message("This is not your game!", ephemeral=True, delete_after=8)
             return
 
         current_hand = self.game.player_hands[self.game.current_hand]
@@ -460,7 +460,7 @@ class GameView(discord.ui.View):
     @discord.ui.button(label="Stand", style=discord.ButtonStyle.green, emoji="✋")
     async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your game!", ephemeral=True)
+            await interaction.response.send_message("This is not your game!", ephemeral=True, delete_after=8)
             return
 
         if self.game.current_hand < len(self.game.player_hands) - 1:
@@ -473,12 +473,12 @@ class GameView(discord.ui.View):
     @discord.ui.button(label="Double", style=discord.ButtonStyle.gray, emoji="💰")
     async def double(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your game!", ephemeral=True)
+            await interaction.response.send_message("This is not your game!", ephemeral=True, delete_after=8)
             return
 
         balance = await self.cog.get_balance(str(self.ctx.author.id))
         if balance < self.game.bet_amount:
-            await interaction.response.send_message("Not enough balance to double!", ephemeral=True)
+            await interaction.response.send_message("Not enough balance to double!", ephemeral=True, delete_after=8)
             return
 
         await self.cog.remove_balance(str(self.ctx.author.id), self.game.bet_amount)
@@ -497,12 +497,12 @@ class GameView(discord.ui.View):
     @discord.ui.button(label="Split", style=discord.ButtonStyle.gray, emoji="✂️")
     async def split(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("This is not your game!", ephemeral=True)
+            await interaction.response.send_message("This is not your game!", ephemeral=True, delete_after=8)
             return
 
         balance = await self.cog.get_balance(str(self.ctx.author.id))
         if balance < self.game.bet_amount:
-            await interaction.response.send_message("Not enough balance to split!", ephemeral=True)
+            await interaction.response.send_message("Not enough balance to split!", ephemeral=True, delete_after=8)
             return
 
         await self.cog.remove_balance(str(self.ctx.author.id), self.game.bet_amount)
