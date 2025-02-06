@@ -195,6 +195,7 @@ class VoSCog(commands.Cog):
                             # If this is our first check, store and return
                             if self.last_districts is None:
                                 self.last_districts = current_districts
+                                await asyncio.sleep(5)
                                 print(f"Initial VoS districts set to: {current_districts}")
                                 return
 
