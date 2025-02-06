@@ -209,7 +209,7 @@ class SystemEvents(commands.Cog):
                     if similar_commands:
                         warning = await ctx.send(f"Did you mean any of these? {' ; '.join(similar_commands)}")
                     else:
-                        warning = await ctx.send("⚠️ That command doesn't exist!")
+                        warning = await ctx.send("<:WARNING:1336887375158181899> That command doesn't exist!")
                     
                     await asyncio.sleep(7)
                     await warning.delete()
@@ -255,7 +255,7 @@ class SystemEvents(commands.Cog):
                 return
 
             else:
-                warning = print(f"⚠️ An unexpected error occurred: {str(error)}")
+                warning = print(f" An unexpected error occurred: {str(error)}")
                 
             try:
                 await asyncio.sleep(7)

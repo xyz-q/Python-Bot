@@ -934,7 +934,7 @@ class TwitchCog(commands.Cog):
 
                 
                 is_live = bool(streams)
-                status = "🔴 Live" if is_live else "⭕ Offline"
+                status = "<a:greenalert:1336886706216894524> Live" if is_live else "<a:redalert:1336885681624190979> Offline"
                 
                 if is_live and streams:
                     stream_info = streams[0]
@@ -956,7 +956,7 @@ class TwitchCog(commands.Cog):
                 print(f"Error fetching stream status: {e}")
                 embed.add_field(
                     name="Stream Status",
-                    value="⚠️ Unable to fetch status",
+                    value="<:WARNING:1336887375158181899> Unable to fetch status",
                     inline=False
                 )
 

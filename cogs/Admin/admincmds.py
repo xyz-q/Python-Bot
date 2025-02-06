@@ -37,7 +37,7 @@ class AdminCommands(commands.Cog):
         for member in members:
             try:
                 embed = discord.Embed(
-                    title="⚠️ Kick Notification",
+                    title="<:WARNING:1336887375158181899> Kick Notification",
                     description=f"You have been kicked from {ctx.guild.name}",
                     color=discord.Color.red(),
                     timestamp=datetime.now()

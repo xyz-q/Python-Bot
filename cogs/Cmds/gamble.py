@@ -265,7 +265,7 @@ def confirm_bet():
                 print(f"Amount exceeds threshold: {self.CONFIRMATION_THRESHOLD}")
                 view = BetConfirmation()
                 message = await ctx.send(
-                    f"⚠️ Are you sure you want to use {self.format_amount(amount)} <:goldpoints:1319902464115343473>?", 
+                    f"<:WARNING:1336887375158181899> Are you sure you want to use {self.format_amount(amount)} <:goldpoints:1319902464115343473>?", 
                     view=view
                 )
 
@@ -277,7 +277,7 @@ def confirm_bet():
                     print(f"Error deleting message: {e}")
 
                 if view.value is None:
-                    await ctx.send("⚠️ Confirmation timed out!", delete_after=10)
+                    await ctx.send("<:WARNING:1336887375158181899> Confirmation timed out!", delete_after=10)
                     return None
                 elif view.value is False:
                     await ctx.send("<:remove:1328511957208268800> Cancelled!", delete_after=10)
@@ -572,7 +572,7 @@ class Economy(commands.Cog):
         if amount >= self.CONFIRMATION_THRESHOLD:
             view = BetConfirmation()
             msg = await ctx.send(
-                f"⚠️ You are about to bet {self.format_amount(amount)}! Are you sure?",
+                f"<:WARNING:1336887375158181899> You are about to bet {self.format_amount(amount)}! Are you sure?",
                 view=view
             )
             
@@ -722,7 +722,7 @@ class Economy(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def clearcurrency(self, ctx):
-        confirm_msg = await ctx.send("⚠️ Are you sure you want to clear all currency data? This action cannot be undone!\nReact with ✅ to confirm or ❌ to cancel.")
+        confirm_msg = await ctx.send("<:WARNING:1336887375158181899> Are you sure you want to clear all currency data? This action cannot be undone!\nReact with ✅ to confirm or ❌ to cancel.")
         
         await confirm_msg.add_reaction("✅")
         await confirm_msg.add_reaction("❌")
@@ -1609,7 +1609,7 @@ class Economy(commands.Cog):
             return await ctx.send("No transactions to clear.")
 
         if option and option.lower() == 'all':
-            confirm_msg = await ctx.send("⚠️ Are you sure you want to clear ALL transaction logs for ALL users? This cannot be undone!\n"
+            confirm_msg = await ctx.send("<:WARNING:1336887375158181899> Are you sure you want to clear ALL transaction logs for ALL users? This cannot be undone!\n"
                                     "React with ✅ to confirm or ❌ to cancel.")
             await confirm_msg.add_reaction('✅')
             await confirm_msg.add_reaction('❌')
@@ -1641,7 +1641,7 @@ class Economy(commands.Cog):
         if user_id not in logs["users"]:
             return await ctx.send(f"No transactions found for {target.display_name}.")
 
-        confirm_msg = await ctx.send(f"⚠️ Are you sure you want to clear all transaction logs for {target.display_name}?\n"
+        confirm_msg = await ctx.send(f"<:WARNING:1336887375158181899> Are you sure you want to clear all transaction logs for {target.display_name}?\n"
                                 "React with ✅ to confirm or ❌ to cancel.")
         await confirm_msg.add_reaction('✅')
         await confirm_msg.add_reaction('❌')
