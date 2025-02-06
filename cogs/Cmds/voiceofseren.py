@@ -236,8 +236,7 @@ class VoSCog(commands.Cog):
                                     print("No channels file found")
                                 except json.JSONDecodeError:
                                     print("Error reading channels file")
-                            else:
-                                print(f"No change in VoS districts: {current_districts}")
+
                                 
                     else:
                         print(f"Failed to fetch VoS data: HTTP {response.status}")

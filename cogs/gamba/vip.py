@@ -60,11 +60,9 @@ class VIPView(View):
 
 
     async def on_timeout(self):
-        print("attempting to delete vipview")
         """Called when the view times out"""
         if self.message:
             try:
-                print("deleting vipview")
                 await self.message.delete()
             except discord.HTTPException:
                 pass
