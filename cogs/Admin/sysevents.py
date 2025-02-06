@@ -68,6 +68,14 @@ class SystemEvents(commands.Cog):
             print(f"\033[91mError in on_ready: {str(e)}\033[0m")
             traceback.print_exc()
 
+
+    async def update_latency(self):
+        if hasattr(self.bot, 'latency') and self.bot.latency is not None:
+            latency = self.bot.latency * 1000
+            if latency > 0:
+                self.last_known_latency = latency
+
+
     @commands.Cog.listener()
     async def on_disconnect(self):
         try:
@@ -78,15 +86,19 @@ class SystemEvents(commands.Cog):
             # Add timestamp to details
             details.append(f"Disconnect Time: {current_time.strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
-            # Add latency info - with validation
-            if hasattr(self.bot, 'latency') and self.bot.latency is not None:
-                latency = self.bot.latency * 1000
-                if latency > 0:  # Only add if we have a valid latency
-                    details.append(f"Last known latency: {latency:.2f}ms")
+            # Use stored latency if available
+            if self.last_known_latency is not None:
+                details.append(f"Last known latency: {self.last_known_latency:.2f}ms")
+            else:
+                # Attempt to get current latency
+                if hasattr(self.bot, 'latency') and self.bot.latency is not None:
+                    latency = self.bot.latency * 1000
+                    if latency > 0:
+                        details.append(f"Last known latency: {latency:.2f}ms")
+                    else:
+                        details.append("Last known latency: Not available")
                 else:
                     details.append("Last known latency: Not available")
-            else:
-                details.append("Last known latency: Not available")
 
             # Improved WebSocket close code handling
             if hasattr(self.bot, '_connection') and hasattr(self.bot._connection, '_ws'):
@@ -246,6 +258,7 @@ class SystemEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        await self.update_latency()
         if message.author == self.bot.user:
             return
             
