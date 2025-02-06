@@ -167,7 +167,6 @@ class TwitchCommandsButton(discord.ui.Button):
             await interaction.message.edit(embed=new_embed, view=TwitchConfigView(self.cog))            
             
         except Exception as e:
-            print(f"Error in TwitchCommandsButton callback: {str(e)}")
             try:
                 error_embed = discord.Embed(
                     title="Error",
@@ -495,7 +494,6 @@ class AutoMessagesButton(discord.ui.Button):
             await interaction.message.edit(embed=new_embed, view=TwitchConfigView(self.cog))             
             
         except Exception as e:
-            print(f"Error in AutoMessagesButton callback: {str(e)}")
             try:
                 error_embed = discord.Embed(
                     title="Error",
@@ -1036,7 +1034,7 @@ class TwitchCog(commands.Cog):
                     
             await twitchembed.delete()
         except Exception as e:
-            await ctx.send(f"An error occurred: {str(e)}")
+            print(f"Twitch message deleted.")
 
     def setup_twitch_bot(self):
         class Bot(twitch_commands.Bot):
