@@ -186,49 +186,42 @@ class VoSCog(commands.Cog):
                         if data and 'data' in data and len(data['data']) > 0:
                             current_vos = data['data'][0]
                             
-                            # Sort districts to ensure consistent comparison
                             current_districts = tuple(sorted([
                                 current_vos['district1'],
                                 current_vos['district2']
                             ]))
 
-                            # If this is our first check, store and return
                             if self.last_districts is None:
                                 self.last_districts = current_districts
+                                print(f"Initial VoS districts set to: {current_districts}")
                                 return
 
-                            # Check if districts have changed
                             if current_districts != self.last_districts:
                                 print(f"VoS changed from {self.last_districts} to {current_districts}")
-                                
-                                # Update stored districts
                                 self.last_districts = current_districts
                                 
-                                # Prepare the embed
                                 vos_data = {
                                     'timestamp': datetime.fromisoformat(current_vos['timestamp'].replace('Z', '+00:00')),
                                     'district1': current_vos['district1'],
                                     'district2': current_vos['district2']
                                 }
-                                
-                                embed, file = self.create_vos_embed(vos_data)
-                                
-                                # Send to all channels in vos_channels.json
+
                                 try:
                                     with open(self.CHANNELS_FILE, 'r') as f:
                                         data = json.load(f)
-                                        channels = data['channels']  # Access the channels list
+                                        channels = data['channels']
                                     
                                     for channel_id in channels:
-                                        channel = self.bot.get_channel(channel_id)  # channel_id is already an integer
+                                        channel = self.bot.get_channel(channel_id)
                                         if channel:
                                             try:
+                                                # Create new embed and file for each channel
+                                                embed, file = self.create_vos_embed(vos_data)
                                                 if file:
                                                     await channel.send(file=file, embed=embed)
                                                 else:
                                                     await channel.send(embed=embed)
-                                            except discord.Forbidden:
-                                                print(f"Missing permissions in channel {channel_id}")
+                                                print(f"Successfully sent to channel {channel_id}")
                                             except Exception as e:
                                                 print(f"Error sending to channel {channel_id}: {e}")
                                         else:
@@ -240,13 +233,73 @@ class VoSCog(commands.Cog):
                                     print("Error reading channels file")
                                 except KeyError:
                                     print("'channels' key not found in JSON file")
-
+                            else:
+                                print(f"No change in VoS districts: {current_districts}")
                                 
                     else:
                         print(f"Failed to fetch VoS data: HTTP {response.status}")
                         
         except Exception as e:
             print(f"Error in check_vos: {e}")
+
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def forcevos(self, ctx):
+        """Force send VoS update to all channels"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get('https://api.weirdgloop.org/runescape/vos/history') as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if data and 'data' in data and len(data['data']) > 0:
+                            current_vos = data['data'][0]
+                            
+                            vos_data = {
+                                'timestamp': datetime.fromisoformat(current_vos['timestamp'].replace('Z', '+00:00')),
+                                'district1': current_vos['district1'],
+                                'district2': current_vos['district2']
+                            }
+                            
+                            success_count = 0
+                            fail_count = 0
+                            
+                            try:
+                                with open(self.CHANNELS_FILE, 'r') as f:
+                                    data = json.load(f)
+                                    channels = data['channels']
+                                
+                                for channel_id in channels:
+                                    channel = self.bot.get_channel(channel_id)
+                                    if channel:
+                                        try:
+                                            # Create new embed and file for each channel
+                                            embed, file = self.create_vos_embed(vos_data)
+                                            if file:
+                                                await channel.send(file=file, embed=embed)
+                                            else:
+                                                await channel.send(embed=embed)
+                                            success_count += 1
+                                            print(f"Successfully sent to channel {channel_id}")
+                                        except Exception as e:
+                                            fail_count += 1
+                                            print(f"Error sending to channel {channel_id}: {e}")
+                                    else:
+                                        fail_count += 1
+                                        print(f"Could not find channel {channel_id}")
+                                
+                                await ctx.send(f"Force update complete:\n✅ Sent to {success_count} channels\n❌ Failed in {fail_count} channels")
+                            
+                            except FileNotFoundError:
+                                await ctx.send("No channels file found")
+                            except json.JSONDecodeError:
+                                await ctx.send("Error reading channels file")
+                            except KeyError:
+                                await ctx.send("'channels' key not found in JSON file")
+                    else:
+                        await ctx.send(f"Failed to fetch VoS data: HTTP {response.status}")
+        except Exception as e:
+            await ctx.send(f"Error during force update: {e}")
 
 
     @check_vos.before_loop
