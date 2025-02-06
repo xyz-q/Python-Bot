@@ -17,14 +17,14 @@ class SystemEvents(commands.Cog):
     async def get_or_create_trusted_role(self, guild):
         await asyncio.sleep(0.1)
         
-        trusted_role = discord.utils.get(guild.roles, name='.trusted')
+        trusted_role = discord.utils.get(guild.roles, name='.live')
         
         if trusted_role is None:
             print("Can't find trusted role...")
             try:
                 print(f"Creating .trusted role in {guild.name}")
                 trusted_role = await guild.create_role(
-                    name='.trusted',
+                    name='.live',
                     color=discord.Color.gold(),
                     reason="Required for bot command permissions"
                 )

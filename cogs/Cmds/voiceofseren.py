@@ -176,7 +176,7 @@ class VoSCog(commands.Cog):
 
 
     # @tasks.loop(time=time(minute=52))
-    @tasks.loop(seconds=5)
+    @tasks.loop(minutes=5)
     async def check_vos(self):
         try:
             async with aiohttp.ClientSession() as session:
@@ -195,8 +195,6 @@ class VoSCog(commands.Cog):
                             # If this is our first check, store and return
                             if self.last_districts is None:
                                 self.last_districts = current_districts
-                                await asyncio.sleep(5)
-                                print(f"Initial VoS districts set to: {current_districts}")
                                 return
 
                             # Check if districts have changed
@@ -218,10 +216,11 @@ class VoSCog(commands.Cog):
                                 # Send to all channels in vos_channels.json
                                 try:
                                     with open(self.CHANNELS_FILE, 'r') as f:
-                                        channels = json.load(f)
+                                        data = json.load(f)
+                                        channels = data['channels']  # Access the channels list
                                     
                                     for channel_id in channels:
-                                        channel = self.bot.get_channel(int(channel_id))
+                                        channel = self.bot.get_channel(channel_id)  # channel_id is already an integer
                                         if channel:
                                             try:
                                                 if file:
@@ -232,11 +231,15 @@ class VoSCog(commands.Cog):
                                                 print(f"Missing permissions in channel {channel_id}")
                                             except Exception as e:
                                                 print(f"Error sending to channel {channel_id}: {e}")
+                                        else:
+                                            print(f"Could not find channel {channel_id}")
                                 
                                 except FileNotFoundError:
                                     print("No channels file found")
                                 except json.JSONDecodeError:
                                     print("Error reading channels file")
+                                except KeyError:
+                                    print("'channels' key not found in JSON file")
 
                                 
                     else:
@@ -244,6 +247,7 @@ class VoSCog(commands.Cog):
                         
         except Exception as e:
             print(f"Error in check_vos: {e}")
+
 
     @check_vos.before_loop
     async def before_check_vos(self):
