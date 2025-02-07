@@ -9,6 +9,106 @@ import random
 from dotenv import load_dotenv
 import asyncio
 import time
+from PIL import Image, ImageDraw, ImageFont
+import io
+
+async def create_commands_image(commands_list, custom_cmds):
+    # Create image with dark background
+    padding = 20
+    line_height = 30
+    font_size = 24
+    
+    # Calculate heights for both columns
+    left_lines = len(commands_list) + 2  # +2 for header
+    right_lines = len(custom_cmds) + 2 if custom_cmds else 0  # +2 for header
+    total_lines = max(left_lines, right_lines)
+    
+    # Set dimensions
+    height = (total_lines * line_height) + (padding * 2)
+    width = 1200  # Increased width for two columns
+    column_width = (width - (padding * 3)) // 2  # Width for each column
+    
+    # Dark theme colors
+    image = Image.new('RGB', (width, height), '#2C2F33')
+    draw = ImageDraw.Draw(image)
+    
+    try:
+        font = ImageFont.truetype("arial.ttf", font_size)
+    except:
+        font = ImageFont.load_default()
+
+    # Left Column - Default Commands
+    current_y = padding
+    
+    # Draw title for default commands
+    draw.text((padding, current_y), "Bot Commands", fill='#FFFFFF', font=font)
+    current_y += line_height * 2
+
+    # Draw default commands
+    for cmd in sorted(commands_list):
+        color = '#FF4444' if 'Mods Only' in cmd else '#FFFFFF'
+        draw.text((padding, current_y), cmd, fill=color, font=font)
+        current_y += line_height
+
+    # Right Column - Custom Commands
+    if custom_cmds:
+        current_y = padding
+        x_position = padding * 2 + column_width
+        
+        # Draw title for custom commands
+        draw.text((x_position, current_y), "Custom Commands", fill='#FFFFFF', font=font)
+        current_y += line_height * 2
+        
+        # Draw custom commands
+        for cmd in sorted(custom_cmds.keys()):
+            text = f",{cmd}"
+            # Add command response in gray
+            response = custom_cmds[cmd]
+            if len(response) > 30:  # Truncate long responses
+                response = response[:27] + "..."
+            text += f" - {response}"
+            
+            draw.text((x_position, current_y), text, fill='#FFFFFF', font=font)
+            current_y += line_height
+
+    # Add a vertical line between columns
+    line_x = padding + column_width + (padding // 2)
+    draw.line([(line_x, padding), (line_x, height - padding)], fill='#4A4A4A', width=2)
+
+    # Convert image to bytes
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='PNG')
+    img_byte_arr.seek(0)
+    
+    return img_byte_arr
+
+
+import aiohttp
+
+class URLShortener:
+    def __init__(self):
+        self.cache = {}
+        
+    async def shorten_url(self, long_url):
+        # Check cache first
+        if long_url in self.cache:
+            return self.cache[long_url]
+            
+        # If not in cache, shorten it
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f'http://tinyurl.com/api-create.php?url={long_url}') as response:
+                    if response.status == 200:
+                        short_url = await response.text()
+                        # Cache the result
+                        self.cache[long_url] = short_url
+                        return short_url
+        except Exception as e:
+            print(f"Error shortening URL: {e}")
+        return long_url
+
+# Then modify the help command to use the shortened URL:
+# Replace the line:
 
 
 class TwitchConfigView(View):
@@ -1043,6 +1143,7 @@ class TwitchCog(commands.Cog):
                 self.config = config
                 self.parent_cog = parent_cog
                 self.channel_last_message = {}
+                self.url_shortener = URLShortener()
                 
                 self.channel_list = [channel.lower() for channel in self.config['channels'].keys()]
                 
@@ -1056,33 +1157,84 @@ class TwitchCog(commands.Cog):
                 self.setup_commands()
 
 
-
+            
             def setup_commands(self):
                 @self.command(name="help")
                 async def help_command(ctx):
                     """Shows all available commands"""
-                    commands_list = []
-                    
-                    # Get default commands
-                    for cmd_name, command in ctx.bot.commands.items():
-                        if getattr(command, 'hidden', False):
-                            continue
+                    try:
+                        commands_list = []
                         
-                        if cmd_name in ["so", "addcmd", "delcmd"]:  # Mod commands
-                            commands_list.append(f",{cmd_name} (Mods Only)")
-                        else:
-                            commands_list.append(f",{cmd_name}")
+                        # Get default commands
+                        for cmd_name, command in ctx.bot.commands.items():
+                            if getattr(command, 'hidden', False):
+                                continue
+                            
+                            if cmd_name in ["so", "addcmd", "delcmd"]:  # Mod commands
+                                commands_list.append(f",{cmd_name} (Mods Only)")
+                            else:
+                                commands_list.append(f",{cmd_name}")
 
-                    # Send in chunks
-                    await ctx.send(f"@{ctx.author.name} 📋 Available Commands:")
-                    chunks = [commands_list[i:i + 3] for i in range(0, len(commands_list), 3)]
-                    for chunk in chunks:
-                        await ctx.send("| ".join(chunk))
+                        # Get custom commands
+                        custom_cmds = ctx.bot.config.get('custom_commands', {}).get(ctx.channel.name, {})
+                        
+                        # Create image
+                        img_bytes = await create_commands_image(commands_list, custom_cmds)
+                        
+                        # Get the commands channel (you'll need to set this up)
+                        commands_channel = ctx.bot.discord_bot.get_channel(1337514715965952040)
+                        
+                        if commands_channel:
+                            # Send image to Discord channel and get the URL
+                            file = discord.File(fp=img_bytes, filename=f"{ctx.channel.name}_commands.png")
+                            message = await commands_channel.send(file=file)
+                            
+                            if message.attachments:
+                                # Get the URL of the uploaded image
+                                image_url = message.attachments[0].url
+                                
+                                # Store the URL for this channel
+                                if not hasattr(ctx.bot, 'command_image_urls'):
+                                    ctx.bot.command_image_urls = {}
+                                    
+                                # Delete old message if it exists
+                                if ctx.channel.name in ctx.bot.command_image_urls:
+                                    try:
+                                        old_message = await commands_channel.fetch_message(
+                                            ctx.bot.command_image_urls[ctx.channel.name]['message_id']
+                                        )
+                                        await old_message.delete()
+                                    except:
+                                        pass
+                                
+                                # Store new message info
+                                ctx.bot.command_image_urls[ctx.channel.name] = {
+                                    'url': image_url,
+                                    'message_id': message.id,
+                                    'timestamp': time.time()
+                                }
+                                
+                                # Send the URL in Twitch chat
+                                short_url = await self.url_shortener.shorten_url(image_url)
+                                await ctx.send(f"@{ctx.author.name} -> The commands for this channel are here: {short_url}")                                
 
-                    # Show custom commands
-                    custom_cmds = ctx.bot.config.get('custom_commands', {}).get(ctx.channel.name, {})
-                    if custom_cmds:
-                        await ctx.send(f"@{ctx.author.name} 📋 Custom Commands: " + " | ".join(f",{cmd}" for cmd in custom_cmds.keys()))
+                                return
+                                
+                        # Fallback to original method if Discord upload fails
+                        raise Exception("Failed to upload image to Discord")
+                        
+                    except Exception as e:
+                        print(f"Error in help command: {str(e)}")
+                        # Fallback to original method
+                        await ctx.send(f"@{ctx.author.name} 📋 Available Commands:")
+                        chunks = [commands_list[i:i + 3] for i in range(0, len(commands_list), 3)]
+                        for chunk in chunks:
+                            await ctx.send("| ".join(chunk))
+
+                        if custom_cmds:
+                            await ctx.send(f"@{ctx.author.name} 📋 Custom Commands: " + 
+                                        " | ".join(f",{cmd}" for cmd in custom_cmds.keys()))
+
 
                 @self.command(name="setdiscord")
                 async def set_discord_link(ctx, *, content: str):
