@@ -1258,13 +1258,13 @@ class TwitchCog(commands.Cog):
 
 
 
-
     @tasks.loop(seconds=10)
     async def auto_message_task(self):
         if not hasattr(self, 'config'):
             return
                     
-        for channel_name in self.config.get('channels', {}).keys():
+        # Change this line to use user_channels instead of channels
+        for user_id, channel_name in self.config.get('user_channels', {}).items():
             channel = self.twitch_bot.get_channel(channel_name)
             if channel:
                 stream = await self.twitch_bot.fetch_streams(user_logins=[channel_name])
