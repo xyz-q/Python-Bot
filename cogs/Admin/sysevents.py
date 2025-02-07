@@ -97,7 +97,7 @@ class SystemEvents(commands.Cog):
                     "\033[92m" + str(guild.id) + "\033[0m",
                     "\033[92m" + guild.name + "\033[0m"
                 ))
-                await self.get_or_create_trusted_role(guild)
+                await self.setup_server_roles_and_channels(guild)
             channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
             if channel:
                 try:
