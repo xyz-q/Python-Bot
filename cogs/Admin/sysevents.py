@@ -200,7 +200,7 @@ class SystemEvents(commands.Cog):
             if channel:
                 try:
                     disconnect_msg = (
-                        "🔴 Bot Disconnected!\n"
+                        "<a:redalert:1336885681624190979> Bot Disconnected!\n"
                         f"Reason: {disconnect_reason}\n"
                         + "\n".join(f"• {detail}" for detail in details)
                     )
@@ -270,38 +270,38 @@ class SystemEvents(commands.Cog):
                     print(f"\033[91mError handling CommandNotFound: {str(e)}\033[0m")
 
             elif isinstance(error, commands.MissingPermissions):
-                warning = await ctx.send(f"❌ You don't have permission to use this command! Required permissions: {', '.join(error.missing_permissions)}")
+                warning = await ctx.send(f"<:remove:1328511957208268800> You don't have permission to use this command! Required permissions: {', '.join(error.missing_permissions)}")
                 
             elif isinstance(error, commands.BotMissingPermissions):
-                warning = await ctx.send(f"❌ I don't have the required permissions to do this! I need: {', '.join(error.missing_permissions)}")
+                warning = await ctx.send(f"<:remove:1328511957208268800> I don't have the required permissions to do this! I need: {', '.join(error.missing_permissions)}")
                 
             elif isinstance(error, commands.MissingRequiredArgument):
-                warning = await ctx.send(f"❌ Missing required argument: {error.param.name}")
+                warning = await ctx.send(f"<:remove:1328511957208268800> Missing required argument: {error.param.name}")
                 
             elif isinstance(error, commands.BadArgument):
-                warning = await ctx.send("❌ Invalid argument provided! Please check the command usage.")
+                warning = await ctx.send("<:remove:1328511957208268800> Invalid argument provided! Please check the command usage.")
                 
             elif isinstance(error, commands.NoPrivateMessage):
-                warning = await ctx.send("❌ This command cannot be used in private messages!")
+                warning = await ctx.send("<:remove:1328511957208268800> This command cannot be used in private messages!")
                 
             elif isinstance(error, commands.DisabledCommand):
-                warning = await ctx.send("❌ This command is currently disabled!")
+                warning = await ctx.send("<:remove:1328511957208268800> This command is currently disabled!")
                 
             elif isinstance(error, commands.CommandOnCooldown):
                 warning = await ctx.send(f"⏳ Please wait {error.retry_after:.2f} seconds before using this command again!")
                 
             elif isinstance(error, commands.MemberNotFound):
-                warning = await ctx.send("❌ Could not find that member!")
+                warning = await ctx.send("<:remove:1328511957208268800> Could not find that member!")
                 
             elif isinstance(error, commands.ChannelNotFound):
-                warning = await ctx.send("❌ Could not find that channel!")
+                warning = await ctx.send("<:remove:1328511957208268800> Could not find that channel!")
                 
             elif isinstance(error, commands.RoleNotFound):
-                warning = await ctx.send("❌ Could not find that role!")  
+                warning = await ctx.send("<:remove:1328511957208268800> Could not find that role!")  
                 
             elif isinstance(error, commands.NotOwner):
                 print("NotOwner error triggered")
-                warning = await ctx.send(f"❌ You are not <@110927272210354176>")
+                warning = await ctx.send(f"<:remove:1328511957208268800> You are not <@110927272210354176>")
 
             elif isinstance(error, discord.NotFound) and error.code == 10008:  # 10008 is the error code for Unknown Message
                 return
@@ -335,7 +335,7 @@ class SystemEvents(commands.Cog):
         
         if blacklist_cog and message.author.id in blacklist_cog.blacklisted_users:
             if message.content.startswith(","):
-                blacklist = await message.channel.send("❌ You are blacklisted from using this bot.")
+                blacklist = await message.channel.send("<:remove:1328511957208268800> You are blacklisted from using this bot.")
                 await message.delete()
                 await asyncio.sleep(4)
                 await blacklist.delete()
@@ -377,7 +377,7 @@ class SystemEvents(commands.Cog):
                 return
 
             try:
-                warningmsg = await message.channel.send("❌ Please use commands in #admin-commands, see `,staking` for a list you can anywhere")
+                warningmsg = await message.channel.send("<:remove:1328511957208268800> Please use commands in #admin-commands, see `,staking` for a list you can anywhere")
                 print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
                 await message.delete()
                 await asyncio.sleep(7)

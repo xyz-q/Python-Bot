@@ -153,10 +153,10 @@ class Twitch(commands.Cog):
             with open('.json/ttv.json', 'w') as f:
                 json.dump(new_configurations, f, indent=4)
             
-            await ctx.send(f"✅ JSON restructured successfully! Backup saved as {backup_path}")
+            await ctx.send(f"<:add:1328511998647861390> JSON restructured successfully! Backup saved as {backup_path}")
             
         except Exception as e:
-            await ctx.send(f"❌ Error restructuring JSON: {str(e)}")
+            await ctx.send(f"<:remove:1328511957208268800> Error restructuring JSON: {str(e)}")
             raise e
 
 

@@ -88,15 +88,15 @@ class TravellingMerchant(commands.Cog):
         bot_owner_id = 110927272210354176
         
         if ctx.author.id != bot_owner_id and user: 
-            await ctx.send("❌ You do not have permission to toggle notifications for others.")
+            await ctx.send("<:remove:1328511957208268800> You do not have permission to toggle notifications for others.")
             return
 
         if user_id in self.user_preferences:
             del self.user_preferences[user_id]
-            await ctx.send(f"❌ Notifications disabled for {user.name if user else 'yourself'}.")
+            await ctx.send(f"<:remove:1328511957208268800> Notifications disabled for {user.name if user else 'yourself'}.")
         else:
             self.user_preferences[user_id] = True
-            await ctx.send(f"✅ Notifications enabled for {user.name if user else 'yourself'}.")
+            await ctx.send(f"<:add:1328511998647861390> Notifications enabled for {user.name if user else 'yourself'}.")
         
         self.save_preferences()
 
@@ -357,7 +357,7 @@ class TravellingMerchant(commands.Cog):
     async def show_merch_users_error(self, ctx, error):
         """Error handler for the merchusers command"""
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send("❌ You need administrator permissions to use this command.")
+            await ctx.send("<:remove:1328511957208268800> You need administrator permissions to use this command.")
 
     @commands.command(name="listemoji")
     async def list_emojis(self, ctx):

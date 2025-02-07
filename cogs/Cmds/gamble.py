@@ -722,7 +722,7 @@ class Economy(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def clearcurrency(self, ctx):
-        confirm_msg = await ctx.send("<:WARNING:1336887375158181899> Are you sure you want to clear all currency data? This action cannot be undone!\nReact with ✅ to confirm or ❌ to cancel.")
+        confirm_msg = await ctx.send("<:WARNING:1336887375158181899> Are you sure you want to clear all currency data? This action cannot be undone!\nReact with <:add:1328511998647861390> to confirm or ❌ to cancel.")
         
         await confirm_msg.add_reaction("✅")
         await confirm_msg.add_reaction("❌")
@@ -736,14 +736,14 @@ class Economy(commands.Cog):
             if str(reaction.emoji) == "✅":
                 with open('./.json/currency.json', 'w') as f:
                     json.dump({}, f, indent=4)
-                await ctx.send("✅ Currency data has been cleared successfully!")
+                await ctx.send("<:add:1328511998647861390> Currency data has been cleared successfully!")
             else:
-                await ctx.send("❌ Operation cancelled.")
+                await ctx.send("<:remove:1328511957208268800> Operation cancelled.")
                 
         except asyncio.TimeoutError:
-            await ctx.send("❌ Operation timed out.")
+            await ctx.send("<:remove:1328511957208268800> Operation timed out.")
         except Exception as e:
-            await ctx.send(f"❌ An error occurred while clearing the currency data: {str(e)}")
+            await ctx.send(f"<:remove:1328511957208268800> An error occurred while clearing the currency data: {str(e)}")
 
     @has_account()
     @commands.command(name="resetstats")
@@ -1182,7 +1182,7 @@ class Economy(commands.Cog):
                 )
             else:
                 embed = discord.Embed(
-                    title=f"🏦 {ctx.author.display_name.title()}'s Balance",
+                    title=f"<:seeds:1326024477145956433> {ctx.author.display_name.title()}'s Balance",
                     color=discord.Color.gold()
                 )
                 
@@ -1624,7 +1624,7 @@ class Economy(commands.Cog):
                     logs["users"] = {}
                     with open('logs/transactions.json', 'w') as f:
                         json.dump(logs, f, indent=2)
-                    await ctx.send("✅ Cleared all transaction logs for all users.")
+                    await ctx.send("<:add:1328511998647861390> Cleared all transaction logs for all users.")
                 else:
                     await ctx.send("<:remove:1328511957208268800>  Operation cancelled.")
                 return
@@ -1656,12 +1656,12 @@ class Economy(commands.Cog):
                 del logs["users"][user_id]
                 with open('logs/transactions.json', 'w') as f:
                     json.dump(logs, f, indent=2)
-                await ctx.send(f"✅ Cleared all transaction logs for {target.display_name}.")
+                await ctx.send(f"<:add:1328511998647861390> Cleared all transaction logs for {target.display_name}.")
             else:
-                await ctx.send("❌ Operation cancelled.")
+                await ctx.send("<:remove:1328511957208268800> Operation cancelled.")
                 
         except asyncio.TimeoutError:
-            await ctx.send("❌ Confirmation timed out. Operation cancelled.")
+            await ctx.send("<:remove:1328511957208268800> Confirmation timed out. Operation cancelled.")
 
 
 

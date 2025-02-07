@@ -110,7 +110,7 @@ class Stalk(commands.Cog):
                 elif voice_client.channel != user_voice_channel:
                     try:
                         await voice_client.move_to(user_voice_channel)
-                        print(f"Moved to {user_voice_channel.name} in {user_guild.name}")
+
                     except (discord.ClientException, AttributeError):
                         pass
 

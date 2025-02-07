@@ -117,7 +117,7 @@ class ChannelSetupModal(discord.ui.Modal, title="Channel Setup"):
             self.cog.save_settings(self.cog.settings)
             
             embed = discord.Embed(
-                title="✅ Channel Setup Complete",
+                title="<:add:1328511998647861390> Channel Setup Complete",
                 description=f"Welcome Channel: {welcome_channel.mention}\nLeave Channel: {leave_channel.mention}",
                 color=discord.Color.green()
             )
@@ -170,7 +170,7 @@ class WelcomeMessageModal(discord.ui.Modal, title="Welcome Message Setup"):
         preview_embed.set_footer(text=f"Member #{len(interaction.guild.members)}")
 
         confirmation_embed = discord.Embed(
-            title="✅ Welcome Message Updated",
+            title="<:add:1328511998647861390> Welcome Message Updated",
             description="Your new welcome message has been saved. Here's how it will look:",
             color=discord.Color.green()
         )
@@ -215,7 +215,7 @@ class LeaveMessageModal(discord.ui.Modal, title="Leave Message Setup"):
         preview_embed.set_footer(text=f"Members: {len(interaction.guild.members)}")
 
         confirmation_embed = discord.Embed(
-            title="✅ Leave Message Updated",
+            title="<:add:1328511998647861390> Leave Message Updated",
             description="Your new leave message has been saved. Here's how it will look:",
             color=discord.Color.green()
         )

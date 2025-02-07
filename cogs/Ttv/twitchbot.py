@@ -1247,7 +1247,7 @@ class TwitchCog(commands.Cog):
                         return
 
                     if "discord.gg" not in content and "discord.com" not in content:
-                        await ctx.send(f"@{ctx.author.name} ❌ Please provide a valid Discord invite link")
+                        await ctx.send(f"@{ctx.author.name} <:remove:1328511957208268800> Please provide a valid Discord invite link")
                         return
 
                     try:
@@ -1265,7 +1265,7 @@ class TwitchCog(commands.Cog):
                         print(f"Error writing to file: {e}")
                         return
                         
-                    await ctx.send(f"@{ctx.author.name} ✅ Discord invite link set!")
+                    await ctx.send(f"@{ctx.author.name} <:add:1328511998647861390> Discord invite link set!")
 
                 @self.command(name="discord")
                 async def discord_command(ctx):

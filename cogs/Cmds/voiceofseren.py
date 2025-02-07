@@ -50,7 +50,7 @@ class VoSCog(commands.Cog):
         if ctx.channel.id not in data['channels']:
             data['channels'].append(ctx.channel.id)
             self.save_channels(data)
-            await ctx.send('✅ This channel will now receive Voice of Seren updates!')
+            await ctx.send('<:add:1328511998647861390> This channel will now receive Voice of Seren updates!')
         else:
             await ctx.send('This channel is already receiving updates!')
 
@@ -62,7 +62,7 @@ class VoSCog(commands.Cog):
         if ctx.channel.id in data['channels']:
             data['channels'].remove(ctx.channel.id)
             self.save_channels(data)
-            await ctx.send('❌ This channel will no longer receive Voice of Seren updates!')
+            await ctx.send('<:remove:1328511957208268800> This channel will no longer receive Voice of Seren updates!')
         else:
             await ctx.send('This channel was not receiving updates!')
 
@@ -287,7 +287,7 @@ class VoSCog(commands.Cog):
                                         fail_count += 1
                                         print(f"Could not find channel {channel_id}")
                                 
-                                await ctx.send(f"Force update complete:\n✅ Sent to {success_count} channels\n❌ Failed in {fail_count} channels")
+                                await ctx.send(f"Force update complete:\n<:add:1328511998647861390> Sent to {success_count} channels\n<:remove:1328511957208268800> Failed in {fail_count} channels")
                             
                             except FileNotFoundError:
                                 await ctx.send("No channels file found")
@@ -311,7 +311,7 @@ class VoSCog(commands.Cog):
     @remove_vos_channel.error
     async def command_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send("❌ You need administrator permissions to use this command!")
+            await ctx.send("<:remove:1328511957208268800> You need administrator permissions to use this command!")
 
 async def setup(bot):
     await bot.add_cog(VoSCog(bot))

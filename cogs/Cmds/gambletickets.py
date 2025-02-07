@@ -63,7 +63,7 @@ class TicketView(discord.ui.View):
         if self.message:
             embed = self.message.embeds[0]
             embed.color = discord.Color.red()
-            embed.description = "❌ This menu has timed out."
+            embed.description = "<:remove:1328511957208268800> This menu has timed out."
             
             try:
                 await self.message.edit(embed=embed, view=self)
@@ -374,9 +374,9 @@ class CancelTicketModal(discord.ui.Modal, title="Cancel Ticket"):
         if found:
             embed = self.view.create_embed()
             await interaction.response.edit_message(embed=embed, view=self.view)
-            await interaction.followup.send(f"✅ Ticket {ticket_id} has been cancelled!", ephemeral=True, delete_after=8)
+            await interaction.followup.send(f"<:add:1328511998647861390> Ticket {ticket_id} has been cancelled!", ephemeral=True, delete_after=8)
         else:
-            await interaction.response.send_message("❌ Invalid ticket ID or you don't own this ticket!", ephemeral=True, delete_after=8)
+            await interaction.response.send_message("<:remove:1328511957208268800> Invalid ticket ID or you don't own this ticket!", ephemeral=True, delete_after=8)
 
 class AdminTicketView(View):
     def __init__(self, bot, user_id, timer_msg, ticket_data, public_msg, cog, ticket_type, user_timer, dm_timer, user_embed, admin_embed):

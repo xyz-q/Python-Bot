@@ -68,16 +68,16 @@ class Blacklist(commands.Cog):
             self.blacklisted_users.remove(user_id)
             success = self._save_blacklist()
             if success:
-                await ctx.send(f"✅ **{user.name}** has been removed from the blacklist.")
+                await ctx.send(f"<:add:1328511998647861390> **{user.name}** has been removed from the blacklist.")
             else:
-                await ctx.send("❌ Failed to save blacklist changes.")
+                await ctx.send("<:remove:1328511957208268800> Failed to save blacklist changes.")
         else:
             self.blacklisted_users.append(user_id)
             success = self._save_blacklist()
             if success:
                 await ctx.send(f"⛔ **{user.name}** has been added to the blacklist.")
             else:
-                await ctx.send("❌ Failed to save blacklist changes.")
+                await ctx.send("<:remove:1328511957208268800> Failed to save blacklist changes.")
 
         print(f"Current blacklist after change: {self.blacklisted_users}")
 

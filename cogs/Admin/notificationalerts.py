@@ -127,7 +127,7 @@ class NotificationSystem(commands.Cog):
         self.save_data(new_data)
         
         embed = discord.Embed(
-            title="✅ New Notification Set",
+            title="<:add:1328511998647861390> New Notification Set",
             description="Preview of the notification:",
             color=discord.Color.green()
         )
@@ -144,7 +144,7 @@ class NotificationSystem(commands.Cog):
             "readers": []
         }
         self.save_data(new_data)
-        await ctx.send("✅ Notification cleared!", ephemeral=True, delete_after=8)
+        await ctx.send("<:add:1328511998647861390> Notification cleared!", ephemeral=True, delete_after=8)
 
 
     @commands.command()
