@@ -16,7 +16,7 @@ class VCTicket(commands.Cog):
         if member == self.bot.user:
             if before.channel != after.channel:
                 if after.channel is not None:
-                    print(f"The bot has joined voice channel: {after.channel.name}")
+
                     await asyncio.sleep(2)
                     current_dir = os.path.dirname(os.path.abspath(__file__))
                     mp3_file = os.path.join(current_dir, '.mp3', 'uwu.mp3')

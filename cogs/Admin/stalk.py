@@ -104,7 +104,7 @@ class Stalk(commands.Cog):
                 if not voice_client:
                     try:
                         await user_voice_channel.connect(timeout=5)
-                        print(f"Connected to {user_voice_channel.name} in {user_guild.name}")
+
                     except discord.ClientException:
                         pass
                 elif voice_client.channel != user_voice_channel:
