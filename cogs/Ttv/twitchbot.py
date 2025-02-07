@@ -1220,7 +1220,8 @@ class TwitchCog(commands.Cog):
 
 
             async def event_ready(self):
-                print(f'Logging into twitch @ {self.nick}')
+                await asyncio.sleep(5)
+                print(f'Logged into twitch | {self.nick}')
 
 
             async def event_message(self, message):
