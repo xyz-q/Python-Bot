@@ -290,7 +290,7 @@ class ElyNotify(commands.Cog):
                 value=f"Target: {direction_text} {target_price:,} gp",
                 inline=False
             )
-
+        embed.set_footer(text=",alert and ,removealert")
         await ctx.send(embed=embed)
 
     @commands.command(name='removealert')
