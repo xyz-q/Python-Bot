@@ -553,7 +553,7 @@ class TicketPaginationView(View):
 class GambleSystem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.admin_ids = [110927272210354176, 311612585524854805]  
+        self.admin_ids = [110927272210354176]  
         self.tickets_file = ".json/tickets.json"
         self.load_tickets()
         self.message = None
