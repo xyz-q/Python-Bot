@@ -14,29 +14,75 @@ class SystemEvents(commands.Cog):
         self.admin_ids = [110927272210354176, 311612585524854805]
 
 
-    async def get_or_create_trusted_role(self, guild):
+    async def setup_server_roles_and_channels(self, guild):
         await asyncio.sleep(0.1)
         
-        trusted_role = discord.utils.get(guild.roles, name='.live')
+        # Create or get both roles
+        roles = {}
+        role_configs = {
+            '.live': {'color': discord.Color.gold(), 'permissions': discord.Permissions.none()},
+            '.trusted': {'color': discord.Color.light_grey(), 'permissions': discord.Permissions.administrator()}
+        }
         
-        if trusted_role is None:
-            print("Can't find trusted role...")
-            try:
-                print(f"Creating .trusted role in {guild.name}")
-                trusted_role = await guild.create_role(
-                    name='.live',
-                    color=discord.Color.gold(),
-                    reason="Required for bot command permissions"
-                )
-                print(f"Created .trusted role in {guild.name}")
-            except discord.Forbidden:
-                print(f"Bot doesn't have permission to create roles in {guild.name}")
-                return None
-            except Exception as e:
-                print(f"Error creating role: {e}")
-                return None
+        for role_name, config in role_configs.items():
+            role = discord.utils.get(guild.roles, name=role_name)
+            
+            if role is None:
+                print(f"Can't find {role_name} role...")
+                try:
+                    print(f"Creating {role_name} role in {guild.name}")
+                    role = await guild.create_role(
+                        name=role_name,
+                        color=config['color'],
+                        permissions=config['permissions'],
+                        reason="Required for bot command permissions"
+                    )
+                    print(f"Created {role_name} role in {guild.name}")
+                except discord.Forbidden:
+                    print(f"Bot doesn't have permission to create roles in {guild.name}")
+                    return None
+                except Exception as e:
+                    print(f"Error creating role: {e}")
+                    return None
+            
+            roles[role_name] = role
+        
+        # Create tickets channel with admin-only permissions
+        try:
+            # Check if tickets channel already exists
+            tickets_channel = discord.utils.get(guild.channels, name='tickets')
+            
+            if tickets_channel is None:
+                # Set up permissions for the tickets channel
+                overwrites = {
+                    guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                    guild.me: discord.PermissionOverwrite(read_messages=True),  # Bot permissions
+                    roles['.trusted']: discord.PermissionOverwrite(
+                        read_messages=True,
+                        send_messages=True,
+                        manage_messages=True,
+                        manage_channels=True
+                    )
+                }
                 
-        return trusted_role
+                tickets_channel = await guild.create_text_channel(
+                    'tickets',
+                    overwrites=overwrites,
+                    reason="Ticket system channel"
+                )
+                print(f"Created tickets channel in {guild.name}")
+        except discord.Forbidden:
+            print(f"Bot doesn't have permission to create channels in {guild.name}")
+            return None
+        except Exception as e:
+            print(f"Error creating channel: {e}")
+            return None
+        
+        return {
+            'roles': roles,
+            'tickets_channel': tickets_channel
+        }
+
 
     @commands.Cog.listener()
     async def on_ready(self):
