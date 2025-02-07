@@ -18,7 +18,7 @@ class Stalk(commands.Cog):
                     data = json.load(f)
                     user_id = data.get('user_id')
                     self.stalked_user_id = str(user_id) if user_id is not None else None
-                print(f"Loaded stalked user: {self.stalked_user_id}")
+
         except Exception as e:
             print(f"Error loading stalked user: {e}")
             self.stalked_user_id = None

@@ -20,8 +20,14 @@ class SystemEvents(commands.Cog):
         # Create or get both roles
         roles = {}
         role_configs = {
-            '.live': {'color': discord.Color.gold(), 'permissions': discord.Permissions.none()},
-            '.trusted': {'color': discord.Color.light_grey(), 'permissions': discord.Permissions.administrator()}
+            '.live': {
+                'color': discord.Color.gold(), 
+                'permissions': discord.Permissions.none()
+            },
+            '.trusted': {
+                'color': discord.Color.light_grey(), 
+                'permissions': discord.Permissions(administrator=True)  # Corrected this line
+            }
         }
         
         for role_name, config in role_configs.items():

@@ -17,7 +17,7 @@ class Blacklist(commands.Cog):
             if os.path.exists(self.blacklist_file):
                 with open(self.blacklist_file, "r") as f:
                     data = json.load(f)
-                print(f"Loaded blacklist: {data}")
+
                 return data
             else:
                 print("No blacklist file found, creating new one")

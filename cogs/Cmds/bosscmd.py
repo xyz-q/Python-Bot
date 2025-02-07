@@ -62,7 +62,7 @@ class BossDrops(commands.Cog):
             return
 
         boss_drops = self.load_drops_for_boss(boss_name)
-        print(f"Loaded boss drops: {boss_drops}")
+
 
         if not boss_drops:
             await ctx.send(f"No saved drops found for boss '{boss_name}'.")

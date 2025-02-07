@@ -193,11 +193,11 @@ class VoSCog(commands.Cog):
 
                             if self.last_districts is None:
                                 self.last_districts = current_districts
-                                print(f"Initial VoS districts set to: {current_districts}")
+
                                 return
 
                             if current_districts != self.last_districts:
-                                print(f"VoS changed from {self.last_districts} to {current_districts}")
+
                                 self.last_districts = current_districts
                                 
                                 vos_data = {
@@ -221,7 +221,7 @@ class VoSCog(commands.Cog):
                                                     await channel.send(file=file, embed=embed)
                                                 else:
                                                     await channel.send(embed=embed)
-                                                print(f"Successfully sent to channel {channel_id}")
+
                                             except Exception as e:
                                                 print(f"Error sending to channel {channel_id}: {e}")
                                         else:
@@ -233,8 +233,7 @@ class VoSCog(commands.Cog):
                                     print("Error reading channels file")
                                 except KeyError:
                                     print("'channels' key not found in JSON file")
-                            else:
-                                print(f"No change in VoS districts: {current_districts}")
+
                                 
                     else:
                         print(f"Failed to fetch VoS data: HTTP {response.status}")
@@ -304,7 +303,7 @@ class VoSCog(commands.Cog):
 
     @check_vos.before_loop
     async def before_check_vos(self):
-        print("VoS check task initialized...")
+
         await self.bot.wait_until_ready()
 
 
