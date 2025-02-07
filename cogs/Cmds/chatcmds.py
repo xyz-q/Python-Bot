@@ -129,7 +129,7 @@ class ChatCommands(commands.Cog):
             status_msg = await channel.send(f"🧹 Cleaning {limit} messages...")
             
             deleted = await channel.purge(
-                limit=limit + 1,
+                limit=limit + 2,
                 check=lambda m: m.id != status_msg.id
             )
 
