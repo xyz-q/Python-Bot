@@ -81,19 +81,10 @@ class LogManager(commands.Cog):
 
         embed = discord.Embed(
             title="📊 Bot Status",
-            color=discord.Color.blue(),
+            color=discord.Color.gold(),
             timestamp=datetime.now()
         )
         
-        # Logging System Status
-        embed.add_field(
-            name="Logging System",
-            value=f"Current Logs: {self.format_size(logs_current_size)}\n"
-                  f"Archives: {self.format_size(logs_archive_size)}\n"
-                  f"Total Logging: {self.format_size(logs_total_size)}\n"
-                  f"Max File Size: {self.format_size(self.max_file_size)}",
-            inline=True
-        )        
         # Total Bot Storage
         embed.add_field(
             name="Total Bot Storage",
@@ -110,7 +101,16 @@ class LogManager(commands.Cog):
                   f"Total: {num_files + num_archives}",
             inline=True
         )
-        
+                
+        # Logging System Status
+        embed.add_field(
+            name="Logging System",
+            value=f"Current Logs: {self.format_size(logs_current_size)}\n"
+                  f"Archives: {self.format_size(logs_archive_size)}\n"
+                  f"Total Logging: {self.format_size(logs_total_size)}\n"
+                  f"Max File Size: {self.format_size(self.max_file_size)}",
+            inline=True
+        )
         # Settings
         embed.add_field(
             name="Settings", 
