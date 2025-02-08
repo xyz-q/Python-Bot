@@ -32,41 +32,95 @@ class LogManager(commands.Cog):
         self.cleanup_old_logs.cancel()
         self.auto_status.cancel()  # Add this line
 
+    def format_size(self, size_bytes):
+        """Convert bytes to human readable format like Windows"""
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size_bytes < 1024 or unit == 'TB':
+                if unit == 'B':
+                    return f"{size_bytes} {unit}"
+                return f"{size_bytes:.2f} {unit}"
+            size_bytes /= 1024
+
+    def get_directory_size(self, directory):
+        """Calculate total size of a directory"""
+        total = 0
+        try:
+            for entry in os.scandir(directory):
+                if entry.is_file():
+                    total += entry.stat().st_size
+                elif entry.is_dir():
+                    total += self.get_directory_size(entry.path)
+        except Exception as e:
+            print(f"Error calculating size for {directory}: {e}")
+        return total
+
     async def get_status_embed(self):
         """Create status embed for logging system"""
-        total_size = 0
+        # Calculate total bot size (all cogs and files)
+        bot_total_size = self.get_directory_size('.')  # Current directory
+        
+        # Calculate logging specific sizes
+        logs_current_size = 0
+        logs_archive_size = 0
         num_files = 0
         num_archives = 0
         
+        # Get current log files info
         for log_file in self.log_dir.glob('*.txt'):
-            total_size += log_file.stat().st_size
+            file_size = log_file.stat().st_size
+            logs_current_size += file_size
             num_files += 1
             
+        # Get archived files info
         for archive in self.archive_dir.glob('*.gz'):
-            total_size += archive.stat().st_size
+            file_size = archive.stat().st_size
+            logs_archive_size += file_size
             num_archives += 1
 
+        logs_total_size = logs_current_size + logs_archive_size
+
         embed = discord.Embed(
-            title="📊 Logging System Status",
-            color=discord.Color.gold(),
+            title="📊 Bot Status",
+            color=discord.Color.blue(),
             timestamp=datetime.now()
         )
         
+        # Total Bot Storage
         embed.add_field(
-            name="Files", 
-            value=f"Current: {num_files}\nArchived: {num_archives}", 
+            name="Total Bot Storage",
+            value=f"Size: {self.format_size(bot_total_size)}",
+            inline=False
+        )
+        
+        # Logging System Status
+        embed.add_field(
+            name="Logging System",
+            value=f"Current Logs: {self.format_size(logs_current_size)}\n"
+                  f"Archives: {self.format_size(logs_archive_size)}\n"
+                  f"Total Logging: {self.format_size(logs_total_size)}\n"
+                  f"Max File Size: {self.format_size(self.max_file_size)}",
             inline=True
         )
+        
+        # File Counts
         embed.add_field(
-            name="Storage", 
-            value=f"Total: {total_size / 1024 / 1024:.2f} MB\nMax: {self.max_file_size / 1024 / 1024} MB", 
+            name="Log Files", 
+            value=f"Current: {num_files}\n"
+                  f"Archived: {num_archives}\n"
+                  f"Total: {num_files + num_archives}",
             inline=True
         )
+        
+        # Settings
         embed.add_field(
             name="Settings", 
-            value=f"Retention: {self.max_days} days\nStatus Update: Every {self.status_interval}h", 
+            value=f"Retention: {self.max_days} days\n"
+                  f"Status Update: Every {self.status_interval}h",
             inline=True
         )
+        
+        # Add last update time
+        embed.set_footer(text="Last Updated")
         
         return embed
 
