@@ -85,13 +85,6 @@ class LogManager(commands.Cog):
             timestamp=datetime.now()
         )
         
-        # Total Bot Storage
-        embed.add_field(
-            name="Total Bot Storage",
-            value=f"Size: {self.format_size(bot_total_size)}",
-            inline=False
-        )
-        
         # Logging System Status
         embed.add_field(
             name="Logging System",
@@ -100,7 +93,14 @@ class LogManager(commands.Cog):
                   f"Total Logging: {self.format_size(logs_total_size)}\n"
                   f"Max File Size: {self.format_size(self.max_file_size)}",
             inline=True
+        )        
+        # Total Bot Storage
+        embed.add_field(
+            name="Total Bot Storage",
+            value=f"Size: {self.format_size(bot_total_size)}",
+            inline=False
         )
+
         
         # File Counts
         embed.add_field(
@@ -159,13 +159,7 @@ class LogManager(commands.Cog):
         await ctx.send(f"Status updates will now be sent to {channel.mention}")
 
     # Add a command to change the status interval
-    @commands.command()
-    @commands.has_permissions(administrator=True)
-    async def setstatusinterval(self, ctx, hours: int):
-        """Set how often the status updates are posted (in hours)"""
-        if hours < 1:
-            await ctx.send("Interval must be at least 1 hour")
-            return
+
             
         self.status_interval = hours
         self.auto_status.change_interval(hours=hours)
