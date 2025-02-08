@@ -412,32 +412,7 @@ class LogManager(commands.Cog):
             await self.log_to_file(log_entry)
 
     # Commands and Error Handling
-    @commands.command()
-    @commands.has_permissions(administrator=True)
-    async def logstatus(self, ctx):
-        """Show status of logging system"""
-        total_size = 0
-        num_files = 0
-        num_archives = 0
-        
-        for log_file in self.log_dir.glob('*.txt'):
-            total_size += log_file.stat().st_size
-            num_files += 1
-            
-        for archive in self.archive_dir.glob('*.gz'):
-            total_size += archive.stat().st_size
-            num_archives += 1
-            
-        status = f"""
-        **Logging System Status**
-        Current Log Files: {num_files}
-        Archived Files: {num_archives}
-        Total Size: {total_size / 1024 / 1024:.2f} MB
-        Max File Size: {self.max_file_size / 1024 / 1024} MB
-        Retention Period: {self.max_days} days
-        """
-        
-        await ctx.send(status)
+
 
     @commands.command()
     @commands.has_permissions(administrator=True)
