@@ -76,43 +76,40 @@ class Stalk(commands.Cog):
             notstalking = await ctx.send("The bot is not currently stalking anyone.")
             await asyncio.sleep(3)
             await notstalking.delete()
-
+    
     @tasks.loop(seconds=0.5)
     async def follow_user(self):
         if not self.stalked_user_id or self.stalked_user_id == 'None':
             return
 
         try:
-            # Find the stalked user across all guilds
-            stalked_user = None
             for guild in self.bot.guilds:
                 stalked_user = guild.get_member(int(self.stalked_user_id))
-                if stalked_user and stalked_user.voice:
-                    # If user is found in a voice channel
+                
+                if stalked_user and stalked_user.voice and stalked_user.voice.channel:
+                    target_channel = stalked_user.voice.channel
+                    
+                    # Force reconnect if not in the right channel
                     if not guild.voice_client:
-                        # If not connected, connect
                         try:
-                            await stalked_user.voice.channel.connect()
-                        except discord.ClientException:
-                            # Already connected, ignore
-                            pass
-                    elif guild.voice_client.channel != stalked_user.voice.channel:
-                        # If in wrong channel, move
+                            await target_channel.connect()
+                        except:
+                            continue
+                    elif guild.voice_client.channel != target_channel:
                         try:
-                            await guild.voice_client.move_to(stalked_user.voice.channel)
-                        except discord.ClientException:
-                            # If move fails, try disconnect and reconnect
-                            try:
-                                await guild.voice_client.disconnect()
-                                await stalked_user.voice.channel.connect()
-                            except Exception:
-                                pass
-                elif guild.voice_client:
-                    # If user not in voice in this guild but bot is, disconnect
-                    await guild.voice_client.disconnect()
+                            await guild.voice_client.disconnect()
+                            await target_channel.connect()
+                        except:
+                            continue
 
         except Exception as e:
             print(f"Error in follow_user: {e}")
+
+
+
+
+
+
 
 
 
