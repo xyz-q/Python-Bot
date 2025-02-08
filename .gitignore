@@ -16,3 +16,4 @@ data/vaults.txt
 .env*
 !.json/levels.json
 *.txt
+*.mp4
