@@ -266,8 +266,8 @@ class CameraSelectView(ui.View):
                 traceback.print_exc()
                 await interaction.response.send_message(
                     f"❌ Error selecting camera: {str(e)}", 
-                    ephemeral=True,
-                    delete_after=120
+                    ephemeral=True
+                    
                 )
             
         return camera_callback
@@ -361,8 +361,8 @@ class SecurityView(ui.View):
             if not cap.isOpened():
                 await interaction.response.send_message(
                     f"❌ Failed to open camera {self.selected_camera}!", 
-                    ephemeral=True,
-                    delete_after=120
+                    ephemeral=True
+                    
                 )
                 return
 
@@ -373,7 +373,7 @@ class SecurityView(ui.View):
             if not ret:
                 await interaction.response.send_message(
                     "❌ Failed to capture image!", 
-                    ephemeral=True,
+                    ephemeral=True
                     delete_after=120
                 )
                 return
@@ -401,8 +401,8 @@ class SecurityView(ui.View):
             await interaction.response.send_message(
                 embed=embed,
                 file=file,
-                ephemeral=True,
-                delete_after=120# Set to True if you want only the user to see it
+                ephemeral=True
+                # Set to True if you want only the user to see it
             )
 
             print(f"Snapshot saved: {filename}")
@@ -412,8 +412,8 @@ class SecurityView(ui.View):
             traceback.print_exc()
             await interaction.response.send_message(
                 f"❌ Error capturing photo: {str(e)}", 
-                ephemeral=True,
-                delete_after=120
+                ephemeral=True
+                
             )
 
     def create_status_embed(self):
@@ -532,7 +532,7 @@ class SecurityView(ui.View):
         except Exception as e:
             print(f"Error in arm_callback: {e}")  # Debug print
             traceback.print_exc()  # Print full error traceback
-            await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True, delete_after=120)
+            await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
 
     async def camera_callback(self, interaction: discord.Interaction):
         try:
@@ -544,8 +544,8 @@ class SecurityView(ui.View):
             traceback.print_exc()
             await interaction.response.send_message(
                 f"❌ Error opening camera selection: {str(e)}", 
-                ephemeral=True,
-                delete_after=120
+                ephemeral=True
+                
             )
 
     async def settings_callback(self, interaction: discord.Interaction):
@@ -559,7 +559,7 @@ class SecurityView(ui.View):
             cap = cv2.VideoCapture(self.selected_camera, cv2.CAP_DSHOW)
             if not cap.isOpened():
                 print(f"Failed to open camera {self.selected_camera}")
-                await interaction.followup.send(f"❌ Failed to open camera {self.selected_camera}!", ephemeral=True, delete_after=120)
+                await interaction.followup.send(f"❌ Failed to open camera {self.selected_camera}!", ephemeral=True)
                 self.recording = False
                 return
 
@@ -611,7 +611,7 @@ class SecurityView(ui.View):
             
             if out is None or not out.isOpened():
                 print("Failed to create video writer with any codec")
-                await interaction.followup.send("❌ Failed to create video file!", ephemeral=True, delete_after=120)
+                await interaction.followup.send("❌ Failed to create video file!", ephemeral=True)
                 self.recording = False
                 return
 
@@ -668,7 +668,7 @@ class SecurityView(ui.View):
         except Exception as e:
             print(f"Unexpected error in record_video: {e}")
             traceback.print_exc()
-            await interaction.followup.send(f"❌ Recording error: {str(e)}", ephemeral=True, delete_after=120)
+            await interaction.followup.send(f"❌ Recording error: {str(e)}", ephemeral=True)
             self.recording = False
             if 'out' in locals() and out is not None:
                 out.release()
