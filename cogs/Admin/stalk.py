@@ -87,6 +87,7 @@ class Stalk(commands.Cog):
             user_voice_channel = None
             user_guild = None
 
+            # Find the stalked user's current voice channel
             for guild in self.bot.guilds:
                 member = guild.get_member(int(self.stalked_user_id))
                 if member and member.voice:
@@ -95,27 +96,44 @@ class Stalk(commands.Cog):
                     user_guild = guild
                     break
 
+            # Disconnect from other guilds if user not found or in different guild
             for guild in self.bot.guilds:
                 if guild.voice_client and (not user_found or guild != user_guild):
-                    await guild.voice_client.disconnect()
+                    try:
+                        await guild.voice_client.disconnect()
+                    except Exception:
+                        pass  # Ignore disconnection errors
 
             if user_found and user_voice_channel:
                 voice_client = user_guild.voice_client
+                
+                # If not connected, try to connect
                 if not voice_client:
                     try:
-                        await user_voice_channel.connect(timeout=5)
-
-                    except discord.ClientException:
-                        pass
+                        # Add a small delay before attempting to connect
+                        await asyncio.sleep(0.5)
+                        voice_client = await user_voice_channel.connect(timeout=5)
+                    except (discord.ClientException, AttributeError):
+                        return  # Return early if connection fails
+                    
+                # If already connected but in wrong channel, try to move
                 elif voice_client.channel != user_voice_channel:
                     try:
+                        # Add a small delay before moving
+                        await asyncio.sleep(0.5)
                         await voice_client.move_to(user_voice_channel)
-
                     except (discord.ClientException, AttributeError):
-                        pass
+                        # If move fails, disconnect and try to reconnect
+                        try:
+                            await voice_client.disconnect()
+                            await asyncio.sleep(0.5)
+                            await user_voice_channel.connect(timeout=5)
+                        except Exception:
+                            pass
 
         except Exception as e:
             print(f"Error in follow_user: {e}")
+
 
     @follow_user.before_loop
     async def before_follow_user(self):
