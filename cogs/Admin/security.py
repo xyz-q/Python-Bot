@@ -374,7 +374,6 @@ class SecurityView(ui.View):
                 await interaction.response.send_message(
                     "❌ Failed to capture image!", 
                     ephemeral=True
-                    delete_after=120
                 )
                 return
 
