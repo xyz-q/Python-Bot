@@ -12,7 +12,7 @@ class LogManager(commands.Cog):
         self.bot = bot
         
         # Configuration
-        self.max_file_size = 10 * 1024 * 1024  # 10MB before rotation
+        self.max_file_size = 128 * 1024 * 1024  # 128MB before rotation
         self.max_days = 30  # Days to keep logs
         self.check_interval = 24  # Hours between cleanup checks
         
@@ -74,14 +74,16 @@ class LogManager(commands.Cog):
     async def before_cleanup(self):
         await self.bot.wait_until_ready()
 
+
     # All your existing event listeners:
+    # Message Events
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
             return
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] {message.guild.name} #{message.channel.name} - {message.author.name}: {message.content}"
+        log_entry = f"[{timestamp}] [{message.guild.name}] MESSAGE - #{message.channel.name} - {message.author.name}: {message.content}"
         
         if message.attachments:
             for attachment in message.attachments:
@@ -94,38 +96,72 @@ class LogManager(commands.Cog):
         await self.log_to_file(log_entry)
 
     @commands.Cog.listener()
-    async def on_member_join(self, member):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] MEMBER JOINED - {member.name} joined {member.guild.name}"
-        await self.log_to_file(log_entry)
-
-    @commands.Cog.listener()
-    async def on_member_remove(self, member):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] MEMBER LEFT - {member.name} left {member.guild.name}"
-        await self.log_to_file(log_entry)
-
-    @commands.Cog.listener()
     async def on_message_delete(self, message):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] MESSAGE DELETED - {message.author.name}: {message.content}"
+        log_entry = f"[{timestamp}] [{message.guild.name}] MESSAGE DELETED - {message.author.name}: {message.content}"
         await self.log_to_file(log_entry)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] MESSAGE EDITED - {before.author.name}: {before.content} -> {after.content}"
+        log_entry = f"[{timestamp}] [{before.guild.name}] MESSAGE EDITED - {before.author.name}: {before.content} -> {after.content}"
         await self.log_to_file(log_entry)
 
+    # Member Events
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] [{member.guild.name}] MEMBER JOINED - {member.name}"
+        await self.log_to_file(log_entry)
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] [{member.guild.name}] MEMBER LEFT - {member.name}"
+        await self.log_to_file(log_entry)
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        changes = []
+        
+        if before.nick != after.nick:
+            changes.append(f"nickname: {before.nick} -> {after.nick}")
+        if before.roles != after.roles:
+            added_roles = set(after.roles) - set(before.roles)
+            removed_roles = set(before.roles) - set(after.roles)
+            if added_roles:
+                changes.append(f"added roles: {', '.join(role.name for role in added_roles)}")
+            if removed_roles:
+                changes.append(f"removed roles: {', '.join(role.name for role in removed_roles)}")
+                
+        if changes:
+            log_entry = f"[{timestamp}] [{before.guild.name}] MEMBER UPDATED - {before.name} changes: {', '.join(changes)}"
+            await self.log_to_file(log_entry)
+
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild, user):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] [{guild.name}] MEMBER BANNED - {user.name}"
+        await self.log_to_file(log_entry)
+
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild, user):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] [{guild.name}] MEMBER UNBANNED - {user.name}"
+        await self.log_to_file(log_entry)
+
+    # Voice Events
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if before.channel != after.channel:
             if after.channel:
-                log_entry = f"[{timestamp}] VOICE JOIN - {member.name} joined {after.channel.name}"
+                log_entry = f"[{timestamp}] [{member.guild.name}] VOICE JOIN - {member.name} joined {after.channel.name}"
             else:
-                log_entry = f"[{timestamp}] VOICE LEFT - {member.name} left {before.channel.name}"
+                log_entry = f"[{timestamp}] [{member.guild.name}] VOICE LEFT - {member.name} left {before.channel.name}"
             await self.log_to_file(log_entry)
+
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel):
@@ -153,6 +189,19 @@ class LogManager(commands.Cog):
 
 
 
+    # Channel Events
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] [{channel.guild.name}] CHANNEL CREATED - #{channel.name}"
+        await self.log_to_file(log_entry)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] [{channel.guild.name}] CHANNEL DELETED - #{channel.name}"
+        await self.log_to_file(log_entry)
+
     @commands.Cog.listener()
     async def on_guild_channel_update(self, before, after):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -166,8 +215,21 @@ class LogManager(commands.Cog):
             changes.append(f"category: {before.category} -> {after.category}")
             
         if changes:
-            log_entry = f"[{timestamp}] CHANNEL UPDATED - #{before.name} changes: {', '.join(changes)}"
+            log_entry = f"[{timestamp}] [{before.guild.name}] CHANNEL UPDATED - #{before.name} changes: {', '.join(changes)}"
             await self.log_to_file(log_entry)
+
+    # Role Events
+    @commands.Cog.listener()
+    async def on_guild_role_create(self, role):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] [{role.guild.name}] ROLE CREATED - {role.name}"
+        await self.log_to_file(log_entry)
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] [{role.guild.name}] ROLE DELETED - {role.name}"
+        await self.log_to_file(log_entry)
 
     @commands.Cog.listener()
     async def on_guild_role_update(self, before, after):
@@ -182,41 +244,10 @@ class LogManager(commands.Cog):
             changes.append("permissions changed")
             
         if changes:
-            log_entry = f"[{timestamp}] ROLE UPDATED - {before.name} changes: {', '.join(changes)}"
+            log_entry = f"[{timestamp}] [{before.guild.name}] ROLE UPDATED - {before.name} changes: {', '.join(changes)}"
             await self.log_to_file(log_entry)
 
-    @commands.Cog.listener()
-    async def on_member_update(self, before, after):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        changes = []
-        
-        if before.nick != after.nick:
-            changes.append(f"nickname: {before.nick} -> {after.nick}")
-        if before.roles != after.roles:
-            # Find which roles were added/removed
-            added_roles = set(after.roles) - set(before.roles)
-            removed_roles = set(before.roles) - set(after.roles)
-            if added_roles:
-                changes.append(f"added roles: {', '.join(role.name for role in added_roles)}")
-            if removed_roles:
-                changes.append(f"removed roles: {', '.join(role.name for role in removed_roles)}")
-                
-        if changes:
-            log_entry = f"[{timestamp}] MEMBER UPDATED - {before.name} changes: {', '.join(changes)}"
-            await self.log_to_file(log_entry)
-
-    @commands.Cog.listener()
-    async def on_member_ban(self, guild, user):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] MEMBER BANNED - {user.name} from {guild.name}"
-        await self.log_to_file(log_entry)
-
-    @commands.Cog.listener()
-    async def on_member_unban(self, guild, user):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] MEMBER UNBANNED - {user.name} from {guild.name}"
-        await self.log_to_file(log_entry)
-
+    # Guild/Server Events
     @commands.Cog.listener()
     async def on_guild_update(self, before, after):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -230,20 +261,8 @@ class LogManager(commands.Cog):
             changes.append("banner changed")
             
         if changes:
-            log_entry = f"[{timestamp}] SERVER UPDATED - {before.name} changes: {', '.join(changes)}"
+            log_entry = f"[{timestamp}] [{before.name}] SERVER UPDATED - changes: {', '.join(changes)}"
             await self.log_to_file(log_entry)
-
-    @commands.Cog.listener()
-    async def on_thread_create(self, thread):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] THREAD CREATED - #{thread.name} in #{thread.parent.name}"
-        await self.log_to_file(log_entry)
-
-    @commands.Cog.listener()
-    async def on_thread_delete(self, thread):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] THREAD DELETED - #{thread.name}"
-        await self.log_to_file(log_entry)
 
     @commands.Cog.listener()
     async def on_guild_emojis_update(self, guild, before, after):
@@ -252,13 +271,57 @@ class LogManager(commands.Cog):
         removed_emojis = set(before) - set(after)
         
         if added_emojis:
-            log_entry = f"[{timestamp}] EMOJIS ADDED - {', '.join(str(emoji) for emoji in added_emojis)}"
+            log_entry = f"[{timestamp}] [{guild.name}] EMOJIS ADDED - {', '.join(str(emoji) for emoji in added_emojis)}"
             await self.log_to_file(log_entry)
         if removed_emojis:
-            log_entry = f"[{timestamp}] EMOJIS REMOVED - {', '.join(str(emoji) for emoji in removed_emojis)}"
+            log_entry = f"[{timestamp}] [{guild.name}] EMOJIS REMOVED - {', '.join(str(emoji) for emoji in removed_emojis)}"
             await self.log_to_file(log_entry)
 
 
+    # Thread Events
+    @commands.Cog.listener()
+    async def on_thread_create(self, thread):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] [{thread.guild.name}] THREAD CREATED - #{thread.name} in #{thread.parent.name}"
+        await self.log_to_file(log_entry)
+
+    @commands.Cog.listener()
+    async def on_thread_delete(self, thread):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] [{thread.guild.name}] THREAD DELETED - #{thread.name}"
+        await self.log_to_file(log_entry)
+
+    @commands.Cog.listener()
+    async def on_thread_update(self, before, after):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        changes = []
+        
+        if before.name != after.name:
+            changes.append(f"name: {before.name} -> {after.name}")
+        if before.archived != after.archived:
+            changes.append(f"archived: {before.archived} -> {after.archived}")
+        if before.locked != after.locked:
+            changes.append(f"locked: {before.locked} -> {after.locked}")
+            
+        if changes:
+            log_entry = f"[{timestamp}] [{before.guild.name}] THREAD UPDATED - #{before.name} changes: {', '.join(changes)}"
+            await self.log_to_file(log_entry)
+
+    # Sticker Events
+    @commands.Cog.listener()
+    async def on_guild_stickers_update(self, guild, before, after):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        added_stickers = set(after) - set(before)
+        removed_stickers = set(before) - set(after)
+        
+        if added_stickers:
+            log_entry = f"[{timestamp}] [{guild.name}] STICKERS ADDED - {', '.join(sticker.name for sticker in added_stickers)}"
+            await self.log_to_file(log_entry)
+        if removed_stickers:
+            log_entry = f"[{timestamp}] [{guild.name}] STICKERS REMOVED - {', '.join(sticker.name for sticker in removed_stickers)}"
+            await self.log_to_file(log_entry)
+
+    # Commands and Error Handling
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def logstatus(self, ctx):
@@ -285,6 +348,16 @@ class LogManager(commands.Cog):
         """
         
         await ctx.send(status)
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def clearoldlogs(self, ctx):
+        """Manually trigger cleanup of old logs"""
+        try:
+            await self.cleanup_old_logs()
+            await ctx.send("Old logs have been cleaned up successfully.")
+        except Exception as e:
+            await ctx.send(f"Error cleaning up logs: {str(e)}")
 
 async def setup(bot):
     await bot.add_cog(LogManager(bot))
