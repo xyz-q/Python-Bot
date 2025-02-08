@@ -15,6 +15,8 @@ class LogManager(commands.Cog):
         self.max_file_size = 128 * 1024 * 1024  # 128MB before rotation
         self.max_days = 30  # Days to keep logs
         self.check_interval = 24  # Hours between cleanup checks
+        self.status_channel_id = YOUR_CHANNEL_ID_HERE  # Add this line
+        self.status_interval = 12  # Hours between status updates, adjust as needed
         
         # Setup directories
         self.log_dir = Path('logs')
@@ -24,9 +26,97 @@ class LogManager(commands.Cog):
         
         # Start background tasks
         self.cleanup_old_logs.start()
+        self.auto_status.start()  # Add this line
 
     def cog_unload(self):
         self.cleanup_old_logs.cancel()
+        self.auto_status.cancel()  # Add this line
+
+    async def get_status_embed(self):
+        """Create status embed for logging system"""
+        total_size = 0
+        num_files = 0
+        num_archives = 0
+        
+        for log_file in self.log_dir.glob('*.txt'):
+            total_size += log_file.stat().st_size
+            num_files += 1
+            
+        for archive in self.archive_dir.glob('*.gz'):
+            total_size += archive.stat().st_size
+            num_archives += 1
+
+        embed = discord.Embed(
+            title="📊 Logging System Status",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        
+        embed.add_field(
+            name="Files", 
+            value=f"Current: {num_files}\nArchived: {num_archives}", 
+            inline=True
+        )
+        embed.add_field(
+            name="Storage", 
+            value=f"Total: {total_size / 1024 / 1024:.2f} MB\nMax: {self.max_file_size / 1024 / 1024} MB", 
+            inline=True
+        )
+        embed.add_field(
+            name="Settings", 
+            value=f"Retention: {self.max_days} days\nStatus Update: Every {self.status_interval}h", 
+            inline=True
+        )
+        
+        return embed
+
+    @tasks.loop(hours=12)  # Adjust the interval as needed
+    async def auto_status(self):
+        """Automatically post status updates"""
+        try:
+            channel = self.bot.get_channel(self.status_channel_id)
+            if channel:
+                embed = await self.get_status_embed()
+                await channel.send(embed=embed)
+        except Exception as e:
+            print(f"Error in auto_status: {e}")
+
+    @auto_status.before_loop
+    async def before_auto_status(self):
+        await self.bot.wait_until_ready()
+
+    # Update the existing logstatus command to use the new embed
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def logstatus(self, ctx):
+        """Show status of logging system"""
+        embed = await self.get_status_embed()
+        await ctx.send(embed=embed)
+
+    # Add a command to change the status channel
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def setstatuschannel(self, ctx, channel: discord.TextChannel = None):
+        """Set the channel for automatic status updates"""
+        if channel is None:
+            channel = ctx.channel
+        
+        self.status_channel_id = channel.id
+        await ctx.send(f"Status updates will now be sent to {channel.mention}")
+
+    # Add a command to change the status interval
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def setstatusinterval(self, ctx, hours: int):
+        """Set how often the status updates are posted (in hours)"""
+        if hours < 1:
+            await ctx.send("Interval must be at least 1 hour")
+            return
+            
+        self.status_interval = hours
+        self.auto_status.change_interval(hours=hours)
+        await ctx.send(f"Status update interval changed to {hours} hours")
+
 
     async def log_to_file(self, log_entry: str):
         """Write log entry and handle rotation if needed"""
