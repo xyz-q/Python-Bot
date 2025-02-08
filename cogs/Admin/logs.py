@@ -80,7 +80,7 @@ class LogManager(commands.Cog):
         logs_total_size = logs_current_size + logs_archive_size
 
         embed = discord.Embed(
-            title="📊 Bot Status",
+            title="📊 Log Status",
             color=discord.Color.gold(),
             timestamp=datetime.now()
         )
@@ -108,7 +108,6 @@ class LogManager(commands.Cog):
             value=f"Current: `{self.format_size(logs_current_size)}`\n"
                   f"Archives: `{self.format_size(logs_archive_size)}`\n"
                   f"Total Logs: `{self.format_size(logs_total_size)}`\n",
-
             inline=True
         )
         # Settings
