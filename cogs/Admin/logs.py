@@ -15,7 +15,7 @@ class LogManager(commands.Cog):
         self.max_file_size = 128 * 1024 * 1024  # 128MB before rotation
         self.max_days = 30  # Days to keep logs
         self.check_interval = 24  # Hours between cleanup checks
-        self.status_channel_id = YOUR_CHANNEL_ID_HERE  # Add this line
+        self.status_channel_id = 1337674275427061871  # Add this line
         self.status_interval = 12  # Hours between status updates, adjust as needed
         
         # Setup directories
