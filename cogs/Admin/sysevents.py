@@ -107,7 +107,7 @@ class SystemEvents(commands.Cog):
             channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
             if channel:
                 try:
-                    await channel.send("🟢 Bot is now online!")
+                    await channel.send("<a:greenalert:1336886706216894524> Bot is now online!")
                 except Exception as e:
                     print(f"\033[91mError sending online message: {str(e)}\033[0m")
 
@@ -200,7 +200,7 @@ class SystemEvents(commands.Cog):
             if channel:
                 try:
                     disconnect_msg = (
-                        "<a:redalert:1336885681624190979> Bot Disconnected!\n"
+                        "<a:orangealert:1336885812062584862> Bot Disconnected!\n"
                         f"Reason: {disconnect_reason}\n"
                         + "\n".join(f"• {detail}" for detail in details)
                     )
