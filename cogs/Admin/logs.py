@@ -180,6 +180,10 @@ class LogManager(commands.Cog):
 
     async def log_to_file(self, log_entry: str):
         """Write log entry and handle rotation if needed"""
+        # Skip logging if it contains the bot name 'xyz'
+        if "- xyz:" in log_entry:
+            return
+            
         current_date = datetime.now().strftime('%Y-%m-%d')
         log_file = self.log_dir / f"discord_log_{current_date}.txt"
         
