@@ -124,12 +124,30 @@ class LogManager(commands.Cog):
         
         return embed
 
-    @tasks.loop(hours=12)  # Adjust the interval as needed
+    async def should_send_status(self, channel):
+        """Check if enough time has passed since last status message"""
+        try:
+            # Get the last message in the channel
+            messages = [msg async for msg in channel.history(limit=1)]
+            if not messages:
+                return True  # No messages found, okay to send
+
+            last_message = messages[0]
+            time_since_last = datetime.now(last_message.created_at.tzinfo) - last_message.created_at
+            hours_since_last = time_since_last.total_seconds() / 3600
+
+            # Check if it's been long enough since the last message
+            return hours_since_last >= self.status_interval
+        except Exception as e:
+            print(f"Error checking message history: {e}")
+            return False
+
+    @tasks.loop(hours=1)  # Check every hour
     async def auto_status(self):
-        """Automatically post status updates"""
+        """Automatically post status updates if enough time has passed"""
         try:
             channel = self.bot.get_channel(self.status_channel_id)
-            if channel:
+            if channel and await self.should_send_status(channel):
                 embed = await self.get_status_embed()
                 await channel.send(embed=embed)
         except Exception as e:
