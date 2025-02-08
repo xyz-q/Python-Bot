@@ -15,3 +15,4 @@ data/vaults.txt
 !.json/
 .env*
 !.json/levels.json
+*.txt
