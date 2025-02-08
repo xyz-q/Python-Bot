@@ -40,19 +40,78 @@ class VoSCog(commands.Cog):
         with open(self.CHANNELS_FILE, 'w') as f:
             json.dump(data, f, indent=4)
 
+    async def manage_vos_messages(self, channel):
+        """Manage VoS messages to ensure exactly 2 messages exist in the correct order"""
+        try:
+            info_message = None
+            vos_message = None
+            
+            # Get all messages in channel
+            messages = []
+            async for message in channel.history(limit=100):
+                if message.author == self.bot.user:
+                    messages.append(message)
+                    
+                    # Check for info message
+                    if message.embeds and "🎯 Voice of Seren Information Channel" in message.embeds[0].title:
+                        info_message = message
+                    # Check for VoS update message
+                    elif message.embeds and "<:prif:1336983731952550022> Last Tracked Voice of Seren" in message.embeds[0].title:
+                        vos_message = message
 
+            # Delete any extra messages from the bot
+            for message in messages:
+                if message != info_message and message != vos_message:
+                    await message.delete()
+
+            return info_message, vos_message
+        except Exception as e:
+            print(f"Error managing messages: {e}")
+            return None, None
+
+
+
+
+    async def clean_channel(self, channel):
+        """Clean all user messages and maintain only the two bot messages"""
+        try:
+            # Delete all user messages
+            async for message in channel.history(limit=100):
+                if message.author != self.bot.user:
+                    await message.delete()
+                elif message.author == self.bot.user:
+                    if message.embeds:
+                        # Keep only messages with specific titles
+                        if not (("🎯 Voice of Seren Information Channel" in message.embeds[0].title) or 
+                            ("<:prif:1336983731952550022> Last Tracked Voice of Seren" in message.embeds[0].title)):
+                            await message.delete()
+        except Exception as e:
+            print(f"Error cleaning channel: {e}")
 
     @commands.command(name='addvos')
     @commands.has_permissions(administrator=True)
     async def add_vos_channel(self, ctx):
         """Add current channel to VoS update list"""
-        data = self.load_channels()
-        if ctx.channel.id not in data['channels']:
-            data['channels'].append(ctx.channel.id)
-            self.save_channels(data)
-            await ctx.send('<:add:1328511998647861390> This channel will now receive Voice of Seren updates!')
-        else:
-            await ctx.send('This channel is already receiving updates!')
+        try:
+            data = self.load_channels()
+            if ctx.channel.id not in data['channels']:
+                # Add channel to update list
+                data['channels'].append(ctx.channel.id)
+                self.save_channels(data)
+                
+                success_message = await ctx.send('<:add:1328511998647861390> This channel will now receive Voice of Seren updates!')
+                await asyncio.sleep(5)
+                await success_message.delete()
+            else:
+                temp_message = await ctx.send('This channel is already receiving updates!')
+                await asyncio.sleep(5)
+                await temp_message.delete()
+
+        except Exception as e:
+            error_message = await ctx.send(f"An error occurred: {str(e)}")
+            await asyncio.sleep(5)
+            await error_message.delete()
+
 
     @commands.command(name='removevos')
     @commands.has_permissions(administrator=True)
@@ -136,7 +195,7 @@ class VoSCog(commands.Cog):
             embed = discord.Embed(
                 title="<:prif:1336983731952550022> **Last Tracked Voice of Seren** ",
                 description=f"Active from `{start_time}` to `{end_time}` UTC",
-                color=discord.Color.gold()
+                color=discord.Color.teal()
             )
 
             key = tuple(sorted([vos_data['district1'], vos_data['district2']]))
@@ -176,72 +235,80 @@ class VoSCog(commands.Cog):
 
 
     # @tasks.loop(time=time(minute=52))
-    @tasks.loop(minutes=5)
+    @tasks.loop(minutes=15)
     async def check_vos(self):
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get('https://api.weirdgloop.org/runescape/vos/history') as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        if data and 'data' in data and len(data['data']) > 0:
-                            current_vos = data['data'][0]
-                            
-                            current_districts = tuple(sorted([
-                                current_vos['district1'],
-                                current_vos['district2']
-                            ]))
+            vos_data = await self.get_vos_data()
+            if not vos_data:
+                return
 
-                            if self.last_districts is None:
-                                self.last_districts = current_districts
+            current_districts = tuple(sorted([
+                vos_data['district1'],
+                vos_data['district2']
+            ]))
 
-                                return
-
-                            if current_districts != self.last_districts:
-
-                                self.last_districts = current_districts
-                                
-                                vos_data = {
-                                    'timestamp': datetime.fromisoformat(current_vos['timestamp'].replace('Z', '+00:00')),
-                                    'district1': current_vos['district1'],
-                                    'district2': current_vos['district2']
-                                }
-
-                                try:
-                                    with open(self.CHANNELS_FILE, 'r') as f:
-                                        data = json.load(f)
-                                        channels = data['channels']
-                                    
-                                    for channel_id in channels:
-                                        channel = self.bot.get_channel(channel_id)
-                                        if channel:
-                                            try:
-                                                # Create new embed and file for each channel
-                                                embed, file = self.create_vos_embed(vos_data)
-                                                if file:
-                                                    await channel.send(file=file, embed=embed)
-                                                else:
-                                                    await channel.send(embed=embed)
-
-                                            except Exception as e:
-                                                print(f"Error sending to channel {channel_id}: {e}")
-                                        else:
-                                            print(f"Could not find channel {channel_id}")
-                                
-                                except FileNotFoundError:
-                                    print("No channels file found")
-                                except json.JSONDecodeError:
-                                    print("Error reading channels file")
-                                except KeyError:
-                                    print("'channels' key not found in JSON file")
-
-                                
-                    else:
-                        print(f"Failed to fetch VoS data: HTTP {response.status}")
+            data = self.load_channels()
+            for channel_id in data['channels']:
+                channel = self.bot.get_channel(channel_id)
+                if channel:
+                    try:
+                        # Clean channel first
+                        await self.clean_channel(channel)
                         
+                        # Check for existing messages
+                        info_message, vos_message = await self.manage_vos_messages(channel)
+                        
+                        # Create info message if it doesn't exist
+                        if not info_message:
+                            setup_embed = discord.Embed(
+                                title="🎯 Voice of Seren Information Channel",
+                                description="This channel will automatically update with the latest Voice of Seren information.\n\nUpdates occur every hour.\n\nThe Voice of Seren is a blessing effect in Prifddinas that moves between clan districts every hour.",
+                                color=discord.Color.teal()
+                            )
+                            await channel.send(embed=setup_embed)
+                        
+                        # Update VoS message if districts changed OR if there's no VoS message
+                        if (self.last_districts is None or 
+                            current_districts != self.last_districts or 
+                            vos_message is None):
+                            
+                            # Create new embed and file
+                            new_embed, new_file = self.create_vos_embed(vos_data)
+                            
+                            # Delete old VoS message if it exists
+                            if vos_message:
+                                await vos_message.delete()
+                            
+                            # Send new VoS message
+                            await channel.send(file=new_file, embed=new_embed)  # Fixed here: using new_embed instead of embed
+
+                    except Exception as e:
+                        print(f"Error updating channel {channel_id}: {e}")
+                else:
+                    print(f"Could not find channel {channel_id}")
+            
+            self.last_districts = current_districts
+
         except Exception as e:
             print(f"Error in check_vos: {e}")
 
 
+
+
+# Add an event listener for new messages
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        """Delete non-bot messages immediately in VoS channels"""
+        try:
+            # Check if the message is in a VoS channel
+            data = self.load_channels()
+            if message.channel.id in data['channels']:
+                # If it's not a bot message, delete it
+                if message.author != self.bot.user:
+                    await message.delete()
+        except Exception as e:
+            print(f"Error in on_message: {e}")
+                  
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def forcevos(self, ctx):
