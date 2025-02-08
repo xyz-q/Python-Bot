@@ -21,7 +21,7 @@ class MessageLogger(commands.Cog):
         log_entry = f"[{timestamp}] {message.guild.name} #{message.channel.name} - {message.author.name}: {message.content}\n"
 
         # Log to console
-        print(log_entry.strip())
+
 
         # Log to file (named by date)
         filename = f"textlogs/chat_log_{datetime.now().strftime('%Y-%m-%d')}.txt"
