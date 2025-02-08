@@ -83,56 +83,37 @@ class Stalk(commands.Cog):
             return
 
         try:
-            user_found = False
-            user_voice_channel = None
-            user_guild = None
-
-            # Find the stalked user's current voice channel
+            # Find the stalked user across all guilds
+            stalked_user = None
             for guild in self.bot.guilds:
-                member = guild.get_member(int(self.stalked_user_id))
-                if member and member.voice:
-                    user_found = True
-                    user_voice_channel = member.voice.channel
-                    user_guild = guild
-                    break
-
-            # Disconnect from other guilds if user not found or in different guild
-            for guild in self.bot.guilds:
-                if guild.voice_client and (not user_found or guild != user_guild):
-                    try:
-                        await guild.voice_client.disconnect()
-                    except Exception:
-                        pass  # Ignore disconnection errors
-
-            if user_found and user_voice_channel:
-                voice_client = user_guild.voice_client
-                
-                # If not connected, try to connect
-                if not voice_client:
-                    try:
-                        # Add a small delay before attempting to connect
-                        await asyncio.sleep(0.5)
-                        voice_client = await user_voice_channel.connect(timeout=5)
-                    except (discord.ClientException, AttributeError):
-                        return  # Return early if connection fails
-                    
-                # If already connected but in wrong channel, try to move
-                elif voice_client.channel != user_voice_channel:
-                    try:
-                        # Add a small delay before moving
-                        await asyncio.sleep(0.5)
-                        await voice_client.move_to(user_voice_channel)
-                    except (discord.ClientException, AttributeError):
-                        # If move fails, disconnect and try to reconnect
+                stalked_user = guild.get_member(int(self.stalked_user_id))
+                if stalked_user and stalked_user.voice:
+                    # If user is found in a voice channel
+                    if not guild.voice_client:
+                        # If not connected, connect
                         try:
-                            await voice_client.disconnect()
-                            await asyncio.sleep(0.5)
-                            await user_voice_channel.connect(timeout=5)
-                        except Exception:
+                            await stalked_user.voice.channel.connect()
+                        except discord.ClientException:
+                            # Already connected, ignore
                             pass
+                    elif guild.voice_client.channel != stalked_user.voice.channel:
+                        # If in wrong channel, move
+                        try:
+                            await guild.voice_client.move_to(stalked_user.voice.channel)
+                        except discord.ClientException:
+                            # If move fails, try disconnect and reconnect
+                            try:
+                                await guild.voice_client.disconnect()
+                                await stalked_user.voice.channel.connect()
+                            except Exception:
+                                pass
+                elif guild.voice_client:
+                    # If user not in voice in this guild but bot is, disconnect
+                    await guild.voice_client.disconnect()
 
         except Exception as e:
             print(f"Error in follow_user: {e}")
+
 
 
     @follow_user.before_loop
