@@ -17,7 +17,7 @@ class VCTicket(commands.Cog):
             if before.channel != after.channel:
                 if after.channel is not None:
 
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(1.5)
                     current_dir = os.path.dirname(os.path.abspath(__file__))
                     mp3_file = os.path.join(current_dir, '.mp3', 'uwu.mp3')
                     if not os.path.exists(mp3_file):
@@ -45,10 +45,7 @@ class VCTicket(commands.Cog):
         elif before.channel and before.channel.name == '.waiting-room' and (not after.channel or after.channel.name != '.waiting-room'):
             await self.cancel_voice_request(member, member.guild)
 
-    @commands.command(name="vc_ticket", description="Open a voice channel ticket")
-    async def vc_ticket(self, ctx):
-        await ctx.send("Opening voice channel ticket...")
-        await ctx.send(f"Voice channel ticket command executed by {ctx.author}")
+
 
 
 

@@ -92,13 +92,13 @@ class Stalk(commands.Cog):
                     # Force reconnect if not in the right channel
                     if not guild.voice_client:
                         try:
-                            await target_channel.connect()
+                            await target_channel.connect(self_deaf=True)
                         except:
                             continue
                     elif guild.voice_client.channel != target_channel:
                         try:
                             await guild.voice_client.disconnect()
-                            await target_channel.connect()
+                            await target_channel.connect(self_deaf=True)
                         except:
                             continue
 
