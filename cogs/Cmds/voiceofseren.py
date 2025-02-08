@@ -7,7 +7,8 @@ import os
 import aiohttp
 import asyncio
 
-
+# Add this at the top of your cog
+TESTING_MODE = False
 class VoSCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -166,67 +167,99 @@ class VoSCog(commands.Cog):
                     if response.status == 200:
                         data = await response.json()
                         if data and 'data' in data and len(data['data']) > 0:
-                            current_vos = data['data'][0]  # Get the most recent entry
-                            # Parse the UTC timestamp correctly
+                            current_vos = data['data'][0]
                             timestamp = datetime.fromisoformat(current_vos['timestamp'].replace('Z', '+00:00'))
-                            # Ensure we're in UT
-                            timestamp = timestamp.astimezone(timezone.utc) + timedelta(hours=1)
-                            return {
+                            timestamp = timestamp.astimezone(timezone.utc)
+                            
+                            # Get current UTC time
+                            current_time = datetime.now(timezone.utc)
+                            
+                            vos_data = {
                                 'timestamp': timestamp,
                                 'district1': current_vos['district1'],
-                                'district2': current_vos['district2']
+                                'district2': current_vos['district2'],
+                                'current_hour': current_time.hour,
+                                'data_hour': timestamp.hour
                             }
-                        else:
-                            print("No VoS data found in API response")
-                            return None
-                    else:
-                        print(f"API Error Status: {response.status}")
+
+                            # Test condition to force stale data
+                            if TESTING_MODE:
+                                vos_data['is_stale'] = True
+                                vos_data['current_hour'] = (timestamp.hour + 1) % 24  # Simulate next hour
+                            else:
+                                # Normal check
+                                if current_time.hour > timestamp.hour or \
+                                (current_time.hour == 0 and timestamp.hour == 23):
+                                    vos_data['is_stale'] = True
+                                else:
+                                    vos_data['is_stale'] = False
+
+                            return vos_data
+
                         return None
-                        
         except Exception as e:
-            print(f"Error in get_vos_data: {e}")
+            print(f"Error fetching VoS data: {e}")
             return None
         
     def create_vos_embed(self, vos_data):
-        try:
-            current_time = vos_data['timestamp']
-            start_time = current_time.strftime("%H:00")
-            end_time = current_time.strftime("%H:59")            
+        if not vos_data:
+            return discord.Embed(
+                title="Error",
+                description="Unable to fetch Voice of Seren data",
+                color=discord.Color.red()
+            ), None
+
+        if vos_data.get('is_stale', False):
             embed = discord.Embed(
-                title="<:prif:1336983731952550022> **Last Tracked Voice of Seren** ",
-                description=f"Active from `{start_time}` to `{end_time}` UTC",
-                color=discord.Color.teal()
+                title="<:prif:1336983731952550022> **Voice of Seren**",
+                description=f" The Voice of Seren data needs updating!\n\n"
+                        f"Last known data is from `{vos_data['data_hour']:02d}:00` UTC\n"
+                        f"Current hour is `{vos_data['current_hour']:02d}:00` UTC\n\n"
+                        f"Last known districts were:\n"
+                        f"• `{vos_data['district1']}`\n"
+                        f"• `{vos_data['district2']}`",
+                color=discord.Color.orange()
+            )
+            embed.set_footer(text="• Waiting for new Voice of Seren data •")
+            return embed, None
+        
+        # Regular embed for current data
+        current_time = vos_data['timestamp']
+        start_time = current_time.strftime("%H:00")
+        end_time = current_time.strftime("%H:59")
+        
+        embed = discord.Embed(
+            title="<:prif:1336983731952550022> **Voice of Seren**",
+            description=f"Active from `{start_time}` to `{end_time}` UTC",
+            color=discord.Color.teal()
+        )
+
+        key = tuple(sorted([vos_data['district1'], vos_data['district2']]))
+        if key in self.COMBINED_IMAGES:
+            file = discord.File(self.COMBINED_IMAGES[key], filename="districts.png")
+            embed.set_thumbnail(url="attachment://districts.png")
+            
+            # Get emojis for each district
+            emoji1 = self.district_emojis.get(vos_data['district1'], '')
+            emoji2 = self.district_emojis.get(vos_data['district2'], '')
+            
+            embed.add_field(
+                name=f"{emoji1} __`{vos_data['district1']}`__\n    __`District`__",
+                value="",
+                inline=True
             )
 
-            key = tuple(sorted([vos_data['district1'], vos_data['district2']]))
-            if key in self.COMBINED_IMAGES:
-                file = discord.File(self.COMBINED_IMAGES[key], filename="districts.png")
-                embed.set_thumbnail(url="attachment://districts.png")
-                
-                # Get emojis for each district
-                emoji1 = self.district_emojis.get(vos_data['district1'], '')
-                emoji2 = self.district_emojis.get(vos_data['district2'], '')
-                
-                embed.add_field(
-                    name=f"{emoji1} __`{vos_data['district1']}`__\n    __`District`__",
-                    value="",
-                    inline=True
-                )
-
-                embed.add_field(
-                    name=f"{emoji2} __`{vos_data['district2']}`__\n   __`District`__",
-                    value="",
-                    inline=True
-                )
-                
-                embed.set_footer(text="• Data provided by WeirdGloop API •")
-                return embed, file
+            embed.add_field(
+                name=f"{emoji2} __`{vos_data['district2']}`__\n   __`District`__",
+                value="",
+                inline=True
+            )
             
-            return embed, None
-                
-        except Exception as e:
-            print(f"Error in create_vos_embed: {e}")
-            raise
+            embed.set_footer(text="• Data provided by WeirdGloop API •")
+            return embed, file
+        
+        return embed, None
+
             
             
 
@@ -235,7 +268,7 @@ class VoSCog(commands.Cog):
 
 
     # @tasks.loop(time=time(minute=52))
-    @tasks.loop(minutes=15)
+    @tasks.loop(minutes=2)
     async def check_vos(self):
         try:
             vos_data = await self.get_vos_data()
@@ -292,6 +325,12 @@ class VoSCog(commands.Cog):
         except Exception as e:
             print(f"Error in check_vos: {e}")
 
+    @commands.command()
+    @commands.is_owner()  # Only bot owner can use this
+    async def test_vos(self, ctx):
+        global TESTING_MODE
+        TESTING_MODE = not TESTING_MODE
+        await ctx.send(f"Testing mode is now {'enabled' if TESTING_MODE else 'disabled'}")
 
 
 
