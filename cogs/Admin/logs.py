@@ -88,17 +88,17 @@ class LogManager(commands.Cog):
         # Total Bot Storage
         embed.add_field(
             name="Total Bot Storage",
-            value=f"Size: {self.format_size(bot_total_size)}",
+            value=f"Size: `{self.format_size(bot_total_size)}`",
             inline=False
         )
 
-        
+               
         # File Counts
         embed.add_field(
             name="Log Files", 
-            value=f"Current: {num_files}\n"
-                  f"Archived: {num_archives}\n"
-                  f"Total: {num_files + num_archives}",
+            value=f"Current: `{num_files}`\n"
+                  f"Archived: `{num_archives}`\n"
+                  f"Total: `{num_files + num_archives}`",
             inline=True
         )
                 
@@ -112,12 +112,7 @@ class LogManager(commands.Cog):
             inline=True
         )
         # Settings
-        embed.add_field(
-            name="Settings", 
-            value=f"Retention: {self.max_days} days\n"
-                  f"Status Update: Every {self.status_interval}h",
-            inline=True
-        )
+
         
         # Add last update time
         embed.set_footer(text="Last Updated")
