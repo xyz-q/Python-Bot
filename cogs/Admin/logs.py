@@ -105,9 +105,9 @@ class LogManager(commands.Cog):
         # Logging System Status
         embed.add_field(
             name="Logging System",
-            value=f"Current: {self.format_size(logs_current_size)}\n"
-                  f"Archives: {self.format_size(logs_archive_size)}\n"
-                  f"Total Logs: {self.format_size(logs_total_size)}\n",
+            value=f"Current: `{self.format_size(logs_current_size)}`\n"
+                  f"Archives: `{self.format_size(logs_archive_size)}`\n"
+                  f"Total Logs: `{self.format_size(logs_total_size)}`\n",
 
             inline=True
         )
