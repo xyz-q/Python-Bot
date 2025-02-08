@@ -623,7 +623,7 @@ class ListAutoMessagesButton(discord.ui.Button):
         
         embed = discord.Embed(
             title="Auto Messages List",
-            color=discord.Color.blue()
+            color=discord.Color.gold()
         )
         
         if auto_messages:
@@ -865,7 +865,7 @@ class RemoveAutoMessageModal(discord.ui.Modal, title="Remove Auto Message"):
                 embed = discord.Embed(
                     title="Auto Messages Configuration",
                     description="Manage your automatic messages here",
-                    color=discord.Color.blue()
+                    color=discord.Color.gold()
                 )
                 
                 for i, msg in enumerate(messages, 1):

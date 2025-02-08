@@ -48,7 +48,7 @@ class LogManager(commands.Cog):
 
         embed = discord.Embed(
             title="📊 Logging System Status",
-            color=discord.Color.blue(),
+            color=discord.Color.gold(),
             timestamp=datetime.now()
         )
         
