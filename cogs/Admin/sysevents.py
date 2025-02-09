@@ -225,7 +225,7 @@ class SystemEvents(commands.Cog):
             channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
             if channel:
                 try:
-                    await channel.send("🟢 Connection Resumed!")
+                    await channel.send("<a:greenalert:1336886706216894524> Connection Resumed!")
                 except Exception as e:
                     print(f"\033[91mError sending reconnect message: {str(e)}\033[0m")
 
