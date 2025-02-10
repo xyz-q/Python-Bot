@@ -268,7 +268,7 @@ class VoSCog(commands.Cog):
 
 
     # @tasks.loop(time=time(minute=52))
-    @tasks.loop(minutes=3)
+    @tasks.loop(seconds=250)
     async def check_vos(self):
         try:
             vos_data = await self.get_vos_data()
@@ -298,10 +298,7 @@ class VoSCog(commands.Cog):
                                 description="This channel will automatically update with the latest Voice of Seren information.\n\nUpdates occur every hour.\n\nThe Voice of Seren is a blessing effect in Prifddinas that moves between clan districts every hour.",
                                 color=discord.Color.teal()
                             )
-                            msg = await channel.send(embed=setup_embed)
-                            # Add publishing for info message
-                            if isinstance(channel, discord.TextChannel) and channel.is_news():
-                                await msg.publish()
+                            await channel.send(embed=setup_embed)
                         
                         # Update VoS message if districts changed OR if there's no VoS message
                         if (self.last_districts is None or 
@@ -315,14 +312,9 @@ class VoSCog(commands.Cog):
                             if vos_message:
                                 await vos_message.delete()
                             
-                            # Send new VoS message and publish it
-                            msg = await channel.send(file=new_file, embed=new_embed)
-                            # Add publishing for VoS update
-                            if isinstance(channel, discord.TextChannel) and channel.is_news():
-                                await msg.publish()
+                            # Send new VoS message
+                            await channel.send(file=new_file, embed=new_embed)  # Fixed here: using new_embed instead of embed
 
-                    except discord.Forbidden:
-                        print(f"Missing permissions in channel {channel_id}")
                     except Exception as e:
                         print(f"Error updating channel {channel_id}: {e}")
                 else:
@@ -332,7 +324,6 @@ class VoSCog(commands.Cog):
 
         except Exception as e:
             print(f"Error in check_vos: {e}")
-
 
     @commands.command()
     @commands.is_owner()  # Only bot owner can use this
