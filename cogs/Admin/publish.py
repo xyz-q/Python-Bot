@@ -225,23 +225,22 @@ class AutoPublish(commands.Cog):
     @tasks.loop(minutes=30)
     async def cleanup_task(self):
         try:
-
             total_deleted = 0
             channels_checked = 0
             channels_skipped = 0
 
             for guild in self.bot.guilds:
-
+                # Only look at announcement channels
+                announcement_channels = [channel for channel in guild.text_channels if channel.is_news()]
                 
-                for channel in guild.text_channels:
+                for channel in announcement_channels:  # Changed from guild.text_channels
                     try:
                         channels_checked += 1
-
                         
+                        # Rest of your existing channel processing code...
                         # Check bot permissions
                         perms = channel.permissions_for(guild.me)
                         if not perms.manage_messages:
-
                             channels_skipped += 1
                             continue
 
