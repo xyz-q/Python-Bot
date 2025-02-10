@@ -13,7 +13,7 @@ class VoSCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.CHANNELS_FILE = '.json/vos_channels.json'
-
+        self.check_vos.start()
         self.COMBINED_IMAGES = {}  # Initialize the dictionary
         self.load_combined_images()
         self.last_districts = None 
@@ -30,9 +30,6 @@ class VoSCog(commands.Cog):
     def cog_unload(self):
         self.check_vos.cancel()
 
-    def on_ready(self):
-        self.check_vos.start()  # Move it here instead
-        print("started")
     def load_channels(self):
         try:
             with open(self.CHANNELS_FILE, 'r') as f:
@@ -260,69 +257,85 @@ class VoSCog(commands.Cog):
             
 
 
-    # @tasks.loop(time=time(minute=52))
-    @tasks.loop(minutes=2)
+    @tasks.loop(seconds=10)
     async def check_vos(self):
-        try:
-            print("\n=== VoS Check Started ===")
 
-            
+        try:
+            print("\n--- Check VoS Started ---")
             vos_data = await self.get_vos_data()
             if not vos_data:
-                print("No VoS data available - stopping check")
+                print("No VoS data available")
                 return
+            print("VoS data retrieved successfully")
 
             data = self.load_channels()
-            if not data or 'channels' not in data:
-                print("No channel data found")
-                return
+            print(f"Checking {len(data['channels'])} channels")
 
             for channel_id in data['channels']:
                 channel = self.bot.get_channel(channel_id)
                 if not channel:
                     print(f"Could not find channel {channel_id}")
                     continue
-                    
-                print(f"Processing channel: {channel.name}")
-                try:
-                    messages = []
-                    async for message in channel.history(limit=2):
-                        messages.append(message)
 
-                    # Create new messages if needed
-                    if len(messages) < 2:
-                        print("Not enough messages, recreating both...")
-                        # Clear channel
+                print(f"\nProcessing channel: {channel.name} ({channel.id})")
+                messages = []
+                async for message in channel.history(limit=2):
+                    messages.append(message)
+
+                print(f"Found {len(messages)} messages in channel")
+
+                correct_order = (
+                    len(messages) == 2 and
+                    messages[1].author == self.bot.user and
+                    messages[0].author == self.bot.user and
+                    messages[1].embeds and
+                    messages[0].embeds and
+                    "🎯 Voice of Seren Information Channel" in messages[1].embeds[0].title and
+                    "<:prif:1336983731952550022> Voice of Seren" == messages[0].embeds[0].title
+                )
+                print(f"Messages in correct order: {correct_order}")
+
+                if not correct_order:
+                    try:
+                        print("Recreating messages...")
                         async for message in channel.history(limit=None):
                             await message.delete()
                         
-                        # Send info message
                         setup_embed = discord.Embed(
                             title="🎯 Voice of Seren Information Channel",
                             description="This channel will automatically update with the latest Voice of Seren information.\n\nUpdates occur every hour.\n\nThe Voice of Seren is a blessing effect in Prifddinas that moves between clan districts every hour.",
                             color=discord.Color.teal()
                         )
                         await channel.send(embed=setup_embed)
-                        print("Sent info message")
+                        print("Info message sent")
 
-                        # Send VoS message
                         new_embed, new_file = self.create_vos_embed(vos_data)
-                        await channel.send(embed=new_embed)
-                        print("Sent VoS message")
-                    else:
-                        print("Found existing messages, updating VoS message")
+                        if new_file:
+                            await channel.send(file=new_file, embed=new_embed)
+                        else:
+                            await channel.send(embed=new_embed)
+                        print("VoS message sent")
+                    except Exception as e:
+                        print(f"Error recreating messages: {e}")
+                else:
+                    try:
+                        print("Updating existing VoS message")
                         new_embed, new_file = self.create_vos_embed(vos_data)
+                        print("Created new embed")
                         await messages[0].edit(embed=new_embed)
-                        print("Updated VoS message")
+                        print("VoS message updated successfully")
+                    except discord.HTTPException as e:
+                        print(f"HTTP error updating message: {e}")
+                    except discord.Forbidden as e:
+                        print(f"Permission error updating message: {e}")
+                    except Exception as e:
+                        print(f"Unexpected error updating message: {e}")
+                        import traceback
+                        traceback.print_exc()
 
-                except discord.errors.Forbidden:
-                    print(f"Missing permissions in channel {channel.name}")
-                except Exception as e:
-                    print(f"Error processing channel {channel.name}: {e}")
-                    import traceback
-                    traceback.print_exc()
+                print(f"Finished processing channel: {channel.name}")
 
-            print("=== VoS Check Completed ===\n")
+            print("\n=== VoS Check Completed ===")
 
         except Exception as e:
             print("Critical error in check_vos:")
@@ -330,17 +343,7 @@ class VoSCog(commands.Cog):
             import traceback
             traceback.print_exc()
 
-    @check_vos.before_loop
-    async def before_check_vos(self):
-        await self.bot.wait_until_ready()
-        print("VoS check loop is ready to start")
 
-    @check_vos.after_loop
-    async def after_check_vos(self):
-        print("VoS check loop has ended")
-        if self.check_vos.failed():
-            print("VoS check loop failed with error:")
-            print(self.check_vos.get_task().exception())
 
 
 
@@ -428,7 +431,10 @@ class VoSCog(commands.Cog):
             await ctx.send(f"Error during force update: {e}")
 
 
+    @check_vos.before_loop
+    async def before_check_vos(self):
 
+        await self.bot.wait_until_ready()
 
 
     @add_vos_channel.error
