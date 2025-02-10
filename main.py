@@ -22,7 +22,7 @@ intents.members = True
 bot = commands.Bot(command_prefix=',', intents=intents)
 
 
-
+ 
 class Client(commands.Bot):
     def __init__(self):
         super().__init__(   help_command=None, command_prefix=commands.when_mentioned_or(','), intents=discord.Intents().all())
