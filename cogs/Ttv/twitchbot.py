@@ -1485,7 +1485,7 @@ class TwitchCog(commands.Cog):
     async def before_auto_message_task(self):
         await asyncio.sleep(5)
         await self.twitch_bot.wait_for_ready()
-        print("Twitch bot is ready, auto message task can now start!")
+
 
 
 
