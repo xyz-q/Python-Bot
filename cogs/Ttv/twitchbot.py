@@ -1424,18 +1424,17 @@ class TwitchCog(commands.Cog):
 
     @tasks.loop(seconds=10)
     async def auto_message_task(self):
-        print("Auto message task running...")
+
         
         if not hasattr(self, 'config'):
             print("No config found")
             return
         
-        print(f"Config contents: {self.config}")
-        print(f"User channels: {self.config.get('user_channels', {})}")
+
 
         for user_id, channel_name in self.config.get('user_channels', {}).items():
             try:
-                print(f"Processing channel: {channel_name}")
+
                 
                 # Get the channel
                 channel = self.twitch_bot.get_channel(channel_name)
@@ -1444,33 +1443,33 @@ class TwitchCog(commands.Cog):
                     continue
 
                 # Check if stream is live
-                print(f"Fetching streams for {channel_name}")
+
                 stream = await self.twitch_bot.fetch_streams(user_logins=[channel_name])
-                print(f"Stream status for {channel_name}: {stream}")
+
                 
                 if stream:
                     last_message = self.channel_last_message.get(channel_name)
-                    print(f"Last message for {channel_name}: {last_message}")
+
                     
                     should_send = True
                     if last_message and 'author' in last_message:
                         if last_message['author'].lower() in [self.twitch_bot.nick.lower(), channel_name.lower()]:
                             should_send = False
-                    print(f"Should send message for {channel_name}: {should_send}")
+
 
                     if should_send:
                         messages = self.config['auto_messages'].get(channel_name, [])
                         if not messages and 'default' in self.config['auto_messages']:
                             messages = self.config['auto_messages']['default']
                         
-                        print(f"Available messages for {channel_name}: {messages}")
+
                         
                         if messages:
                             message = random.choice(messages)
                             if self.last_messages.get(channel_name) != message:
-                                print(f"Attempting to send message to {channel_name}: {message}")
+
                                 await channel.send(message)
-                                print(f"Message sent successfully to {channel_name}")
+
                                 self.channel_last_message[channel_name] = {
                                     'author': self.twitch_bot.nick,
                                     'content': message,
