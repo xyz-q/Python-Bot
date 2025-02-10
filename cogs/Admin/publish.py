@@ -11,6 +11,7 @@ class AutoPublish(commands.Cog):
         self.is_publishing = False
         self.data_file = '.json/autopublish_channels.json'
         self.load_channels()
+        self.cleanup_task.start()
 
     def load_channels(self):
         """Load auto-publish channels from JSON file"""
@@ -218,6 +219,143 @@ class AutoPublish(commands.Cog):
         embed.add_field(name="Bot Permissions", value=perms_text, inline=False)
         
         await ctx.send(embed=embed)
+
+
+
+    @tasks.loop(minutes=30)
+    async def cleanup_task(self):
+        try:
+
+            total_deleted = 0
+            channels_checked = 0
+            channels_skipped = 0
+
+            for guild in self.bot.guilds:
+
+                
+                for channel in guild.text_channels:
+                    try:
+                        channels_checked += 1
+
+                        
+                        # Check bot permissions
+                        perms = channel.permissions_for(guild.me)
+                        if not perms.manage_messages:
+
+                            channels_skipped += 1
+                            continue
+
+                        deleted_count = 0
+                        message_count = 0
+                        
+                        # Add timeout handling for channel history
+                        try:
+                            async with asyncio.timeout(30):  # 30 second timeout per channel
+                                async for message in channel.history(limit=100):
+                                    try:
+                                        message_count += 1
+                                        
+                                        if "[Original Message Deleted]" in message.content:
+                                            origin_guild = message.guild.name
+                                            current_guild = guild.name
+                                            
+
+                                            
+                                            if (message.flags.crossposted or 
+                                                message.reference or 
+                                                message.guild.id != guild.id):
+                                                try:
+                                                    await message.delete()
+                                                    deleted_count += 1
+
+                                                    await asyncio.sleep(1.5)  # Increased rate limit delay
+                                                except discord.Forbidden:
+                                                    print(f"  ✕ Failed to delete - No permission")
+                                                except discord.NotFound:
+                                                    print(f"  ✕ Failed to delete - Message already gone")
+                                                except discord.HTTPException as e:
+                                                    print(f"  ⚠ Discord API Error: {e}")
+                                                    await asyncio.sleep(5)  # Extra delay on API errors
+                                                except Exception as e:
+                                                    print(f"  ✕ Error: {type(e).__name__}: {e}")
+
+                                    
+                                    except Exception as message_error:
+                                        print(f"  ⚠ Error processing message: {type(message_error).__name__}: {message_error}")
+                                        continue  # Skip to next message
+                        
+                        except asyncio.TimeoutError:
+
+                            channels_skipped += 1
+                            continue
+                        
+                        if message_count > 0:
+
+                            total_deleted += deleted_count
+                        
+                        # Add a small delay between channels
+                        await asyncio.sleep(2)
+                            
+                    except Exception as channel_error:
+                        print(f"⚠ Error in channel {channel.name}: {type(channel_error).__name__}: {channel_error}")
+                        channels_skipped += 1
+                        await asyncio.sleep(5)  # Delay before next channel on error
+                        continue
+
+            print(f"\n=== Cleanup Complete ===")
+            print(f"Channels checked: {channels_checked}")
+            print(f"Channels skipped: {channels_skipped}")
+            print(f"Total messages deleted: {total_deleted}")
+
+        except Exception as e:
+            print(f"❌ Fatal error in cleanup task: {type(e).__name__}: {e}")
+
+        finally:
+            print("=== Task finished ===\n")
+
+
+    @cleanup_task.before_loop
+    async def before_cleanup(self):
+        # Wait for the bot to be ready before starting the task
+        await self.bot.wait_until_ready()
+        print("Cleanup task is ready to start")
+
+    @commands.command()
+    @commands.is_owner()
+    async def toggle_cleanup(self, ctx):
+        """Toggle the automatic cleanup task"""
+        if self.cleanup_task.is_running():
+            self.cleanup_task.cancel()
+            await ctx.send("✅ Automatic cleanup task disabled")
+        else:
+            self.cleanup_task.start()
+            await ctx.send("✅ Automatic cleanup task enabled")
+
+    @commands.command()
+    @commands.is_owner()
+    async def cleanup_status(self, ctx):
+        """Check the status of the cleanup task"""
+        if self.cleanup_task.is_running():
+            next_run = self.cleanup_task.next_iteration
+            if next_run:
+                time_until = next_run - discord.utils.utcnow()
+                minutes = int(time_until.total_seconds() / 60)
+                await ctx.send(f"✅ Cleanup task is running\nNext run in: {minutes} minutes")
+            else:
+                await ctx.send("✅ Cleanup task is running")
+        else:
+            await ctx.send("❌ Cleanup task is not running")
+
+    @commands.command()
+    @commands.is_owner()
+    async def set_cleanup_interval(self, ctx, minutes: int):
+        """Set the cleanup task interval (in minutes)"""
+        if minutes < 5:
+            await ctx.send("❌ Interval must be at least 5 minutes!")
+            return
+        
+        self.cleanup_task.change_interval(minutes=minutes)
+        await ctx.send(f"✅ Cleanup interval set to {minutes} minutes")
 
 async def setup(bot):
     await bot.add_cog(AutoPublish(bot))

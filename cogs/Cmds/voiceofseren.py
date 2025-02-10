@@ -317,8 +317,7 @@ class VoSCog(commands.Cog):
 
                     except Exception as e:
                         print(f"Error updating channel {channel_id}: {e}")
-                else:
-                    print(f"Could not find channel {channel_id}")
+
             
             self.last_districts = current_districts
 
