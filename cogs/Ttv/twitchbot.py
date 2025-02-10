@@ -1009,10 +1009,11 @@ class TwitchCog(commands.Cog):
         self.follow_cache = {}
         self.load_config()
         self.setup_twitch_bot()
-        self.auto_message_task.start()
+        self.auto_message_task.start()  
         self.channel_last_message = {}
+        
 
-
+    
     async def create_main_embed(self, user):
         embed = discord.Embed(
             title="Twitch Bot Configuration",
@@ -1146,7 +1147,8 @@ class TwitchCog(commands.Cog):
                 self.url_shortener = URLShortener()
                 
                 self.channel_list = [channel.lower() for channel in self.config['channels'].keys()]
-                
+
+              
                 super().__init__(
                     token=os.getenv('TWITCH_ACCESS_TOKEN'),
                     client_id=os.getenv('TWITCH_CLIENT_ID'),
@@ -1372,9 +1374,19 @@ class TwitchCog(commands.Cog):
 
 
             async def event_ready(self):
-                await asyncio.sleep(5)
-                print(f'Logged into twitch | {self.nick}')
-
+                try:
+                    print(f"Twitch Bot ready | {self.nick}")
+                    # Join all channels from config
+                    for _, channel_name in self.config.get('user_channels', {}).items():
+                        try:
+                            if not channel_name.startswith('#'):
+                                channel_name = f"#{channel_name}"
+                            await self.join_channels([channel_name])
+                            print(f"Successfully joined channel {channel_name}")
+                        except Exception as join_error:
+                            print(f"Error joining channel {channel_name}: {join_error}")
+                except Exception as ready_error:
+                    print(f"Error in event_ready: {ready_error}")
 
             async def event_message(self, message):
                 try:
@@ -1412,33 +1424,53 @@ class TwitchCog(commands.Cog):
 
     @tasks.loop(seconds=10)
     async def auto_message_task(self):
+        print("Auto message task running...")
+        
         if not hasattr(self, 'config'):
+            print("No config found")
             return
-                    
-        # Change this line to use user_channels instead of channels
+        
+        print(f"Config contents: {self.config}")
+        print(f"User channels: {self.config.get('user_channels', {})}")
+
         for user_id, channel_name in self.config.get('user_channels', {}).items():
-            channel = self.twitch_bot.get_channel(channel_name)
-            if channel:
+            try:
+                print(f"Processing channel: {channel_name}")
+                
+                # Get the channel
+                channel = self.twitch_bot.get_channel(channel_name)
+                if not channel:
+                    print(f"Could not get channel {channel_name}")
+                    continue
+
+                # Check if stream is live
+                print(f"Fetching streams for {channel_name}")
                 stream = await self.twitch_bot.fetch_streams(user_logins=[channel_name])
+                print(f"Stream status for {channel_name}: {stream}")
                 
                 if stream:
                     last_message = self.channel_last_message.get(channel_name)
+                    print(f"Last message for {channel_name}: {last_message}")
                     
                     should_send = True
                     if last_message and 'author' in last_message:
                         if last_message['author'].lower() in [self.twitch_bot.nick.lower(), channel_name.lower()]:
                             should_send = False
+                    print(f"Should send message for {channel_name}: {should_send}")
 
                     if should_send:
                         messages = self.config['auto_messages'].get(channel_name, [])
-                        
                         if not messages and 'default' in self.config['auto_messages']:
                             messages = self.config['auto_messages']['default']
+                        
+                        print(f"Available messages for {channel_name}: {messages}")
                         
                         if messages:
                             message = random.choice(messages)
                             if self.last_messages.get(channel_name) != message:
+                                print(f"Attempting to send message to {channel_name}: {message}")
                                 await channel.send(message)
+                                print(f"Message sent successfully to {channel_name}")
                                 self.channel_last_message[channel_name] = {
                                     'author': self.twitch_bot.nick,
                                     'content': message,
@@ -1446,6 +1478,15 @@ class TwitchCog(commands.Cog):
                                 }
                                 self.last_messages[channel_name] = message
 
+            except Exception as e:
+                print(f"Error processing channel {channel_name}: {str(e)}")
+
+
+    @auto_message_task.before_loop
+    async def before_auto_message_task(self):
+        await asyncio.sleep(5)
+        await self.twitch_bot.wait_for_ready()
+        print("Twitch bot is ready, auto message task can now start!")
 
 
 
