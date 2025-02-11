@@ -45,7 +45,7 @@ class SystemMonitor(commands.Cog):
             await channel.purge()
             # Create new monitor message
             embed = await self.get_system_stats()
-            self.monitor_message = await channel.send(embed=embed, view=MonitorButtons(self))
+            self.monitor_message = await channel.send(embed=embed(self))
 
     async def get_system_stats(self):
         # CPU Info
@@ -93,7 +93,7 @@ class SystemMonitor(commands.Cog):
     async def sysinfo(self, ctx):
         """Get current system information"""
         embed = await self.get_system_stats()
-        await ctx.send(embed=embed, view=MonitorButtons(self))
+        await ctx.send(embed=embed(self))
 
 async def setup(bot):
     await bot.add_cog(SystemMonitor(bot))
