@@ -41,8 +41,8 @@ class FileManager(commands.Cog):
         return choices[:25]
 
     @app_commands.command(name="listfiles", description="List files in a directory")
-    @app_commands.autocomplete(path=file_autocomplete)
-    async def list_files(self, interaction: discord.Interaction, path: str = ""):
+    @app_commands.autocomplete(path=file_autocomplete)  # This 'path' needs to match the parameter name
+    async def list_files(self, interaction: discord.Interaction, path: str = ""):  # This parameter is also 'path'
         """List files in the specified directory"""
         # Defer the response immediately
         await interaction.response.defer(ephemeral=True)
