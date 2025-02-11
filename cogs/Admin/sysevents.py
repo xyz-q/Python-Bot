@@ -445,7 +445,7 @@ class SystemEvents(commands.Cog):
             current_latency = self.bot.latency * 1000
             self.last_known_latency = current_latency
             
-            if current_latency > 1000:  # If latency is over 1000ms
+            if current_latency > 200:  # If latency is over 1000ms
                 channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
                 if channel:
                     await channel.send(f"<a:orangealert:1336885812062584862> High latency detected: {current_latency:.2f}ms")
