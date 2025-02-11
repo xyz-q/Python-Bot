@@ -150,6 +150,20 @@ class FileManager(commands.Cog):
         except Exception as e:
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
 
+
+# Add this to your code temporarily to debug
+    @app_commands.command(name="whoami", description="Check bot permissions")
+    async def check_perms(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            current_user = os.getuid()
+            current_username = os.getlogin()
+            result = f"Running as:\nUID: {current_user}\nUsername: {current_username}"
+            await interaction.followup.send(result, ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
+
+
     @list_files.error
     @download_file.error
     @delete_file.error
