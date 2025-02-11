@@ -133,11 +133,12 @@ class SystemMonitor(commands.Cog):
         )
         embed.add_field(
             name="Network Speed",
-            value=f"Upload: {upload_speed:.2f} KB/s\n"
+            value=f"Latency: {latency}ms"
                   f"Download: {download_speed:.2f} KB/s\n"
+                  f"Upload: {upload_speed:.2f} KB/s\n"
                   f"Total Up: {bytes_sent} MB\n"
-                  f"Total Down: {bytes_recv} MB\n"
-                  f"Latecny: {latency}ms",
+                  f"Total Down: {bytes_recv} MB\n",
+
             inline=True
         )
         embed.add_field(name="\u200b", value="\u200b", inline=True)
