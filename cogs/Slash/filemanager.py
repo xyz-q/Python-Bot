@@ -131,91 +131,105 @@ class FileManager(commands.Cog):
     @app_commands.check(lambda interaction: interaction.user.id in interaction.client.owner_ids)
     async def upload_file(self, interaction: discord.Interaction, path: str = ""):
         """Start the file upload process"""
-        await interaction.response.defer(ephemeral=True)
-        
-        user_id = interaction.user.id
-        
-        # Debug print
-        print(f"Upload command started for user {user_id}")
-        
-        # Check if user is already in upload mode
-        if user_id in self.waiting_for_upload:
-            await interaction.followup.send("You already have an upload in progress!", ephemeral=True)
-            return
-        
-        # Create upload destination path
-        upload_path = os.path.join(self.base_directory, path)
-        if not self.is_safe_path(upload_path):
-            await interaction.followup.send("Access to this path is not allowed.", ephemeral=True)
-            return
-        
-        if not os.path.isdir(upload_path):
-            await interaction.followup.send("Invalid directory path.", ephemeral=True)
-            return
-
-        # Create embed
-        embed = discord.Embed(
-            title="File Upload Mode",
-            description="Upload your file within the next 45 seconds.\n"
-                       "Send any message to cancel.",
-            color=discord.Color.blue()
-        )
-        embed.add_field(
-            name="Upload Location",
-            value=f"```{path or 'root directory'}```",
-            inline=False
-        )
-        embed.add_field(
-            name="Time Remaining",
-            value="45 seconds",
-            inline=False
-        )
-        embed.set_footer(text="Waiting for file...")
-
-        # Send initial message
-        msg = await interaction.followup.send(embed=embed, ephemeral=True)
-
-        # Store upload state
-        self.waiting_for_upload[user_id] = {
-            'path': upload_path,
-            'expires': datetime.now() + timedelta(seconds=45),
-            'message_id': msg.id,
-            'channel_id': interaction.channel_id
-        }
-        
-        # Debug print
-        print(f"Upload state created: {self.waiting_for_upload[user_id]}")
-
-        # Update countdown
-        for remaining in range(44, -1, -1):
-            if user_id not in self.waiting_for_upload:
-                print(f"Upload cancelled for user {user_id}")
-                return  # Upload was cancelled
-                
-            embed.set_field_at(
-                1,
-                name="Time Remaining",
-                value=f"{remaining} seconds",
+        try:
+            # Respond immediately to prevent timeout
+            embed = discord.Embed(
+                title="File Upload Mode",
+                description="Upload your file within the next 45 seconds.\n"
+                           "Send any message to cancel.",
+                color=discord.Color.blue()
+            )
+            embed.add_field(
+                name="Upload Location",
+                value=f"```{path or 'root directory'}```",
                 inline=False
             )
-            
-            try:
-                await msg.edit(embed=embed)
-            except Exception as e:
-                print(f"Error updating countdown: {e}")
-                pass
-                
-            await asyncio.sleep(1)
+            embed.add_field(
+                name="Time Remaining",
+                value="45 seconds",
+                inline=False
+            )
+            embed.set_footer(text="Waiting for file...")
 
-        # Remove upload state if expired
-        if user_id in self.waiting_for_upload:
-            del self.waiting_for_upload[user_id]
-            embed.description = "Upload time expired!"
-            embed.color = discord.Color.red()
+            # Send initial response
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+            # Get the message for later editing
+            msg = await interaction.original_response()
+            
+            user_id = interaction.user.id
+            
+            # Check if user is already in upload mode
+            if user_id in self.waiting_for_upload:
+                await msg.edit(content="You already have an upload in progress!", embed=None)
+                return
+            
+            # Create upload destination path
+            upload_path = os.path.join(self.base_directory, path)
+            if not self.is_safe_path(upload_path):
+                await msg.edit(content="Access to this path is not allowed.", embed=None)
+                return
+            
+            if not os.path.isdir(upload_path):
+                await msg.edit(content="Invalid directory path.", embed=None)
+                return
+
+            # Store upload state
+            self.waiting_for_upload[user_id] = {
+                'path': upload_path,
+                'expires': datetime.now() + timedelta(seconds=45),
+                'message_id': msg.id,
+                'channel_id': interaction.channel_id
+            }
+
+            # Update countdown in background
+            self.bot.loop.create_task(self.countdown_task(msg, user_id, embed))
+
+        except Exception as e:
+            print(f"Error in upload_file: {e}")
             try:
-                await msg.edit(embed=embed)
-            except Exception as e:
-                print(f"Error updating expired message: {e}")
+                await interaction.response.send_message(
+                    f"An error occurred: {str(e)}", 
+                    ephemeral=True
+                )
+            except:
+                await interaction.followup.send(
+                    f"An error occurred: {str(e)}", 
+                    ephemeral=True
+                )
+
+    async def countdown_task(self, msg, user_id, embed):
+        """Handle the countdown separately from the main command"""
+        try:
+            for remaining in range(44, -1, -1):
+                if user_id not in self.waiting_for_upload:
+                    return  # Upload was cancelled
+                    
+                embed.set_field_at(
+                    1,
+                    name="Time Remaining",
+                    value=f"{remaining} seconds",
+                    inline=False
+                )
+                
+                try:
+                    await msg.edit(embed=embed)
+                except:
+                    pass
+                    
+                await asyncio.sleep(1)
+
+            # Remove upload state if expired
+            if user_id in self.waiting_for_upload:
+                del self.waiting_for_upload[user_id]
+                embed.description = "Upload time expired!"
+                embed.color = discord.Color.red()
+                try:
+                    await msg.edit(embed=embed)
+                except:
+                    pass
+        except Exception as e:
+            print(f"Error in countdown task: {e}")
 
 
 
