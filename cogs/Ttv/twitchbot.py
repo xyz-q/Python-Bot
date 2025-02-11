@@ -1083,24 +1083,37 @@ class TwitchCog(commands.Cog):
             'user_channels': {},
             'auto_messages': {
                 'default': [
-                    "Don't forget to follow!",
-                    "Stay hydrated!",
+                    "plug",  # These random letters should update
+                    "dont forget to follow :>",  # when you change them in default_config
                 ]
             },
             'follow_messages': [
-                "Thanks for the follow, {user}! Welcome to the family!",
-                "Hey {user}! Thanks for following!",
-                "Welcome aboard, {user}! Thanks for the follow!"
+                "Wassup {user}! Welcome aboard.",
+                "Appreciate the follow!",
+                "Thanks for following!"
             ],
             'auto_message_interval': 300
         }
 
+        def update_nested_config(default, current):
+            """Recursively update nested configuration"""
+            for key, value in default.items():
+                if key not in current:
+                    current[key] = value
+                elif isinstance(value, dict):
+                    if isinstance(current[key], dict):
+                        update_nested_config(value, current[key])
+                    else:
+                        current[key] = value
+                elif key == 'default' and isinstance(value, list):
+                    # Specifically update the default auto messages
+                    current[key] = value
+            return current
+
         try:
             with open('.json/twitch_config.json', 'r') as f:
                 self.config = json.load(f)
-                for key, value in default_config.items():
-                    if key not in self.config:
-                        self.config[key] = value
+                self.config = update_nested_config(default_config, self.config)
                 self.save_config()
         except FileNotFoundError:
             self.config = default_config
@@ -1112,6 +1125,8 @@ class TwitchCog(commands.Cog):
                 json.dump(self.config, f, indent=4)
         except Exception as e:
             print(f"Error saving config: {e}")
+
+
 
     @commands.command(name='twitchconfig', aliases=['twitch', 'twitchbot'])
     async def twitchconfig(self, ctx):
@@ -1397,7 +1412,7 @@ class TwitchCog(commands.Cog):
                             'content': message.content,
                             'timestamp': time.time()
                         }
-
+ 
                 except Exception as e:
                     print(f"Error in event_message: {e}")                             
                 
