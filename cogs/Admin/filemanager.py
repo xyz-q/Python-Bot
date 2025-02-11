@@ -7,7 +7,7 @@ import discord
 class FileManager(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.base_directory = os.getenv('ALLOWED_DIRECTORY', '/path/to/safe/directory')  # Set this to your allowed directory
+        self.base_directory = os.getenv('/home/user/Media_Storage')  # Set this to your allowed directory
         
     def is_safe_path(self, path):
         """Check if the path is within the allowed directory"""
