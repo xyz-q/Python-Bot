@@ -133,7 +133,7 @@ class SystemMonitor(commands.Cog):
         )
         embed.add_field(
             name="Network Speed",
-            value=f"Latency: {latency}ms"
+            value=f"Latency: {latency}ms\n"
                   f"Download: {download_speed:.2f} KB/s\n"
                   f"Upload: {upload_speed:.2f} KB/s\n"
                   f"Total Up: {bytes_sent} MB\n"
