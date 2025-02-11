@@ -49,7 +49,15 @@ class FileManager(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         """Handle file uploads and cancellation"""
+        # Ignore bot messages
+        if message.author.bot:
+            return
+
         user_id = message.author.id
+        
+        # Debug print
+        print(f"Message received from {user_id}")
+        print(f"Waiting for upload dict: {self.waiting_for_upload}")
         
         # Check if user is in upload mode
         if user_id not in self.waiting_for_upload:
@@ -57,10 +65,9 @@ class FileManager(commands.Cog):
             
         upload_state = self.waiting_for_upload[user_id]
         
-        # Check if upload has expired
-        if datetime.now() > upload_state['expires']:
-            del self.waiting_for_upload[user_id]
-            return
+        # Debug print
+        print(f"Upload state found: {upload_state}")
+        print(f"Message has attachments: {bool(message.attachments)}")
 
         # If message has no attachments, cancel upload
         if not message.attachments:
@@ -71,19 +78,21 @@ class FileManager(commands.Cog):
                 color=discord.Color.red()
             )
             try:
-                # Try to edit the original message
-                original_msg = await message.channel.fetch_message(upload_state['message_id'])
+                channel = message.channel
+                original_msg = await channel.fetch_message(upload_state['message_id'])
                 await original_msg.edit(embed=embed)
-            except:
-                # If we can't edit the original, send a new message
-                await message.reply(embed=embed, ephemeral=True)
+            except Exception as e:
+                print(f"Error editing message: {e}")
+                await message.reply(embed=embed)
             return
 
         # Process file upload
         for attachment in message.attachments:
             try:
+                print(f"Processing attachment: {attachment.filename}")
                 # Create full file path
                 file_path = os.path.join(upload_state['path'], attachment.filename)
+                print(f"Saving to: {file_path}")
                 
                 # Download and save the file
                 await attachment.save(file_path)
@@ -100,6 +109,7 @@ class FileManager(commands.Cog):
                 )
                 
             except Exception as e:
+                print(f"Error saving file: {e}")
                 embed = discord.Embed(
                     title="File Upload Failed",
                     description=f"Error: {str(e)}",
@@ -107,24 +117,26 @@ class FileManager(commands.Cog):
                 )
 
             try:
-                # Try to edit the original message
-                original_msg = await message.channel.fetch_message(upload_state['message_id'])
+                channel = message.channel
+                original_msg = await channel.fetch_message(upload_state['message_id'])
                 await original_msg.edit(embed=embed)
-            except:
-                # If we can't edit the original, send a new message
-                await message.reply(embed=embed, ephemeral=True)
+            except Exception as e:
+                print(f"Error editing message: {e}")
+                await message.reply(embed=embed)
 
         # Remove upload state
         del self.waiting_for_upload[user_id]
 
-    @commands.is_owner()
-    @app_commands.autocomplete(path=file_autocomplete) 
     @app_commands.command(name="uploadfile", description="Upload a file to the server")
+    @app_commands.check(lambda interaction: interaction.user.id in interaction.client.owner_ids)
     async def upload_file(self, interaction: discord.Interaction, path: str = ""):
         """Start the file upload process"""
         await interaction.response.defer(ephemeral=True)
         
         user_id = interaction.user.id
+        
+        # Debug print
+        print(f"Upload command started for user {user_id}")
         
         # Check if user is already in upload mode
         if user_id in self.waiting_for_upload:
@@ -167,12 +179,17 @@ class FileManager(commands.Cog):
         self.waiting_for_upload[user_id] = {
             'path': upload_path,
             'expires': datetime.now() + timedelta(seconds=45),
-            'message_id': msg.id
+            'message_id': msg.id,
+            'channel_id': interaction.channel_id
         }
+        
+        # Debug print
+        print(f"Upload state created: {self.waiting_for_upload[user_id]}")
 
         # Update countdown
         for remaining in range(44, -1, -1):
             if user_id not in self.waiting_for_upload:
+                print(f"Upload cancelled for user {user_id}")
                 return  # Upload was cancelled
                 
             embed.set_field_at(
@@ -184,8 +201,9 @@ class FileManager(commands.Cog):
             
             try:
                 await msg.edit(embed=embed)
-            except:
-                pass  # Message might have been deleted
+            except Exception as e:
+                print(f"Error updating countdown: {e}")
+                pass
                 
             await asyncio.sleep(1)
 
@@ -196,8 +214,8 @@ class FileManager(commands.Cog):
             embed.color = discord.Color.red()
             try:
                 await msg.edit(embed=embed)
-            except:
-                pass
+            except Exception as e:
+                print(f"Error updating expired message: {e}")
 
 
 
