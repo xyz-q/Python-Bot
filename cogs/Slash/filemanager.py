@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 def owner_only():
     async def predicate(interaction: discord.Interaction):
-        if interaction.user.id != interaction.client.owner_id:
+        if interaction.user.id != 110927272210354176:
             await interaction.response.send_message("⛔ You are not authorized to use this command.", ephemeral=True)
             return False
         return True
