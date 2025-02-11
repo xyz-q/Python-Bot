@@ -5,7 +5,7 @@ import os
 class Maintenance(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config_file = "/data/maintenance_config.txt"
+        self.config_file = "data/maintenance_config.txt"
         self.maintenance_mode = self.load_maintenance_state()
 
     def load_maintenance_state(self):
