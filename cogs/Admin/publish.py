@@ -208,7 +208,7 @@ class AutoPublish(commands.Cog):
         await ctx.send(embed=embed)
 
 
-    @tasks.loop(minutes=6)
+    @tasks.loop(minutes=5)
     async def cleanup_task(self):
 
         try:
