@@ -1,5 +1,4 @@
 from colorama import Back, Fore, Style
-import time
 import platform
 import discord
 from dotenv import load_dotenv

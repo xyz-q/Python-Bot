@@ -143,24 +143,7 @@ class FileManager(commands.Cog):
             upload_path = os.path.join(self.base_directory, path)
             
             # Check if path is safe
-            if not self.is_safe_path(upload_path):
-                await interaction.response.send_message("❌ Access to this path is not allowed.", ephemeral=True)
-                return
 
-            # Check if directory exists
-            if not os.path.exists(upload_path):
-                await interaction.response.send_message("❌ Directory does not exist!", ephemeral=True)
-                return
-
-            # Check if it's actually a directory
-            if not os.path.isdir(upload_path):
-                await interaction.response.send_message("❌ The specified path is not a directory!", ephemeral=True)
-                return
-
-            # Check write permissions
-            if not os.access(upload_path, os.W_OK):
-                await interaction.response.send_message("❌ No write permission for this directory!", ephemeral=True)
-                return
 
             # Create embed
             embed = discord.Embed(
