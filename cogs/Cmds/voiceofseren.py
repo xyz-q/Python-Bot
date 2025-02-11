@@ -220,7 +220,7 @@ class VoSCog(commands.Cog):
                         f"• `{vos_data['district2']}`",
                 color=discord.Color.orange()
             )
-            embed.set_footer(text="• The data refreshes every 6 minutes •")
+            embed.set_footer(text="• The data refreshes every 30 seconds •")
             return embed, None
         
         # Regular embed for current data
@@ -267,62 +267,109 @@ class VoSCog(commands.Cog):
             
 
 
-    # @tasks.loop(time=time(minute=52))
-    @tasks.loop(minutes=6)
+    @tasks.loop(seconds=30)
     async def check_vos(self):
         try:
+            print("\n=== VoS Check Started ===")
             vos_data = await self.get_vos_data()
             if not vos_data:
+                print("❌ No VoS data received")
                 return
 
             current_districts = tuple(sorted([
                 vos_data['district1'],
                 vos_data['district2']
             ]))
+            print(f"📍 Current Districts: {current_districts}")
+            print(f"📍 Last Known Districts: {self.last_districts}")
+
+            # Check if data is stale
+            is_stale = vos_data.get('is_stale', False)
+            print(f"📍 Is data stale? {is_stale}")
 
             data = self.load_channels()
+            print(f"📢 Checking {len(data['channels'])} channels")
+            
             for channel_id in data['channels']:
                 channel = self.bot.get_channel(channel_id)
                 if channel:
                     try:
-                        # Clean channel first
-                        await self.clean_channel(channel)
+                        print(f"\n🔄 Processing channel: {channel.name} ({channel_id})")
                         
-                        # Check for existing messages
-                        info_message, vos_message = await self.manage_vos_messages(channel)
-                        
-                        # Create info message if it doesn't exist
+                        # Get last 100 messages to scan for our messages
+                        messages = [msg async for msg in channel.history(limit=100)]
+                        info_message = None
+                        vos_message = None
+
+                        # Look for our messages
+                        for msg in messages:
+                            if msg.author == self.bot.user:
+                                if msg.embeds and msg.embeds[0].title == "🎯 Voice of Seren Information Channel":
+                                    info_message = msg
+                                elif msg.embeds and "Voice of Seren" in msg.embeds[0].title:
+                                    vos_message = msg
+
+                        print(f"✓ Found info message: {info_message is not None}")
+                        print(f"✓ Found VoS message: {vos_message is not None}")
+
+                        # Create info message if missing
                         if not info_message:
+                            print("📝 Creating new info message")
                             setup_embed = discord.Embed(
                                 title="🎯 Voice of Seren Information Channel",
                                 description="This channel will automatically update with the latest Voice of Seren information.\n\nUpdates occur every hour.\n\nThe Voice of Seren is a blessing effect in Prifddinas that moves between clan districts every hour.",
                                 color=discord.Color.teal()
                             )
                             await channel.send(embed=setup_embed)
-                        
-                        # Update VoS message if districts changed OR if there's no VoS message
-                        if (self.last_districts is None or 
+
+                        # Check if we need to update VoS message
+                        should_update = (
+                            not vos_message or
+                            self.last_districts is None or 
                             current_districts != self.last_districts or 
-                            vos_message is None):
-                            
+                            is_stale
+                        )
+
+                        print("\n=== Update Decision ===")
+                        print(f"• Missing VoS message? {not vos_message}")
+                        print(f"• No previous data? {self.last_districts is None}")
+                        print(f"• Districts changed? {current_districts != self.last_districts if self.last_districts else 'N/A'}")
+                        print(f"• Data is stale? {is_stale}")
+                        print(f"➤ Should update? {should_update}")
+
+                        if should_update:
                             # Create new embed and file
                             new_embed, new_file = self.create_vos_embed(vos_data)
+                            print("✓ Created new embed and file")
                             
                             # Delete old VoS message if it exists
                             if vos_message:
                                 await vos_message.delete()
+                                print("✓ Deleted old VoS message")
                             
                             # Send new VoS message
-                            await channel.send(file=new_file, embed=new_embed)  # Fixed here: using new_embed instead of embed
+                            await channel.send(file=new_file, embed=new_embed)
+                            print("✓ Sent new VoS message")
 
                     except Exception as e:
-                        print(f"Error updating channel {channel_id}: {e}")
+                        print(f"❌ Error updating channel {channel_id}: {e}")
+                else:
+                    print(f"❌ Could not find channel {channel_id}")
 
-            
-            self.last_districts = current_districts
+            # Only update last_districts if the data isn't stale
+            if not is_stale:
+                print(f"\n✓ Updating last_districts to: {current_districts}")
+                self.last_districts = current_districts
+            else:
+                print("\n⚠ Data is stale, not updating last_districts")
+
+            print("\n=== VoS Check Complete ===\n")
 
         except Exception as e:
-            print(f"Error in check_vos: {e}")
+            print(f"\n❌ Error in check_vos: {e}")
+
+
+
 
     @commands.command()
     @commands.is_owner()  # Only bot owner can use this
