@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import traceback
 import asyncio
 import difflib
@@ -12,6 +12,9 @@ class SystemEvents(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.admin_ids = [110927272210354176, 311612585524854805]
+        self.last_known_latency = None
+        self.disconnect_times = []  # Track disconnect times
+
 
 
     async def setup_server_roles_and_channels(self, guild):
@@ -92,9 +95,10 @@ class SystemEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        try:
-            
-            
+        try:            
+            if not hasattr(self, 'connection_monitor'):
+                self.connection_monitor.start() 
+                            
             print("\033[90mLogged in as {0}\033[0m".format(self.bot.user))
 
             print("\033[0;32mGuilds:\033[0m")
@@ -324,7 +328,6 @@ class SystemEvents(commands.Cog):
             traceback.print_exc()
 
 
-
     @commands.Cog.listener()
     async def on_message(self, message):
         await self.update_latency()
@@ -434,6 +437,24 @@ class SystemEvents(commands.Cog):
         except Exception as e:
             await ctx.send(f"Error during test: {str(e)}")
 
+
+
+    @tasks.loop(minutes=1)
+    async def connection_monitor(self):
+        try:
+            current_latency = self.bot.latency * 1000
+            self.last_known_latency = current_latency
+            
+            if current_latency > 1000:  # If latency is over 1000ms
+                channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
+                if channel:
+                    await channel.send(f"<a:orangealert:1336885812062584862> High latency detected: {current_latency:.2f}ms")
+        except Exception as e:
+            print(f"\033[91mError in connection monitor: {str(e)}\033[0m")
+
+    @connection_monitor.before_loop
+    async def before_connection_monitor(self):
+        await self.bot.wait_until_ready()
 
 
 

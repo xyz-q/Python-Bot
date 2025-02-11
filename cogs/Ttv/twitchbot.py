@@ -1435,10 +1435,42 @@ class TwitchCog(commands.Cog):
 
 
 
+    @commands.command(name='stopauto')
+    @commands.is_owner()  # This ensures only the bot owner can use this command
+    async def stop_auto_messages(self, ctx):
+        """Stop the auto message task"""
+        try:
+            self.auto_message_task.cancel()
+            await ctx.send("Auto messages have been stopped.")
+        except Exception as e:
+            await ctx.send(f"Error stopping auto messages: {str(e)}")
+
+    @commands.command(name='startauto')
+    @commands.is_owner()  # This ensures only the bot owner can use this command
+    async def start_auto_messages(self, ctx):
+        """Start the auto message task"""
+        try:
+            if not self.auto_message_task.is_running():
+                self.auto_message_task.start()
+                await ctx.send("Auto messages have been started.")
+            else:
+                await ctx.send("Auto messages are already running.")
+        except Exception as e:
+            await ctx.send(f"Error starting auto messages: {str(e)}")
+
+    @commands.command(name='autostate')
+    @commands.is_owner()  # This ensures only the bot owner can use this command
+    async def auto_message_state(self, ctx):
+        """Check if auto messages are running"""
+        try:
+            state = "running" if self.auto_message_task.is_running() else "stopped"
+            await ctx.send(f"Auto messages are currently {state}.")
+        except Exception as e:
+            await ctx.send(f"Error checking auto message state: {str(e)}")
 
 
 
-    @tasks.loop(seconds=10)
+    @tasks.loop(minutes=7)
     async def auto_message_task(self):
 
         

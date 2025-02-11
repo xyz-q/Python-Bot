@@ -68,7 +68,7 @@ class SystemMonitor(commands.Cog):
         embed = discord.Embed(
             title="System Monitor",
             description=f"System stats for {platform.node()}",
-            color=discord.Color.blue(),
+            color=discord.Color.gold(),
             timestamp=datetime.now()
         )
 
