@@ -3,13 +3,18 @@ from discord.ext import commands, tasks
 import psutil
 import platform
 from datetime import datetime
-
-
+import subprocess
+import platform
 
 
 class SystemMonitor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        # Initialize these variables
+        self.monitor_message = None
+        self.last_net_io = psutil.net_io_counters()
+        self.last_check_time = datetime.now()
+        # Start the loop
         self.monitor_loop.start()
         
     def cog_unload(self):
@@ -49,6 +54,53 @@ class SystemMonitor(commands.Cog):
             self.monitor_message = await channel.send(embed=embed, view=None)
 
     async def get_system_stats(self):
+
+        # Calculate network speed
+        current_net_io = psutil.net_io_counters()
+        current_time = datetime.now()
+        time_delta = (current_time - self.last_check_time).total_seconds()
+        
+        upload_speed = (current_net_io.bytes_sent - self.last_net_io.bytes_sent) / time_delta / 1024  # KB/s
+        download_speed = (current_net_io.bytes_recv - self.last_net_io.bytes_recv) / time_delta / 1024  # KB/s
+        
+        self.last_net_io = current_net_io
+        self.last_check_time = current_time
+
+        # Bot latency (ping)
+        latency = round(self.bot.latency * 1000)  # Convert to ms
+        api_latency = round(self.bot.latency * 1000)
+
+        # Network usage (add with other psutil calls)
+        network = psutil.net_io_counters()
+        bytes_sent = f"{network.bytes_sent / (1024**2):.2f}"
+        bytes_recv = f"{network.bytes_recv / (1024**2):.2f}"
+
+        # Temperature (some systems might not support this)
+        try:
+            if platform.system() == "Linux":
+                sensors_output = subprocess.check_output(['sensors']).decode()
+                temp_info = []
+                for line in sensors_output.split('\n'):
+                    if '°C' in line:
+                        temp_info.append(line.strip())
+                temp_text = '\n'.join(temp_info) if temp_info else "No temperature readings found"
+            elif platform.system() == "Windows":
+                # Windows temperature monitoring using wmic
+                sensors_output = subprocess.check_output(['wmic', 'temperature', 'get', 'currentreading']).decode()
+                temp_info = []
+                for line in sensors_output.split('\n'):
+                    if line.strip() and line.strip().isdigit():
+                        temp = int(line.strip())
+                        if temp > 0:  # Filter out invalid readings
+                            temp_info.append(f"CPU Temperature: {temp/10:.1f}°C")
+                temp_text = '\n'.join(temp_info) if temp_info else "No temperature readings found"
+            else:
+                temp_text = f"Temperature monitoring not supported on {platform.system()}"
+        except Exception as e:
+            temp_text = f"Temperature monitoring unavailable: {str(e)}"
+
+
+        
         # CPU Info
         cpu_percent = psutil.cpu_percent(interval=1)
         cpu_freq = psutil.cpu_freq().current
@@ -62,8 +114,8 @@ class SystemMonitor(commands.Cog):
         # Disk Info
         disk = psutil.disk_usage('/')
         disk_percent = disk.percent
-        disk_used = f"{disk.used / (1024 ** 3):.2f} GB"
-        disk_total = f"{disk.total / (1024 ** 3):.2f} GB"
+        disk_used = f"{disk.used / (1024 ** 3):.0f} GB"
+        disk_total = f"{disk.total / (1024 ** 3):.0f} GB"
 
         embed = discord.Embed(
             title="System Monitor",
@@ -75,18 +127,40 @@ class SystemMonitor(commands.Cog):
         embed.add_field(
             name="CPU",
             value=f"Usage: {cpu_percent}%\nFrequency: {cpu_freq:.2f} MHz",
-            inline=False
+            inline=True
         )
         embed.add_field(
             name="Memory",
             value=f"Usage: {memory_percent}%\nUsed: {memory_used}/{memory_total}",
-            inline=False
+            inline=True
         )
+        embed.add_field(name="\u200b", value="\u200b", inline=True)
         embed.add_field(
             name="Disk",
-            value=f"Usage: {disk_percent}%\nUsed: {disk_used}/{disk_total}",
+            value=f"Usage: {disk_percent}%\n{disk_used}/{disk_total}",
+            inline=True
+        )
+        embed.add_field(
+            name="Temperature",
+            value=temp_text,
+            inline=True
+        )
+        embed.add_field(name="\u200b", value="\u200b", inline=True) 
+        embed.add_field(
+            name="Network",
+            value=f"Bot Latency: {latency}ms\nSent: {bytes_sent} MB\nReceived: {bytes_recv} MB",
+            inline=True
+        )
+        embed.add_field(
+            name="Network Speed",
+            value=f"Upload: {upload_speed:.2f} KB/s\n"
+                  f"Download: {download_speed:.2f} KB/s\n"
+                  f"Total Up: {bytes_sent} MB\n"
+                  f"Total Down: {bytes_recv} MB",
             inline=False
         )
+
+
 
         return embed
 
