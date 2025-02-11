@@ -27,14 +27,14 @@ class SystemMonitor(commands.Cog):
             
             if self.monitor_message is None:
                 # If no message exists, send a new one
-                self.monitor_message = await channel.send(embed=embed(self))
+                self.monitor_message = await channel.send(embed=embed, view=MonitorButtons(self))
             else:
                 try:
                     # Try to edit the existing message
-                    await self.monitor_message.edit(embed=embed(self))
+                    await self.monitor_message.edit(embed=embed, view=MonitorButtons(self))
                 except discord.NotFound:
                     # If the message was deleted, send a new one
-                    self.monitor_message = await channel.send(embed=embed(self))
+                    self.monitor_message = await channel.send(embed=embed, view=MonitorButtons(self))
 
     @monitor_loop.before_loop
     async def before_monitor_loop(self):
@@ -45,7 +45,7 @@ class SystemMonitor(commands.Cog):
             await channel.purge()
             # Create new monitor message
             embed = await self.get_system_stats()
-            self.monitor_message = await channel.send(embed=embed(self))
+            self.monitor_message = await channel.send(embed=embed, view=MonitorButtons(self))
 
     async def get_system_stats(self):
         # CPU Info
@@ -93,7 +93,7 @@ class SystemMonitor(commands.Cog):
     async def sysinfo(self, ctx):
         """Get current system information"""
         embed = await self.get_system_stats()
-        await ctx.send(embed=embed(self))
+        await ctx.send(embed=embed, view=MonitorButtons(self))
 
 async def setup(bot):
     await bot.add_cog(SystemMonitor(bot))
