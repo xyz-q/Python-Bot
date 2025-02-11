@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 import json
 import os
 import asyncio
+from asyncio import timeout
 
 class AutoPublish(commands.Cog):
     def __init__(self, bot):
@@ -133,7 +134,7 @@ class AutoPublish(commands.Cog):
                         break
                         
                     except asyncio.TimeoutError:
-                        print(f"Publishing timed out on attempt {retry_count + 1}")
+
                         # Cancel the publish task if it's still running
                         if not publish_task.done():
                             publish_task.cancel()
@@ -148,17 +149,8 @@ class AutoPublish(commands.Cog):
                             await asyncio.sleep(wait_time)
                             retry_count += 1
                             continue
-                        else:
-                            print("Max retries reached - giving up")
-                            # Try one last time with a longer timeout
-                            try:
 
-                                await asyncio.wait_for(message.publish(), timeout=30.0)
-                                print("Final attempt succeeded!")
-                                await message.add_reaction("📢")
-                            except:
-                                print("Final attempt failed")
-                            break
+
                             
                 except discord.Forbidden as e:
                     print(f"Forbidden error: {e}")
@@ -176,12 +168,7 @@ class AutoPublish(commands.Cog):
                             await asyncio.sleep(wait_time)
                             retry_count += 1
                             continue
-                        else:
-                            print("Max retries reached - giving up")
-                            break
-                    else:
 
-                        break
                         
                 except Exception as e:
                     print(f"Unexpected error: {type(e).__name__}: {e}")
@@ -221,103 +208,71 @@ class AutoPublish(commands.Cog):
         await ctx.send(embed=embed)
 
 
-
-    @tasks.loop(minutes=30)
+    @tasks.loop(minutes=6)
     async def cleanup_task(self):
+
         try:
             total_deleted = 0
             channels_checked = 0
             channels_skipped = 0
 
             for guild in self.bot.guilds:
-                # Only look at announcement channels
-                announcement_channels = [channel for channel in guild.text_channels if channel.is_news()]
+
                 
-                for channel in announcement_channels:  # Changed from guild.text_channels
-                    try:
-                        channels_checked += 1
-                        
-                        # Rest of your existing channel processing code...
-                        # Check bot permissions
-                        perms = channel.permissions_for(guild.me)
-                        if not perms.manage_messages:
-                            channels_skipped += 1
-                            continue
-
-                        deleted_count = 0
-                        message_count = 0
-                        
-                        # Add timeout handling for channel history
+                try:
+                    for channel in guild.text_channels:
                         try:
-                            async with asyncio.timeout(30):  # 30 second timeout per channel
-                                async for message in channel.history(limit=100):
-                                    try:
-                                        message_count += 1
-                                        
-                                        if "[Original Message Deleted]" in message.content:
-                                            origin_guild = message.guild.name
-                                            current_guild = guild.name
-                                            
+                            # Check permissions
+                            perms = channel.permissions_for(guild.me)
+                            if not all([perms.manage_messages, perms.manage_webhooks, perms.read_messages]):
+                                continue
 
-                                            
-                                            if (message.flags.crossposted or 
-                                                message.reference or 
-                                                message.guild.id != guild.id):
-                                                try:
-                                                    await message.delete()
-                                                    deleted_count += 1
-
-                                                    await asyncio.sleep(1.5)  # Increased rate limit delay
-                                                except discord.Forbidden:
-                                                    print(f"  ✕ Failed to delete - No permission")
-                                                except discord.NotFound:
-                                                    print(f"  ✕ Failed to delete - Message already gone")
-                                                except discord.HTTPException as e:
-                                                    print(f"  ⚠ Discord API Error: {e}")
-                                                    await asyncio.sleep(5)  # Extra delay on API errors
-                                                except Exception as e:
-                                                    print(f"  ✕ Error: {type(e).__name__}: {e}")
-
-                                    
-                                    except Exception as message_error:
-                                        print(f"  ⚠ Error processing message: {type(message_error).__name__}: {message_error}")
-                                        continue  # Skip to next message
-                        
-                        except asyncio.TimeoutError:
-
-                            channels_skipped += 1
-                            continue
-                        
-                        if message_count > 0:
-
-                            total_deleted += deleted_count
-                        
-                        # Add a small delay between channels
-                        await asyncio.sleep(2)
+                            # Check for webhooks (followed channels)
+                            webhooks = await channel.webhooks()
+                            followed_channels = [w for w in webhooks if w.type == discord.WebhookType.channel_follower]
                             
-                    except Exception as channel_error:
-                        print(f"⚠ Error in channel {channel.name}: {type(channel_error).__name__}: {channel_error}")
-                        channels_skipped += 1
-                        await asyncio.sleep(5)  # Delay before next channel on error
-                        continue
+                            if followed_channels:
+                                channels_checked += 1
+                                
+                                async with timeout(30):
+                                    async for message in channel.history(limit=100):
+                                        try:
+                                            if "[original message deleted]" in message.content.lower():
 
-            print(f"\n=== Cleanup Complete ===")
-            print(f"Channels checked: {channels_checked}")
-            print(f"Channels skipped: {channels_skipped}")
-            print(f"Total messages deleted: {total_deleted}")
+                                                await message.delete()
+                                                total_deleted += 1
+
+                                                await asyncio.sleep(1.5)
+                                        except Exception as msg_e:
+                                            print(f"❌ Error deleting message: {str(msg_e)}")
+                                            
+                        except asyncio.TimeoutError:
+                            channels_skipped += 1
+                        except Exception as chan_e:
+                            channels_skipped += 1
+                        
+                except Exception as guild_e:
+                    print(f"❌ Error processing guild {guild.name}: {str(guild_e)}")
+                    
+
+
 
         except Exception as e:
-            print(f"❌ Fatal error in cleanup task: {type(e).__name__}: {e}")
+            print(f"\n❌ Major error in cleanup task: {str(e)}")
 
-        finally:
-            print("=== Task finished ===\n")
+
+
+
+
+
 
 
     @cleanup_task.before_loop
     async def before_cleanup(self):
         # Wait for the bot to be ready before starting the task
+        await asyncio.sleep(10)
         await self.bot.wait_until_ready()
-        print("Cleanup task is ready to start")
+
 
     @commands.command()
     @commands.is_owner()

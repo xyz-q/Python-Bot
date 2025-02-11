@@ -220,7 +220,7 @@ class VoSCog(commands.Cog):
                         f"• `{vos_data['district2']}`",
                 color=discord.Color.orange()
             )
-            embed.set_footer(text="• The data refreshes every 2 minutes •")
+            embed.set_footer(text="• The data refreshes every 6 minutes •")
             return embed, None
         
         # Regular embed for current data
@@ -268,7 +268,7 @@ class VoSCog(commands.Cog):
 
 
     # @tasks.loop(time=time(minute=52))
-    @tasks.loop(seconds=120)
+    @tasks.loop(minutes=6)
     async def check_vos(self):
         try:
             vos_data = await self.get_vos_data()
