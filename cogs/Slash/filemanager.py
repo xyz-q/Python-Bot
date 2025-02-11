@@ -68,9 +68,8 @@ class FileManager(commands.Cog):
 
         user_id = message.author.id
         
-        # Debug print
-        print(f"Message received from {user_id}")
-        print(f"Waiting for upload dict: {self.waiting_for_upload}")
+      t
+
         
         # Check if user is in upload mode
         if user_id not in self.waiting_for_upload:
@@ -79,8 +78,7 @@ class FileManager(commands.Cog):
         upload_state = self.waiting_for_upload[user_id]
         
         # Debug print
-        print(f"Upload state found: {upload_state}")
-        print(f"Message has attachments: {bool(message.attachments)}")
+
 
         # If message has no attachments, cancel upload
         if not message.attachments:
@@ -102,10 +100,10 @@ class FileManager(commands.Cog):
         # Process file upload
         for attachment in message.attachments:
             try:
-                print(f"Processing attachment: {attachment.filename}")
+
                 # Create full file path
                 file_path = os.path.join(upload_state['path'], attachment.filename)
-                print(f"Saving to: {file_path}")
+
                 
                 # Download and save the file
                 await attachment.save(file_path)
