@@ -96,7 +96,7 @@ class SystemMonitor(commands.Cog):
                 
                 temp_text = '\n'.join(temp_info) if temp_info else "No temperature readings found"
             else:
-                temp_text = f"Temperature monitoring not supported on {platform.system()}"
+                temp_text = f"N/A ({platform.system()})"
         except Exception as e:
             temp_text = f"Temperature monitoring unavailable: {str(e)}"
 
@@ -128,29 +128,7 @@ class SystemMonitor(commands.Cog):
 
         embed.add_field(
             name="CPU",
-            value=f"Usage: {cpu_percent}%\nFrequency: {cpu_freq:.2f} MHz",
-            inline=True
-        )
-        embed.add_field(
-            name="Memory",
-            value=f"Usage: {memory_percent}%\nUsed: {memory_used}/{memory_total}",
-            inline=True
-        )
-        embed.add_field(name="\u200b", value="\u200b", inline=True)
-        embed.add_field(
-            name="Disk",
-            value=f"Usage: {disk_percent}%\n{disk_used}/{disk_total}",
-            inline=True
-        )
-        embed.add_field(
-            name="Temperature",
-            value=temp_text,
-            inline=True
-        )
-        embed.add_field(name="\u200b", value="\u200b", inline=True) 
-        embed.add_field(
-            name="Network",
-            value=f"Bot Latency: {latency}ms\nSent: {bytes_sent} MB\nReceived: {bytes_recv} MB",
+            value=f"Usage: {cpu_percent}%\nFrequency: {cpu_freq:.2f} MHz\n{temp_text}",
             inline=True
         )
         embed.add_field(
@@ -158,9 +136,23 @@ class SystemMonitor(commands.Cog):
             value=f"Upload: {upload_speed:.2f} KB/s\n"
                   f"Download: {download_speed:.2f} KB/s\n"
                   f"Total Up: {bytes_sent} MB\n"
-                  f"Total Down: {bytes_recv} MB",
-            inline=False
+                  f"Total Down: {bytes_recv} MB\n"
+                  f"Latecny: {latency}ms",
+            inline=True
         )
+        embed.add_field(name="\u200b", value="\u200b", inline=True)
+        embed.add_field(
+            name="Memory",
+            value=f"Usage: {memory_percent}%\nUsed: {memory_used}/{memory_total}",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="Disk",
+            value=f"Usage: {disk_percent}%\n{disk_used}/{disk_total}",
+            inline=True
+        )
+        embed.add_field(name="\u200b", value="\u200b", inline=True)
 
 
 
