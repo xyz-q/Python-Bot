@@ -68,7 +68,7 @@ class FileManager(commands.Cog):
 
         user_id = message.author.id
         
-      t
+      
 
         
         # Check if user is in upload mode
