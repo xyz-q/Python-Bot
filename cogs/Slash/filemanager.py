@@ -547,14 +547,7 @@ class FileManager(commands.Cog):
             await interaction.followup.send(f"Error while searching: {str(e)}", ephemeral=True)
 
 
-    @list_files.error
-    @download_file.error
-    @delete_file.error
-    @move_file.error
-    async def on_command_error(self, interaction: discord.Interaction, error):
-        if not interaction.response.is_done():
-            await interaction.response.defer(ephemeral=True)
-        await interaction.followup.send(f"An error occurred: {str(error)}", ephemeral=True)
+
 
 async def setup(bot):
     await bot.add_cog(FileManager(bot))
