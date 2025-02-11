@@ -248,6 +248,128 @@ class FileManager(commands.Cog):
                 pass  # At this point, we can't do anything else
 
 
+    @commands.is_owner()
+    @app_commands.command(name="mkdir", description="Create a new directory")
+    @app_commands.autocomplete(path=file_autocomplete)
+    async def make_directory(self, interaction: discord.Interaction, path: str):
+        """Create a new directory"""
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Create full path
+            full_path = os.path.join(self.base_directory, path)
+            
+            # Check if path is safe
+            if not self.is_safe_path(full_path):
+                await interaction.followup.send("❌ Access to this path is not allowed.", ephemeral=True)
+                return
+            
+            # Check if directory already exists
+            if os.path.exists(full_path):
+                await interaction.followup.send("❌ Directory already exists!", ephemeral=True)
+                return
+            
+            # Create directory
+            os.makedirs(full_path)
+            
+            embed = discord.Embed(
+                title="📁 Directory Created",
+                description=f"Successfully created directory:\n```{path}```",
+                color=discord.Color.green()
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            error_embed = discord.Embed(
+                title="❌ Error",
+                description=f"Failed to create directory: {str(e)}",
+                color=discord.Color.red()
+            )
+            await interaction.followup.send(embed=error_embed, ephemeral=True)
+
+    @commands.is_owner()
+    @app_commands.command(name="rmdir", description="Remove a directory")
+    @app_commands.autocomplete(path=file_autocomplete)
+    async def remove_directory(self, interaction: discord.Interaction, path: str, force: bool = False):
+        """Remove a directory"""
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Create full path
+            full_path = os.path.join(self.base_directory, path)
+            
+            # Check if path is safe
+            if not self.is_safe_path(full_path):
+                await interaction.followup.send("❌ Access to this path is not allowed.", ephemeral=True)
+                return
+            
+            # Check if directory exists
+            if not os.path.exists(full_path):
+                await interaction.followup.send("❌ Directory does not exist!", ephemeral=True)
+                return
+            
+            # Check if it's actually a directory
+            if not os.path.isdir(full_path):
+                await interaction.followup.send("❌ The specified path is not a directory!", ephemeral=True)
+                return
+            
+            # Check if directory is empty or force flag is set
+            if not force and os.listdir(full_path):
+                embed = discord.Embed(
+                    title="⚠️ Directory Not Empty",
+                    description=(
+                        f"Directory contains files or subdirectories.\n"
+                        f"Use `/rmdir path:{path} force:True` to remove it and all its contents."
+                    ),
+                    color=discord.Color.yellow()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                return
+            
+            # Remove directory
+            if force:
+                shutil.rmtree(full_path)
+            else:
+                os.rmdir(full_path)
+            
+            embed = discord.Embed(
+                title="🗑️ Directory Removed",
+                description=f"Successfully removed directory:\n```{path}```",
+                color=discord.Color.green()
+            )
+            if force:
+                embed.set_footer(text="Directory and all its contents were removed")
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            error_embed = discord.Embed(
+                title="❌ Error",
+                description=f"Failed to remove directory: {str(e)}",
+                color=discord.Color.red()
+            )
+            await interaction.followup.send(embed=error_embed, ephemeral=True)
+
+    @commands.is_owner()
+    @make_directory.error
+    @remove_directory.error
+    async def directory_error(self, interaction: discord.Interaction, error):
+        try:
+            if isinstance(error, app_commands.errors.CheckFailure):
+                await interaction.response.send_message("❌ You are not authorized to use this command.", ephemeral=True)
+            else:
+                await interaction.response.send_message(
+                    f"❌ An unexpected error occurred: {str(error)}", 
+                    ephemeral=True
+                )
+        except discord.errors.InteractionResponded:
+            await interaction.followup.send(
+                "❌ An error occurred while processing the command.", 
+                ephemeral=True
+            )
+        except Exception as e:
+            print(f"Failed to handle error: {str(e)}")
+
 
 
     @commands.is_owner()
