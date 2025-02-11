@@ -8,7 +8,7 @@ from typing import List
 class FileManager(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.base_directory = os.getenv('Media_Storage', '/home/user/Media_Storage')  # Replace with your path
+        self.base_directory = os.getenv('home', '/home')  # Replace with your path
 
     def is_safe_path(self, path):
         try:
