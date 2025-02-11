@@ -17,7 +17,31 @@ class FileManager(commands.Cog):
         except ValueError:
             return False
 
+    async def file_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        """Autocomplete function for file paths"""
+        choices = []
+        try:
+            # Split the current input into directory and partial filename
+            current_dir = os.path.dirname(current) if current else ""
+            search_dir = os.path.join(self.base_directory, current_dir)
+            
+            if os.path.isdir(search_dir) and self.is_safe_path(search_dir):
+                files = os.listdir(search_dir)
+                for file in files:
+                    full_path = os.path.join(current_dir, file)
+                    if len(full_path.strip()) > 0:  # Ensure path is not empty
+                        # Add trailing slash for directories
+                        if os.path.isdir(os.path.join(self.base_directory, full_path)):
+                            full_path += "/"
+                        choices.append(app_commands.Choice(name=full_path, value=full_path))
+                
+        except Exception as e:
+            print(f"Autocomplete error: {e}")
+            
+        return choices[:25]
+
     @app_commands.command(name="listfiles", description="List files in a directory")
+    @app_commands.autocomplete(path=file_autocomplete)
     async def list_files(self, interaction: discord.Interaction, path: str = ""):
         """List files in the specified directory"""
         # Defer the response immediately
@@ -52,6 +76,7 @@ class FileManager(commands.Cog):
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
 
     @app_commands.command(name="downloadfile", description="Download a file")
+    @app_commands.autocomplete(path=file_autocomplete)
     async def download_file(self, interaction: discord.Interaction, filepath: str):
         """Download a file from the server"""
         await interaction.response.defer(ephemeral=True)
@@ -80,6 +105,7 @@ class FileManager(commands.Cog):
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
 
     @app_commands.command(name="deletefile", description="Delete a file")
+    @app_commands.autocomplete(path=file_autocomplete)
     async def delete_file(self, interaction: discord.Interaction, filepath: str):
         """Delete a file from the server"""
         await interaction.response.defer(ephemeral=True)
@@ -101,6 +127,7 @@ class FileManager(commands.Cog):
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
 
     @app_commands.command(name="movefile", description="Move a file to another location")
+    @app_commands.autocomplete(path=file_autocomplete)
     async def move_file(self, interaction: discord.Interaction, source: str, destination: str):
         """Move a file to another location"""
         await interaction.response.defer(ephemeral=True)
