@@ -251,13 +251,13 @@ class FileManager(commands.Cog):
     @commands.is_owner()
     @app_commands.command(name="mkdir", description="Create a new directory")
     @app_commands.autocomplete(path=file_autocomplete)
-    async def make_directory(self, interaction: discord.Interaction, path: str):
+    async def make_directory(self, interaction: discord.Interaction, name: str, path: str = ""):
         """Create a new directory"""
         await interaction.response.defer(ephemeral=True)
         
         try:
-            # Create full path
-            full_path = os.path.join(self.base_directory, path)
+            # Combine path and name
+            full_path = os.path.join(self.base_directory, path, name)
             
             # Check if path is safe
             if not self.is_safe_path(full_path):
@@ -274,7 +274,7 @@ class FileManager(commands.Cog):
             
             embed = discord.Embed(
                 title="📁 Directory Created",
-                description=f"Successfully created directory:\n```{path}```",
+                description=f"Successfully created directory:\n```{os.path.join(path, name)}```",
                 color=discord.Color.green()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
@@ -350,7 +350,7 @@ class FileManager(commands.Cog):
             )
             await interaction.followup.send(embed=error_embed, ephemeral=True)
 
-    @commands.is_owner()
+
     @make_directory.error
     @remove_directory.error
     async def directory_error(self, interaction: discord.Interaction, error):
