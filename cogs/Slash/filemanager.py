@@ -118,6 +118,7 @@ class FileManager(commands.Cog):
         del self.waiting_for_upload[user_id]
 
     @commands.is_owner()
+    @app_commands.autocomplete(path=file_autocomplete) 
     @app_commands.command(name="uploadfile", description="Upload a file to the server")
     async def upload_file(self, interaction: discord.Interaction, path: str = ""):
         """Start the file upload process"""
