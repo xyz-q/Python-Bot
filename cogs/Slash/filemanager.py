@@ -128,7 +128,7 @@ class FileManager(commands.Cog):
         # Remove upload state
         del self.waiting_for_upload[user_id]
 
-    @commands.is_owner()
+    @app_commands.checks.is_owner()
     @app_commands.autocomplete(path=file_autocomplete)  # This 'path' needs to match the parameter name
   
     @app_commands.command(name="uploadfile", description="Upload a file to the server")
@@ -248,7 +248,7 @@ class FileManager(commands.Cog):
                 pass  # At this point, we can't do anything else
 
 
-    @commands.is_owner()
+    @app_commands.checks.is_owner()
     @app_commands.command(name="mkdir", description="Create a new directory")
     @app_commands.autocomplete(path=file_autocomplete)
     async def make_directory(self, interaction: discord.Interaction, name: str, path: str = ""):
@@ -287,7 +287,8 @@ class FileManager(commands.Cog):
             )
             await interaction.followup.send(embed=error_embed, ephemeral=True)
 
-    @commands.is_owner()
+
+    @app_commands.checks.is_owner()
     @app_commands.command(name="rmdir", description="Remove a directory")
     @app_commands.autocomplete(path=file_autocomplete)
     async def remove_directory(self, interaction: discord.Interaction, path: str, force: bool = False):
@@ -372,7 +373,7 @@ class FileManager(commands.Cog):
 
 
 
-    @commands.is_owner()
+    @app_commands.checks.is_owner()
     @app_commands.command(name="listfiles", description="List files in a directory")
     @app_commands.autocomplete(path=file_autocomplete)  # This 'path' needs to match the parameter name
     async def list_files(self, interaction: discord.Interaction, path: str = ""):  # This parameter is also 'path'
@@ -409,7 +410,7 @@ class FileManager(commands.Cog):
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
 
 
-    @commands.is_owner()
+    @app_commands.checks.is_owner()
     @app_commands.command(name="downloadfile", description="Download a file")
     @app_commands.autocomplete(filepath=file_autocomplete)  # This 'filepath' needs to match the parameter name
     async def download_file(self, interaction: discord.Interaction, filepath: str):
@@ -440,7 +441,7 @@ class FileManager(commands.Cog):
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
 
 
-    @commands.is_owner()
+    @app_commands.checks.is_owner()
     @app_commands.command(name="deletefile", description="Delete a file")
     @app_commands.autocomplete(filepath=file_autocomplete)  # This 'filepath' needs to match the parameter name
     async def delete_file(self, interaction: discord.Interaction, filepath: str):  # This parameter is also 'filepath'
@@ -465,7 +466,7 @@ class FileManager(commands.Cog):
 
 
 
-    @commands.is_owner()
+    @app_commands.checks.is_owner()
     @app_commands.command(name="movefile", description="Move a file to another location")
     @app_commands.autocomplete(source=file_autocomplete)  # These parameter names need to match
     @app_commands.autocomplete(destination=file_autocomplete)
@@ -492,7 +493,7 @@ class FileManager(commands.Cog):
 
 
 
-    @commands.is_owner()
+    @app_commands.checks.is_owner()
     @app_commands.command(name="whoami", description="Check bot permissions")
     async def check_perms(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -504,7 +505,7 @@ class FileManager(commands.Cog):
         except Exception as e:
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
 
-    @commands.is_owner()
+    @app_commands.checks.is_owner()
     @app_commands.command(name="searchfile", description="Search for a file by name")
     async def search_file(self, interaction: discord.Interaction, filename: str):
         """Search for a file in the directory and subdirectories"""
