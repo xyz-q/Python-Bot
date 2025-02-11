@@ -4,7 +4,87 @@ import psutil
 import platform
 from datetime import datetime
 
+class MonitorButtons(discord.ui.View):
+    def __init__(self, cog):
+        super().__init__(timeout=60)  # Buttons will deactivate after 60 seconds
+        self.cog = cog
 
+    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.green, emoji="🔄")
+    async def refresh(self, interaction: discord.Interaction, button: discord.ui.Button):
+        embed = await self.cog.get_system_stats()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Detailed CPU", style=discord.ButtonStyle.blurple, emoji="💻")
+    async def cpu_detail(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Get detailed CPU information
+        cpu_freq = psutil.cpu_freq()
+        cpu_count = psutil.cpu_count()
+        cpu_percent = psutil.cpu_percent(interval=1, percpu=True)
+        
+        embed = discord.Embed(
+            title="Detailed CPU Information",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        
+        embed.add_field(
+            name="CPU Cores",
+            value=f"Physical cores: {psutil.cpu_count(logical=False)}\n"
+                  f"Total cores: {cpu_count}",
+            inline=False
+        )
+        
+        # Add individual core usage
+        core_info = ""
+        for i, percentage in enumerate(cpu_percent):
+            core_info += f"Core {i}: {percentage}%\n"
+        embed.add_field(name="Core Usage", value=core_info, inline=False)
+        
+        embed.add_field(
+            name="CPU Frequency",
+            value=f"Current: {cpu_freq.current:.2f}MHz\n"
+                  f"Min: {cpu_freq.min:.2f}MHz\n"
+                  f"Max: {cpu_freq.max:.2f}MHz",
+            inline=False
+        )
+        
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Detailed Memory", style=discord.ButtonStyle.blurple, emoji="🧮")
+    async def memory_detail(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Get detailed memory information
+        memory = psutil.virtual_memory()
+        swap = psutil.swap_memory()
+        
+        embed = discord.Embed(
+            title="Detailed Memory Information",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        
+        embed.add_field(
+            name="RAM",
+            value=f"Total: {memory.total / (1024**3):.2f} GB\n"
+                  f"Available: {memory.available / (1024**3):.2f} GB\n"
+                  f"Used: {memory.used / (1024**3):.2f} GB\n"
+                  f"Percentage: {memory.percent}%",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Swap",
+            value=f"Total: {swap.total / (1024**3):.2f} GB\n"
+                  f"Used: {swap.used / (1024**3):.2f} GB\n"
+                  f"Free: {swap.free / (1024**3):.2f} GB\n"
+                  f"Percentage: {swap.percent}%",
+            inline=False
+        )
+        
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.red, emoji="✖️")
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.message.delete()
 
 class SystemMonitor(commands.Cog):
     def __init__(self, bot):
