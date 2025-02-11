@@ -1084,7 +1084,8 @@ class TwitchCog(commands.Cog):
             'auto_messages': {
                 'default': [
                     "plug",  # These random letters should update
-                    "dont forget to follow :>",  # when you change them in default_config
+                    "yuhh",
+                    
                 ]
             },
             'follow_messages': [
@@ -1092,7 +1093,7 @@ class TwitchCog(commands.Cog):
                 "Appreciate the follow!",
                 "Thanks for following!"
             ],
-            'auto_message_interval': 300
+            'auto_message_interval': 540
         }
 
         def update_nested_config(default, current):
