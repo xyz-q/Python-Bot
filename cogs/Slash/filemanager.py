@@ -163,6 +163,34 @@ class FileManager(commands.Cog):
         except Exception as e:
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
 
+    @app_commands.command(name="searchfile", description="Search for a file by name")
+    async def search_file(self, interaction: discord.Interaction, filename: str):
+        """Search for a file in the directory and subdirectories"""
+        await interaction.response.defer(ephemeral=True)
+        
+        matches = []
+        try:
+            # Walk through all directories under base_directory
+            for root, dirs, files in os.walk(self.base_directory):
+                for file in files:
+                    if filename.lower() in file.lower():  # Case-insensitive search
+                        # Get the relative path from base_directory
+                        rel_path = os.path.relpath(os.path.join(root, file), self.base_directory)
+                        matches.append(rel_path)
+            
+            if matches:
+                response = "Found these files:\n```"
+                for match in matches:
+                    response += f"{match}\n"
+                response += "```"
+            else:
+                response = f"No files found matching '{filename}'"
+                
+            await interaction.followup.send(response, ephemeral=True)
+            
+        except Exception as e:
+            await interaction.followup.send(f"Error while searching: {str(e)}", ephemeral=True)
+
 
     @list_files.error
     @download_file.error
