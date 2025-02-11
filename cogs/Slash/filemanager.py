@@ -127,8 +127,8 @@ class FileManager(commands.Cog):
         # Remove upload state
         del self.waiting_for_upload[user_id]
 
+    @commands.is_owner()
     @app_commands.command(name="uploadfile", description="Upload a file to the server")
-    @app_commands.check(lambda interaction: interaction.user.id in interaction.client.owner_ids)
     async def upload_file(self, interaction: discord.Interaction, path: str = ""):
         """Start the file upload process"""
         try:
