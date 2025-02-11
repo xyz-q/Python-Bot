@@ -76,7 +76,7 @@ class FileManager(commands.Cog):
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
 
     @app_commands.command(name="downloadfile", description="Download a file")
-    @app_commands.autocomplete(path=file_autocomplete)
+    @app_commands.autocomplete(filepath=file_autocomplete)  # This 'filepath' needs to match the parameter name
     async def download_file(self, interaction: discord.Interaction, filepath: str):
         """Download a file from the server"""
         await interaction.response.defer(ephemeral=True)
@@ -105,8 +105,8 @@ class FileManager(commands.Cog):
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
 
     @app_commands.command(name="deletefile", description="Delete a file")
-    @app_commands.autocomplete(path=file_autocomplete)
-    async def delete_file(self, interaction: discord.Interaction, filepath: str):
+    @app_commands.autocomplete(filepath=file_autocomplete)  # This 'filepath' needs to match the parameter name
+    async def delete_file(self, interaction: discord.Interaction, filepath: str):  # This parameter is also 'filepath'
         """Delete a file from the server"""
         await interaction.response.defer(ephemeral=True)
         
@@ -127,8 +127,9 @@ class FileManager(commands.Cog):
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
 
     @app_commands.command(name="movefile", description="Move a file to another location")
-    @app_commands.autocomplete(path=file_autocomplete)
-    async def move_file(self, interaction: discord.Interaction, source: str, destination: str):
+    @app_commands.autocomplete(source=file_autocomplete)  # These parameter names need to match
+    @app_commands.autocomplete(destination=file_autocomplete)
+    async def move_file(self, interaction: discord.Interaction, source: str, destination: str):  # These parameters also match
         """Move a file to another location"""
         await interaction.response.defer(ephemeral=True)
         
