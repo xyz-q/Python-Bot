@@ -80,24 +80,26 @@ class SystemMonitor(commands.Cog):
             if platform.system() == "Linux":
                 sensors_output = subprocess.check_output(['sensors']).decode()
                 temp_info = []
+                
                 for line in sensors_output.split('\n'):
-                    if '°C' in line:
-                        temp_info.append(line.strip())
-                temp_text = '\n'.join(temp_info) if temp_info else "No temperature readings found"
-            elif platform.system() == "Windows":
-                # Windows temperature monitoring using wmic
-                sensors_output = subprocess.check_output(['wmic', 'temperature', 'get', 'currentreading']).decode()
-                temp_info = []
-                for line in sensors_output.split('\n'):
-                    if line.strip() and line.strip().isdigit():
-                        temp = int(line.strip())
-                        if temp > 0:  # Filter out invalid readings
-                            temp_info.append(f"CPU Temperature: {temp/10:.1f}°C")
+                    if ':' in line and '°C' in line:
+                        # Only include lines with actual temperature readings
+                        if 'N/A' not in line:
+                            # Split at first colon to get sensor name and value
+                            parts = line.split(':', 1)
+                            if len(parts) == 2:
+                                name = parts[0].strip()
+                                # Extract the actual temperature value
+                                temp = parts[1].split('(')[0].strip()
+                                if '+' in temp or '-' in temp:  # Make sure we have a temperature value
+                                    temp_info.append(f"{name}: {temp}")
+                
                 temp_text = '\n'.join(temp_info) if temp_info else "No temperature readings found"
             else:
                 temp_text = f"Temperature monitoring not supported on {platform.system()}"
         except Exception as e:
             temp_text = f"Temperature monitoring unavailable: {str(e)}"
+
 
 
         
