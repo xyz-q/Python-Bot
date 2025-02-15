@@ -355,16 +355,92 @@ class StorageMonitor(commands.Cog):
             print("\n=== Starting cleanup process ===")
             print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
-            deleted_old = await self.cleanup_old_files()
-            deleted_excess = await self.cleanup_excess_storage()
+            # Gather all files with their info
+            files = []
+            total_size = 0
+            print("\nGathering file information...")
             
+            for root, _, filenames in os.walk(self.backup_path):
+                for filename in filenames:
+                    filepath = os.path.join(root, filename)
+                    try:
+                        mtime = os.path.getmtime(filepath)
+                        size = os.path.getsize(filepath)
+                        age_days = (time.time() - mtime) / (24 * 3600)
+                        
+                        files.append({
+                            'path': filepath,
+                            'name': filename,
+                            'size': size,
+                            'age': age_days
+                        })
+                        total_size += size
+                    except Exception as e:
+                        print(f"❌ Error getting info for {filepath}: {e}")
+
+            # Sort files by size (largest first)
+            large_files = sorted(files, key=lambda x: x['size'], reverse=True)
+            # Sort files by age (oldest first)
+            old_files = sorted(files, key=lambda x: x['age'], reverse=True)
+
+            print(f"\nFound {len(files)} files")
+            print(f"Total size: {self.format_size(total_size)}")
+            print("\nLargest files:")
+            for f in large_files[:5]:  # Show top 5 largest
+                print(f"- {f['name']}: {self.format_size(f['size'])} ({f['age']:.1f} days old)")
+            
+            print("\nOldest files:")
+            for f in old_files[:5]:  # Show top 5 oldest
+                print(f"- {f['name']}: {f['age']:.1f} days old ({self.format_size(f['size'])})")
+
+            deleted = []
+
+            # First delete old files (over 7 days)
+            for file_info in old_files:
+                if file_info['age'] > 7:
+                    try:
+                        print(f"\n🗑️ Deleting {file_info['name']} (Age: {file_info['age']:.1f} days)")
+                        os.remove(file_info['path'])
+                        deleted.append({
+                            'path': os.path.relpath(file_info['path'], self.backup_path),
+                            'size': self.format_size(file_info['size']),
+                            'age': f"{file_info['age']:.1f} days",
+                            'reason': 'age'
+                        })
+                        total_size -= file_info['size']
+                    except Exception as e:
+                        print(f"❌ Error deleting {file_info['path']}: {e}")
+
+            # Then delete largest files if still over limit
+            if total_size > self.storage_limit:
+                print(f"\nStill over limit ({self.format_size(total_size)}), removing largest files...")
+                for file_info in large_files:
+                    if total_size <= self.storage_limit:
+                        break
+                        
+                    # Skip if already deleted
+                    if any(d['path'] == os.path.relpath(file_info['path'], self.backup_path) for d in deleted):
+                        continue
+
+                    try:
+                        print(f"\n🗑️ Deleting {file_info['name']} (Size: {self.format_size(file_info['size'])})")
+                        os.remove(file_info['path'])
+                        deleted.append({
+                            'path': os.path.relpath(file_info['path'], self.backup_path),
+                            'size': self.format_size(file_info['size']),
+                            'age': f"{file_info['age']:.1f} days",
+                            'reason': 'size'
+                        })
+                        total_size -= file_info['size']
+                    except Exception as e:
+                        print(f"❌ Error deleting {file_info['path']}: {e}")
+
             print("\n=== Cleanup Summary ===")
-            print(f"Files deleted due to age: {len(deleted_old)}")
-            print(f"Files deleted due to space: {len(deleted_excess)}")
+            print(f"Files deleted: {len(deleted)}")
+            print(f"Final size: {self.format_size(total_size)}")
             
-            if deleted_old or deleted_excess:
-                self.deleted_files_log = (deleted_old + deleted_excess + 
-                    getattr(self, 'deleted_files_log', []))[:20]
+            if deleted:
+                self.deleted_files_log = (deleted + getattr(self, 'deleted_files_log', []))[:20]
                 print("\nUpdating monitor message with deletion information...")
                 await self.monitor_storage()
             else:
@@ -372,6 +448,7 @@ class StorageMonitor(commands.Cog):
                 
         except Exception as e:
             print(f"\n❌ Error in cleanup_storage: {e}")
+
 
     @cleanup_storage.before_loop
     async def before_cleanup(self):
