@@ -165,6 +165,33 @@ class StorageMonitor(commands.Cog):
 
             storage_info = self.get_storage_info()
             
+            # Calculate total size of deleted files
+            total_deleted_size = 0
+            age_count = 0
+            size_count = 0
+            
+            for deletion in self.deleted_files_log:
+                # Convert the size string back to bytes
+                size_str = deletion['size']
+                if 'GB' in size_str:
+                    size = float(size_str.replace(' GB', '')) * 1024 * 1024 * 1024
+                elif 'MB' in size_str:
+                    size = float(size_str.replace(' MB', '')) * 1024 * 1024
+                elif 'KB' in size_str:
+                    size = float(size_str.replace(' KB', '')) * 1024
+                else:
+                    size = float(size_str.replace(' B', ''))
+                
+                total_deleted_size += size
+                if deletion['reason'] == 'age':
+                    age_count += 1
+                elif deletion['reason'] == 'size':
+                    size_count += 1
+
+            # Format the total deleted size
+            deleted_size_formatted = self.format_size(total_deleted_size)
+
+            
             embed = discord.Embed(
                 title="Storage Monitor",
                 description="📊 Storage Status",
@@ -205,13 +232,15 @@ class StorageMonitor(commands.Cog):
 
             # Add recent deletions field if there are any
             if hasattr(self, 'deleted_files_log') and self.deleted_files_log:
-                deleted_info = "\n".join(
-                    f"❌ {f['path']} ({f['size']}, {f['age']}, {f['reason']})"
-                    for f in self.deleted_files_log[:5]  # Show last 5 deletions
+                deletion_summary = (
+                    f"Total Deleted: {deleted_size_formatted}\n"
+                    f"Files Removed: {age_count + size_count}\n"
+                    f"- Age-based: {age_count}\n"
+                    f"- Size-based: {size_count}"
                 )
                 embed.add_field(
-                    name="Recent Deletions",
-                    value=f"```{deleted_info}```",
+                    name="Recent Cleanup Summary",
+                    value=f"```{deletion_summary}```",
                     inline=False
                 )
 
