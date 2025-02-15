@@ -350,7 +350,7 @@ class StorageMonitor(commands.Cog):
         return deleted
 
 
-    @tasks.loop(minutes=30)
+    @tasks.loop(seconds=10)
     async def cleanup_storage(self):
         """Main cleanup task"""
         try:
