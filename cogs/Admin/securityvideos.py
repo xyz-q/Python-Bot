@@ -154,7 +154,7 @@ class StorageMonitor(commands.Cog):
             print(f"Error in get_or_create_message: {e}")
             return None
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(seconds=10)
     async def monitor_storage(self):
         """Continuously monitors storage and updates the embed"""
         try:
