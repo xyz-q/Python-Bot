@@ -203,6 +203,18 @@ class StorageMonitor(commands.Cog):
                     inline=False
                 )
 
+            # Add recent deletions field if there are any
+            if hasattr(self, 'deleted_files_log') and self.deleted_files_log:
+                deleted_info = "\n".join(
+                    f"❌ {f['path']} ({f['size']}, {f['age']}, {f['reason']})"
+                    for f in self.deleted_files_log[:5]  # Show last 5 deletions
+                )
+                embed.add_field(
+                    name="Recent Deletions",
+                    value=f"```{deleted_info}```",
+                    inline=False
+                )
+
             # Set color based on usage percentage
             usage_pct = float(storage_info['percent'].strip('%'))
             if usage_pct >= 90:
@@ -215,17 +227,7 @@ class StorageMonitor(commands.Cog):
             embed.set_footer(text="Next update in 5 minutes")
             await message.edit(embed=embed)
 
-            # Add recent deletions field if there are any
-            if hasattr(self, 'deleted_files_log') and self.deleted_files_log:
-                deleted_info = "\n".join(
-                    f"❌ {f['path']} ({f['size']}, {f['age']}, {f['reason']})"
-                    for f in self.deleted_files_log[:5]  # Show last 5 deletions
-                )
-                embed.add_field(
-                    name="Recent Deletions",
-                    value=f"```{deleted_info}```",
-                    inline=False
-                )
+
 
 
         except Exception as e:
