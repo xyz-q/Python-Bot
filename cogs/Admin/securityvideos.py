@@ -4,17 +4,19 @@ import subprocess
 import os
 import json
 from datetime import datetime
-
+import asyncio
 class StorageMonitor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.backup_path = "/home/user/backups"
         self.channel_id = 1337733172242157600
         self.message_id = None
-        self.storage_limit = 1024 * 1024 * 1024 * 500  # 500GB in bytes
+        self.storage_limit = 1024 * 1024 * 1024 * 0.05  # Your existing limit
         self.stats_file = ".json/backup_stats.json"
         self.last_stats = self.load_stats()
+        self.deleted_files_log = []  # Add this line
         self.monitor_storage.start()
+        self.cleanup_storage.start()  # Add this line
 
     def load_stats(self):
         """Load previous stats from JSON file"""
@@ -225,12 +227,117 @@ class StorageMonitor(commands.Cog):
                 await message.edit(embed=error_embed)
 
 
+            # Add recent deletions field if there are any
+            if hasattr(self, 'deleted_files_log') and self.deleted_files_log:
+                deleted_info = "\n".join(
+                    f"❌ {f['path']} ({f['size']}, {f['age']}, {f['reason']})"
+                    for f in self.deleted_files_log[:5]  # Show last 5 deletions
+                )
+                embed.add_field(
+                    name="Recent Deletions",
+                    value=f"```{deleted_info}```",
+                    inline=False
+                )
+
+
     @monitor_storage.before_loop
     async def before_monitor(self):
         """Wait until the bot is ready before starting the monitor"""
         await self.bot.wait_until_ready()
 
 
+
+    async def cleanup_old_files(self):
+        """Delete files older than max_age_days"""
+        deleted = []
+        for root, _, filenames in os.walk(self.backup_path):
+            for filename in filenames:
+                filepath = os.path.join(root, filename)
+                try:
+                    file_age = time.time() - os.path.getmtime(filepath)
+                    age_days = file_age / (24 * 3600)
+                    
+                    if age_days > 7:  # 7 days old
+                        file_size = os.path.getsize(filepath)
+                        os.remove(filepath)
+                        deleted.append({
+                            'path': os.path.relpath(filepath, self.backup_path),
+                            'size': self.format_size(file_size),
+                            'age': f"{age_days:.1f} days",
+                            'reason': 'age'
+                        })
+                except Exception as e:
+                    print(f"Error deleting old file {filepath}: {e}")
+        return deleted
+
+    async def cleanup_excess_storage(self):
+        """Delete oldest files until under storage limit"""
+        current_size = self.get_directory_size(self.backup_path)
+        if current_size <= self.storage_limit:
+            return []
+
+        deleted = []
+        files = []
+        
+        # Gather all files with their info
+        for root, _, filenames in os.walk(self.backup_path):
+            for filename in filenames:
+                filepath = os.path.join(root, filename)
+                try:
+                    files.append({
+                        'path': filepath,
+                        'mtime': os.path.getmtime(filepath),
+                        'size': os.path.getsize(filepath)
+                    })
+                except Exception as e:
+                    print(f"Error getting file info {filepath}: {e}")
+
+        # Sort by modification time (oldest first)
+        files.sort(key=lambda x: x['mtime'])
+
+        # Delete oldest files until under limit
+        for file_info in files:
+            if current_size <= self.storage_limit:
+                break
+
+            try:
+                os.remove(file_info['path'])
+                deleted.append({
+                    'path': os.path.relpath(file_info['path'], self.backup_path),
+                    'size': self.format_size(file_info['size']),
+                    'age': f"{(time.time() - file_info['mtime']) / (24 * 3600):.1f} days",
+                    'reason': 'space'
+                })
+                current_size -= file_info['size']
+            except Exception as e:
+                print(f"Error deleting excess file {file_info['path']}: {e}")
+
+        return deleted
+
+    @tasks.loop(minutes=30)
+    async def cleanup_storage(self):
+        """Main cleanup task"""
+        try:
+            # Delete old files first
+            deleted_old = await self.cleanup_old_files()
+            # Then check storage limit
+            deleted_excess = await self.cleanup_excess_storage()
+            
+            # Add deletions to the embed if any files were deleted
+            if deleted_old or deleted_excess:
+                self.deleted_files_log = (deleted_old + deleted_excess + 
+                    getattr(self, 'deleted_files_log', []))[:20]  # Keep last 20 deletions
+                
+                # Update the monitor message since files were deleted
+                await self.monitor_storage()
+                
+        except Exception as e:
+            print(f"Error in cleanup_storage: {e}")
+
+    @cleanup_storage.before_loop
+    async def before_cleanup(self):
+        """Wait until the bot is ready before starting the cleanup"""
+        await self.bot.wait_until_ready()
 
 async def setup(bot):
     await bot.add_cog(StorageMonitor(bot))
