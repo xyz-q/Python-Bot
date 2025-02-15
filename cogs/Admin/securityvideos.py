@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import subprocess
 import os
 from datetime import datetime
@@ -8,6 +8,9 @@ class StorageMonitor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.backup_path = "/home/user/backups"
+        self.channel_id = 1337733172242157600
+        self.message_id = None
+        self.monitor_storage.start()
 
     def get_directory_size(self, path):
         """Get the size of a directory and its contents in bytes"""
@@ -36,26 +39,58 @@ class StorageMonitor(commands.Cog):
         except:
             return None
 
-    def format_size(self, size_bytes):
-        """Convert bytes to human readable format"""
-        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-            if size_bytes < 1024:
-                return f"{size_bytes:.2f} {unit}"
-            size_bytes /= 1024
-        return f"{size_bytes:.2f} PB"
-
-    @commands.command()
-    async def storage(self, ctx):
-        """View backup storage information"""
+    async def get_or_create_message(self):
+        """Gets existing message or creates new one in the specified channel"""
         try:
-            # Create initial embed
+            channel = self.bot.get_channel(self.channel_id)
+            if channel is None:
+                print(f"Warning: Could not find channel {self.channel_id}")
+                return None
+
+            # Delete all messages except our stored message
+            async for message in channel.history(limit=100):
+                if self.message_id is None or message.id != self.message_id:
+                    try:
+                        await message.delete()
+                        await asyncio.sleep(0.5)  # Prevent rate limiting
+                    except Exception as e:
+                        print(f"Error deleting message: {e}")
+
+            # Try to fetch existing message
+            if self.message_id:
+                try:
+                    return await channel.fetch_message(self.message_id)
+                except:
+                    self.message_id = None
+
+            # Create new message if needed
             embed = discord.Embed(
-                title="Backup Storage Monitor",
-                description="📊 Analyzing storage...",
+                title="Storage Monitor",
+                description="📊 Initializing...",
+                color=discord.Color.blue()
+            )
+            message = await channel.send(embed=embed)
+            self.message_id = message.id
+            return message
+
+        except Exception as e:
+            print(f"Error in get_or_create_message: {e}")
+            return None
+
+    @tasks.loop(minutes=5)
+    async def monitor_storage(self):
+        """Continuously monitors storage and updates the embed"""
+        try:
+            message = await self.get_or_create_message()
+            if not message:
+                return
+
+            embed = discord.Embed(
+                title="Storage Monitor",
+                description="📊 Storage Status",
                 color=discord.Color.blue(),
                 timestamp=discord.utils.utcnow()
             )
-            message = await ctx.send(embed=embed)
 
             # Get disk usage
             disk_usage = self.get_disk_usage(self.backup_path)
@@ -63,7 +98,9 @@ class StorageMonitor(commands.Cog):
                 parts = disk_usage.split()
                 embed.add_field(
                     name="Disk Usage",
-                    value=f"Total: {parts[1]}\nUsed: {parts[2]} ({parts[4]})\nFree: {parts[3]}",
+                    value=f"💾 Total: {parts[1]}\n"
+                          f"📦 Used: {parts[2]} ({parts[4]})\n"
+                          f"✨ Free: {parts[3]}",
                     inline=False
                 )
 
@@ -90,73 +127,39 @@ class StorageMonitor(commands.Cog):
                 file_count = sum([len(files) for r, d, files in os.walk(self.backup_path)])
                 embed.add_field(
                     name="Total Files",
-                    value=str(file_count),
+                    value=f"📄 {file_count} files",
                     inline=True
                 )
             except:
                 pass
 
-            # Update timestamp and status
-            embed.description = "📊 Storage Analysis Complete"
-            embed.set_footer(text="Last Updated")
+            # Add next update time
+            embed.set_footer(text="Next update in 5 minutes")
+            
             await message.edit(embed=embed)
 
         except Exception as e:
-            embed = discord.Embed(
-                title="Storage Monitor Error",
-                description=f"❌ Error accessing storage information: {str(e)}",
-                color=discord.Color.red()
-            )
-            await message.edit(embed=embed)
+            print(f"Error in monitor_storage: {e}")
+            if message:
+                error_embed = discord.Embed(
+                    title="Storage Monitor Error",
+                    description=f"❌ Error monitoring storage: {str(e)}",
+                    color=discord.Color.red(),
+                    timestamp=discord.utils.utcnow()
+                )
+                error_embed.set_footer(text="Will retry in 5 minutes")
+                await message.edit(embed=error_embed)
+
+    @monitor_storage.before_loop
+    async def before_monitor(self):
+        """Wait until the bot is ready before starting the monitor"""
+        await self.bot.wait_until_ready()
 
     @commands.command()
-    async def list_backups(self, ctx, subfolder: str = ""):
-        """List contents of backup folder"""
-        try:
-            path = os.path.join(self.backup_path, subfolder)
-            if not os.path.exists(path):
-                await ctx.send(f"❌ Path not found: {subfolder}")
-                return
-
-            embed = discord.Embed(
-                title=f"Backup Contents: /{subfolder}" if subfolder else "Backup Contents",
-                color=discord.Color.blue(),
-                timestamp=discord.utils.utcnow()
-            )
-
-            # Get directory listing
-            items = os.listdir(path)
-            
-            # Separate directories and files
-            dirs = [d for d in items if os.path.isdir(os.path.join(path, d))]
-            files = [f for f in items if os.path.isfile(os.path.join(path, f))]
-
-            # Add directories
-            if dirs:
-                dirs_text = "\n".join(f"📁 {d}" for d in sorted(dirs))
-                embed.add_field(
-                    name="Directories",
-                    value=f"```{dirs_text}```" if dirs_text else "None",
-                    inline=False
-                )
-
-            # Add files (with sizes)
-            if files:
-                files_text = ""
-                for f in sorted(files):
-                    size = os.path.getsize(os.path.join(path, f))
-                    files_text += f"📄 {f} ({self.format_size(size)})\n"
-                embed.add_field(
-                    name="Files",
-                    value=f"```{files_text}```" if files_text else "None",
-                    inline=False
-                )
-
-            embed.set_footer(text=f"Total Items: {len(items)}")
-            await ctx.send(embed=embed)
-
-        except Exception as e:
-            await ctx.send(f"❌ Error listing contents: {str(e)}")
+    async def reset_monitor(self, ctx):
+        """Resets the storage monitor message"""
+        self.message_id = None
+        await ctx.send("Storage monitor reset. A new message will be created on next update.")
 
 async def setup(bot):
     await bot.add_cog(StorageMonitor(bot))
