@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands, tasks
 import subprocess
 import os
+import json
 from datetime import datetime
 
 class StorageMonitor(commands.Cog):
@@ -10,7 +11,33 @@ class StorageMonitor(commands.Cog):
         self.backup_path = "/home/user/backups"
         self.channel_id = 1337733172242157600
         self.message_id = None
+        self.storage_limit = 1024 * 1024 * 1024 * 500  # 500GB in bytes
+        self.stats_file = ".json/backup_stats.json"
+        self.last_stats = self.load_stats()
         self.monitor_storage.start()
+
+    def load_stats(self):
+        """Load previous stats from JSON file"""
+        try:
+            if os.path.exists(self.stats_file):
+                with open(self.stats_file, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Error loading stats: {e}")
+        return {
+            'total_size': 0,
+            'file_count': 0,
+            'directories': {},
+            'last_update': None
+        }
+
+    def save_stats(self, stats):
+        """Save current stats to JSON file"""
+        try:
+            with open(self.stats_file, 'w') as f:
+                json.dump(stats, f, indent=4)
+        except Exception as e:
+            print(f"Error saving stats: {e}")
 
     def get_directory_size(self, path):
         """Get the size of a directory and its contents in bytes"""
@@ -22,22 +49,70 @@ class StorageMonitor(commands.Cog):
             return 0
 
     def get_subdirectory_sizes(self, path):
-        """Get sizes of all subdirectories"""
+        """Get sizes and details of all subdirectories"""
+        dirs_info = {}
         try:
-            result = subprocess.run(['du', '-h', '--max-depth=1', path], 
+            result = subprocess.run(['du', '-sb', '--max-depth=1', path], 
                                   capture_output=True, text=True)
-            return result.stdout.strip().split('\n')
+            for line in result.stdout.strip().split('\n'):
+                size, dir_path = line.split('\t')
+                if dir_path != path:
+                    dir_name = os.path.basename(dir_path)
+                    dirs_info[dir_name] = int(size)
+            return dirs_info
         except:
-            return []
+            return {}
 
-    def get_disk_usage(self, path):
-        """Get disk usage information"""
-        try:
-            result = subprocess.run(['df', '-h', path], 
-                                  capture_output=True, text=True)
-            return result.stdout.strip().split('\n')[1]
-        except:
-            return None
+    def format_size(self, size_bytes):
+        """Convert bytes to human readable format"""
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size_bytes < 1024:
+                return f"{size_bytes:.2f} {unit}"
+            size_bytes /= 1024
+        return f"{size_bytes:.2f} PB"
+
+    def format_size_change(self, change_bytes):
+        """Format size change with + or - prefix"""
+        prefix = '+' if change_bytes >= 0 else ''
+        return f"{prefix}{self.format_size(change_bytes)}"
+
+    def get_storage_info(self):
+        """Get current storage information and changes"""
+        current_size = self.get_directory_size(self.backup_path)
+        current_dirs = self.get_subdirectory_sizes(self.backup_path)
+        current_files = sum([len(files) for r, d, files in os.walk(self.backup_path)])
+        
+        # Calculate changes
+        size_change = current_size - self.last_stats['total_size']
+        file_change = current_files - self.last_stats['file_count']
+        
+        # Calculate directory changes
+        dir_changes = {}
+        for dir_name, size in current_dirs.items():
+            old_size = self.last_stats['directories'].get(dir_name, 0)
+            if size != old_size:
+                dir_changes[dir_name] = size - old_size
+
+        # Update last stats
+        current_stats = {
+            'total_size': current_size,
+            'file_count': current_files,
+            'directories': current_dirs,
+            'last_update': datetime.utcnow().isoformat()
+        }
+        self.save_stats(current_stats)
+        
+        return {
+            'total': self.format_size(self.storage_limit),
+            'used': self.format_size(current_size),
+            'free': self.format_size(self.storage_limit - current_size),
+            'percent': f"{(current_size / self.storage_limit) * 100:.1f}%",
+            'size_change': self.format_size_change(size_change),
+            'file_count': current_files,
+            'file_change': file_change,
+            'dir_changes': {k: self.format_size_change(v) for k, v in dir_changes.items()},
+            'directories': current_dirs
+        }
 
     async def get_or_create_message(self):
         """Gets existing message or creates new one in the specified channel"""
@@ -85,6 +160,8 @@ class StorageMonitor(commands.Cog):
             if not message:
                 return
 
+            storage_info = self.get_storage_info()
+            
             embed = discord.Embed(
                 title="Storage Monitor",
                 description="📊 Storage Status",
@@ -92,28 +169,29 @@ class StorageMonitor(commands.Cog):
                 timestamp=discord.utils.utcnow()
             )
 
-            # Get disk usage
-            disk_usage = self.get_disk_usage(self.backup_path)
-            if disk_usage:
-                parts = disk_usage.split()
-                embed.add_field(
-                    name="Disk Usage",
-                    value=f"💾 Total: {parts[1]}\n"
-                          f"📦 Used: {parts[2]} ({parts[4]})\n"
-                          f"✨ Free: {parts[3]}",
-                    inline=False
-                )
+            # Storage usage field
+            embed.add_field(
+                name="Storage Usage",
+                value=f"💾 Limit: {storage_info['total']}\n"
+                      f"📦 Used: {storage_info['used']} ({storage_info['percent']})\n"
+                      f"✨ Free: {storage_info['free']}\n"
+                      f"📈 Change: {storage_info['size_change']}",
+                inline=False
+            )
 
-            # Get directory sizes
-            dir_sizes = self.get_subdirectory_sizes(self.backup_path)
-            
-            # Format directory information
+            # Files information
+            embed.add_field(
+                name="Files",
+                value=f"📄 Total: {storage_info['file_count']}\n"
+                      f"📊 Change: {'+' if storage_info['file_change'] >= 0 else ''}{storage_info['file_change']}",
+                inline=False
+            )
+
+            # Directory sizes and changes
             dirs_info = ""
-            for line in dir_sizes:
-                size, path = line.split('\t')
-                if path != self.backup_path:  # Skip the total
-                    dir_name = os.path.basename(path)
-                    dirs_info += f"📁 {dir_name}: {size}\n"
+            for dir_name, size in storage_info['directories'].items():
+                change = storage_info['dir_changes'].get(dir_name, "no change")
+                dirs_info += f"📁 {dir_name}: {self.format_size(size)} ({change})\n"
 
             if dirs_info:
                 embed.add_field(
@@ -122,20 +200,16 @@ class StorageMonitor(commands.Cog):
                     inline=False
                 )
 
-            # Get file count
-            try:
-                file_count = sum([len(files) for r, d, files in os.walk(self.backup_path)])
-                embed.add_field(
-                    name="Total Files",
-                    value=f"📄 {file_count} files",
-                    inline=True
-                )
-            except:
-                pass
+            # Set color based on usage percentage
+            usage_pct = float(storage_info['percent'].strip('%'))
+            if usage_pct >= 90:
+                embed.color = discord.Color.red()
+            elif usage_pct >= 75:
+                embed.color = discord.Color.orange()
+            else:
+                embed.color = discord.Color.green()
 
-            # Add next update time
             embed.set_footer(text="Next update in 5 minutes")
-            
             await message.edit(embed=embed)
 
         except Exception as e:
@@ -150,16 +224,13 @@ class StorageMonitor(commands.Cog):
                 error_embed.set_footer(text="Will retry in 5 minutes")
                 await message.edit(embed=error_embed)
 
+
     @monitor_storage.before_loop
     async def before_monitor(self):
         """Wait until the bot is ready before starting the monitor"""
         await self.bot.wait_until_ready()
 
-    @commands.command()
-    async def reset_monitor(self, ctx):
-        """Resets the storage monitor message"""
-        self.message_id = None
-        await ctx.send("Storage monitor reset. A new message will be created on next update.")
+
 
 async def setup(bot):
     await bot.add_cog(StorageMonitor(bot))
