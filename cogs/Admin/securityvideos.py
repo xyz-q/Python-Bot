@@ -251,17 +251,25 @@ class StorageMonitor(commands.Cog):
 
 
     async def cleanup_old_files(self):
-        """Delete files older than max_age_days"""
+        """Delete files older than 7 days"""
         deleted = []
+        print("\n=== Starting age-based cleanup ===")
+        print(f"Checking for files older than 7 days in {self.backup_path}")
+        
         for root, _, filenames in os.walk(self.backup_path):
             for filename in filenames:
                 filepath = os.path.join(root, filename)
                 try:
                     file_age = time.time() - os.path.getmtime(filepath)
                     age_days = file_age / (24 * 3600)
+                    file_size = os.path.getsize(filepath)
+                    
+                    print(f"\nChecking file: {filename}")
+                    print(f"Age: {age_days:.1f} days")
+                    print(f"Size: {self.format_size(file_size)}")
                     
                     if age_days > 7:  # 7 days old
-                        file_size = os.path.getsize(filepath)
+                        print(f"🗑️ Deleting {filename} (Too old: {age_days:.1f} days)")
                         os.remove(filepath)
                         deleted.append({
                             'path': os.path.relpath(filepath, self.backup_path),
@@ -269,34 +277,49 @@ class StorageMonitor(commands.Cog):
                             'age': f"{age_days:.1f} days",
                             'reason': 'age'
                         })
+                    else:
+                        print(f"✅ Keeping {filename} (Age OK)")
                 except Exception as e:
-                    print(f"Error deleting old file {filepath}: {e}")
+                    print(f"❌ Error processing {filepath}: {e}")
+        
+        print(f"\nAge cleanup complete. Deleted {len(deleted)} files")
         return deleted
-
+    
     async def cleanup_excess_storage(self):
         """Delete oldest files until under storage limit"""
         current_size = self.get_directory_size(self.backup_path)
+        print("\n=== Starting size-based cleanup ===")
+        print(f"Current total size: {self.format_size(current_size)}")
+        print(f"Size limit: {self.format_size(self.storage_limit)}")
+        
         if current_size <= self.storage_limit:
+            print("Storage usage within limits, no cleanup needed")
             return []
 
         deleted = []
         files = []
         
         # Gather all files with their info
+        print("\nGathering file information...")
         for root, _, filenames in os.walk(self.backup_path):
             for filename in filenames:
                 filepath = os.path.join(root, filename)
                 try:
+                    mtime = os.path.getmtime(filepath)
+                    size = os.path.getsize(filepath)
                     files.append({
                         'path': filepath,
-                        'mtime': os.path.getmtime(filepath),
-                        'size': os.path.getsize(filepath)
+                        'name': filename,
+                        'mtime': mtime,
+                        'size': size,
+                        'age': (time.time() - mtime) / (24 * 3600)
                     })
                 except Exception as e:
-                    print(f"Error getting file info {filepath}: {e}")
+                    print(f"❌ Error getting info for {filepath}: {e}")
 
         # Sort by modification time (oldest first)
         files.sort(key=lambda x: x['mtime'])
+        print(f"\nFound {len(files)} files, sorted by age")
 
         # Delete oldest files until under limit
         for file_info in files:
@@ -304,38 +327,51 @@ class StorageMonitor(commands.Cog):
                 break
 
             try:
+                print(f"\nNeed to remove more files. Currently at: {self.format_size(current_size)}")
+                print(f"🗑️ Deleting {file_info['name']}")
+                print(f"Age: {file_info['age']:.1f} days")
+                print(f"Size: {self.format_size(file_info['size'])}")
+                
                 os.remove(file_info['path'])
                 deleted.append({
                     'path': os.path.relpath(file_info['path'], self.backup_path),
                     'size': self.format_size(file_info['size']),
-                    'age': f"{(time.time() - file_info['mtime']) / (24 * 3600):.1f} days",
+                    'age': f"{file_info['age']:.1f} days",
                     'reason': 'space'
                 })
                 current_size -= file_info['size']
             except Exception as e:
-                print(f"Error deleting excess file {file_info['path']}: {e}")
+                print(f"❌ Error deleting {file_info['path']}: {e}")
 
+        print(f"\nSize cleanup complete. Deleted {len(deleted)} files")
+        print(f"Final size: {self.format_size(self.get_directory_size(self.backup_path))}")
         return deleted
+
 
     @tasks.loop(minutes=30)
     async def cleanup_storage(self):
         """Main cleanup task"""
         try:
-            # Delete old files first
+            print("\n=== Starting cleanup process ===")
+            print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            
             deleted_old = await self.cleanup_old_files()
-            # Then check storage limit
             deleted_excess = await self.cleanup_excess_storage()
             
-            # Add deletions to the embed if any files were deleted
+            print("\n=== Cleanup Summary ===")
+            print(f"Files deleted due to age: {len(deleted_old)}")
+            print(f"Files deleted due to space: {len(deleted_excess)}")
+            
             if deleted_old or deleted_excess:
                 self.deleted_files_log = (deleted_old + deleted_excess + 
-                    getattr(self, 'deleted_files_log', []))[:20]  # Keep last 20 deletions
-                
-                # Update the monitor message since files were deleted
+                    getattr(self, 'deleted_files_log', []))[:20]
+                print("\nUpdating monitor message with deletion information...")
                 await self.monitor_storage()
+            else:
+                print("\nNo files were deleted")
                 
         except Exception as e:
-            print(f"Error in cleanup_storage: {e}")
+            print(f"\n❌ Error in cleanup_storage: {e}")
 
     @cleanup_storage.before_loop
     async def before_cleanup(self):
