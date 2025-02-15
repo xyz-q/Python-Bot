@@ -10,7 +10,6 @@ from discord import app_commands, Interaction, Object
 from discord.ui import Button, View
 
 
-
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
