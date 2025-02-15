@@ -155,7 +155,7 @@ class StorageMonitor(commands.Cog):
             print(f"Error in get_or_create_message: {e}")
             return None
 
-    @tasks.loop(seconds=10)
+    @tasks.loop(minutes=45)
     async def monitor_storage(self):
         """Continuously monitors storage and updates the embed"""
         try:
@@ -379,7 +379,7 @@ class StorageMonitor(commands.Cog):
         return deleted
 
 
-    @tasks.loop(seconds=10)
+    @tasks.loop(minutes=45)
     async def cleanup_storage(self):
         """Main cleanup task"""
         try:
