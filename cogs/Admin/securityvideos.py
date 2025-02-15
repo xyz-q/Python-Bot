@@ -12,7 +12,7 @@ class StorageMonitor(commands.Cog):
         self.backup_path = "/home/user/backups"
         self.channel_id = 1337733172242157600
         self.message_id = None
-        self.storage_limit = 1024 * 1024 * 1024 * 0.05  # Your existing limit
+        self.storage_limit = 1024 * 1024 * 1024 * 10  # Your existing limit
         self.stats_file = ".json/backup_stats.json"
         self.last_stats = self.load_stats()
         self.deleted_files_log = []  # Add this line
