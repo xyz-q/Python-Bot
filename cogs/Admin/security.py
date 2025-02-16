@@ -11,7 +11,7 @@ class SecurityCamera(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.url = "http://192.168.0.163:5000/stream/video_feed"
-        self.update_interval = 5  # seconds between updates
+        self.update_interval = 10  # seconds between updates
         self.error_update_interval = 17  # seconds between error message updates
         self.channel_id = 1340119207513427999
         self.message = None
@@ -100,7 +100,7 @@ class SecurityCamera(commands.Cog):
             except Exception as e:
                 print(f"Error updating error message: {e}")
 
-    @tasks.loop(seconds=5)
+    @tasks.loop(seconds=10)
     async def run_camera_feed(self):
         """Runs the continuous camera feed"""
         try:
