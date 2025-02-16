@@ -10,12 +10,12 @@ import platform
 class SystemMonitor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # Initialize these variables
         self.monitor_message = None
         self.last_net_io = psutil.net_io_counters()
+        self.last_disk_io = psutil.disk_io_counters()  # Add this line
         self.last_check_time = datetime.now()
-        # Start the loop
         self.monitor_loop.start()
+
         
     def cog_unload(self):
         self.monitor_loop.cancel()
@@ -68,7 +68,7 @@ class SystemMonitor(commands.Cog):
 
         # Bot latency (ping)
         latency = round(self.bot.latency * 1000)  # Convert to ms
-        api_latency = round(self.bot.latency * 1000)
+        
 
         # Network usage (add with other psutil calls)
         network = psutil.net_io_counters()
@@ -113,11 +113,25 @@ class SystemMonitor(commands.Cog):
         memory_used = f"{memory.used / (1024 ** 3):.2f} GB"
         memory_total = f"{memory.total / (1024 ** 3):.2f} GB"
 
+
+
+
         # Disk Info
         disk = psutil.disk_usage('/')
         disk_percent = disk.percent
         disk_used = f"{disk.used / (1024 ** 3):.0f} GB"
         disk_total = f"{disk.total / (1024 ** 3):.0f} GB"
+
+        current_disk_io = psutil.disk_io_counters()
+        current_time = datetime.now()
+        time_delta = (current_time - self.last_check_time).total_seconds()
+        
+        # Calculate read and write speeds in MB/s
+        read_speed = (current_disk_io.read_bytes - self.last_disk_io.read_bytes) / time_delta / (1024 * 1024)
+        write_speed = (current_disk_io.write_bytes - self.last_disk_io.write_bytes) / time_delta / (1024 * 1024)
+        
+        # Update last values
+        self.last_disk_io = current_disk_io
 
         embed = discord.Embed(
             title="System Monitor",
@@ -150,10 +164,12 @@ class SystemMonitor(commands.Cog):
         
         embed.add_field(
             name="Disk",
-            value=f"Usage: {disk_percent}%\n{disk_used}/{disk_total}",
+            value=f"Usage: {disk_percent}%\n"
+                f"{disk_used}/{disk_total}\n"
+                f"Read: {read_speed:.2f} MB/s\n"
+                f"Write: {write_speed:.2f} MB/s",
             inline=True
         )
-        embed.add_field(name="\u200b", value="\u200b", inline=True)
 
 
 
