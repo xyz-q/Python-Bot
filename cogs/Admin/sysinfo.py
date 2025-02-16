@@ -170,6 +170,7 @@ class SystemMonitor(commands.Cog):
                 f"Write: {write_speed:.2f} MB/s",
             inline=True
         )
+        embed.add_field(name="\u200b", value="\u200b", inline=True)
 
 
 
