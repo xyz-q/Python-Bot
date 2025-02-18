@@ -20,7 +20,7 @@ class SystemMonitor(commands.Cog):
     def cog_unload(self):
         self.monitor_loop.cancel()
 
-    @tasks.loop(seconds=25)  # Update every 10 seconds
+    @tasks.loop(seconds=30)  # Update every 10 seconds
     async def monitor_loop(self):
         channel = self.bot.get_channel(1338669385082208296)
         if channel:

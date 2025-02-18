@@ -100,7 +100,7 @@ class SecurityCamera(commands.Cog):
             except Exception as e:
                 print(f"Error updating error message: {e}")
 
-    @tasks.loop(seconds=10)
+    @tasks.loop(seconds=20)
     async def run_camera_feed(self):
         """Runs the continuous camera feed"""
         try:
