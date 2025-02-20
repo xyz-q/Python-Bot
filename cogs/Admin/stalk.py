@@ -86,24 +86,31 @@ class Stalk(commands.Cog):
             for guild in self.bot.guilds:
                 stalked_user = guild.get_member(int(self.stalked_user_id))
                 
-                if stalked_user and stalked_user.voice and stalked_user.voice.channel:
-                    target_channel = stalked_user.voice.channel
-                    
-                    # Force reconnect if not in the right channel
-                    if not guild.voice_client:
-                        try:
-                            await target_channel.connect(self_deaf=True)
-                        except:
-                            continue
-                    elif guild.voice_client.channel != target_channel:
-                        try:
-                            await guild.voice_client.disconnect()
-                            await target_channel.connect(self_deaf=True)
-                        except:
-                            continue
+                # If user is not in voice or has left
+                if not stalked_user or not stalked_user.voice:
+                    # Disconnect bot if it's in a voice channel
+                    if guild.voice_client:
+                        await guild.voice_client.disconnect()
+                    continue
+                
+                target_channel = stalked_user.voice.channel
+                
+                # Force reconnect if not in the right channel
+                if not guild.voice_client:
+                    try:
+                        await target_channel.connect(self_deaf=True)
+                    except:
+                        continue
+                elif guild.voice_client.channel != target_channel:
+                    try:
+                        await guild.voice_client.disconnect()
+                        await target_channel.connect(self_deaf=True)
+                    except:
+                        continue
 
         except Exception as e:
             print(f"Error in follow_user: {e}")
+
 
 
 

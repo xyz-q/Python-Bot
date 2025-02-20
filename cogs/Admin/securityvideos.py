@@ -466,9 +466,7 @@ class StorageMonitor(commands.Cog):
                     except Exception as e:
                         print(f"❌ Error deleting {file_info['path']}: {e}")
 
-            print("\n=== Cleanup Summary ===")
-            print(f"Files deleted: {len(deleted)}")
-            print(f"Final size: {self.format_size(total_size)}")
+
             
             if deleted:
                 self.deleted_files_log = (deleted + getattr(self, 'deleted_files_log', []))[:20]
