@@ -251,9 +251,21 @@ class LogManager(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{message.guild.name}] MESSAGE DELETED - {message.author.name}: {message.content}"
-        await self.log_to_file(log_entry)
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Check if message.guild exists
+            guild_name = message.guild.name if message.guild else "Direct Message"
+            
+            # Check if message.author exists
+            author_name = message.author.name if message.author else "Unknown User"
+            
+            log_entry = f"[{timestamp}] [{guild_name}] MESSAGE DELETED - {author_name}: {message.content}"
+            await self.log_to_file(log_entry)
+        except Exception as e:
+            # Safely handle any errors that might occur during logging
+            print(f"Error logging deleted message: {e}")
+
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):

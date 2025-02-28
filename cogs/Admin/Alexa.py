@@ -5,7 +5,7 @@ import aiohttp
 import os
 from dotenv import load_dotenv
 import logging
-from datetime import time
+from datetime import datetime, time
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -116,7 +116,7 @@ class LightControlView(discord.ui.View):
             try:
                 async with session.get(LIGHT_ON_WEBHOOK) as response:
                     if response.status == 200:
-                        await interaction.response.send_message("Light turned ON!", ephemeral=True)
+                        await interaction.response.send_message("Light turned ON!", ephemeral=True, delete_after=3)
                     else:
                         await interaction.response.send_message(f"Failed to turn light ON. Status: {response.status}", ephemeral=True)
             except Exception as e:
@@ -130,12 +130,13 @@ class LightControlView(discord.ui.View):
             try:
                 async with session.get(LIGHT_OFF_WEBHOOK) as response:
                     if response.status == 200:
-                        await interaction.response.send_message("Light turned OFF!", ephemeral=True)
+                        await interaction.response.send_message("Light turned OFF!", ephemeral=True, delete_after=3)
                     else:
                         await interaction.response.send_message(f"Failed to turn light OFF. Status: {response.status}", ephemeral=True)
             except Exception as e:
                 logger.error(f"Error in light_off: {e}")
                 await interaction.response.send_message(f"Error: {str(e)}", ephemeral=True)
+
 
 async def setup(bot):
     logger.info("Adding LightControl cog to bot")
