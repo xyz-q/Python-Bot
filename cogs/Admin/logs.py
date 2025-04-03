@@ -528,5 +528,64 @@ class LogManager(commands.Cog):
         except Exception as e:
             await ctx.send(f"Error cleaning up logs: {str(e)}")
 
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def searchlog(self, ctx, month: int, date: int, year: int):
+        """Search for and send log file for specific date"""
+        try:
+            # Format the date to match log file naming
+            search_date = datetime(year, month, date)
+            date_str = search_date.strftime('%Y-%m-%d')
+            
+            # Check current logs folder first
+            current_log = self.log_dir / f"discord_log_{date_str}.txt"
+            
+            if current_log.exists():
+                # If file is too large, split into multiple messages
+                if current_log.stat().st_size > 1900000:  # Discord's limit is 2MB
+                    with open(current_log, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        chunks = [content[i:i+1900] for i in range(0, len(content), 1900)]
+                        
+                    for i, chunk in enumerate(chunks):
+                        await ctx.send(f"```Part {i+1}/{len(chunks)}:\n{chunk}```")
+                else:
+                    # Send as a single file attachment
+                    await ctx.send(file=discord.File(current_log))
+                return
+
+            # If not in current logs, check archives
+            for archive in self.archive_dir.glob(f"discord_log_{date_str}*.gz"):
+                # Create a temporary file to decompress to
+                temp_file = self.log_dir / f"temp_{date_str}.txt"
+                
+                try:
+                    # Decompress the archive
+                    with gzip.open(archive, 'rb') as f_in:
+                        with open(temp_file, 'wb') as f_out:
+                            shutil.copyfileobj(f_in, f_out)
+                    
+                    # Send the decompressed file
+                    await ctx.send(file=discord.File(temp_file))
+                    
+                    # Clean up temp file
+                    temp_file.unlink()
+                    return
+                    
+                except Exception as e:
+                    if temp_file.exists():
+                        temp_file.unlink()
+                    print(f"Error processing archive {archive}: {e}")
+                    continue
+
+            # If no log found
+            await ctx.send(f"No logs found for {date_str}")
+            
+        except ValueError:
+            await ctx.send("Invalid date format. Please use: ,searchlog month date year\nExample: ,searchlog 1 15 2024")
+        except Exception as e:
+            await ctx.send(f"Error searching logs: {str(e)}")
+
 async def setup(bot):
     await bot.add_cog(LogManager(bot))
