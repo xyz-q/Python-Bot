@@ -179,19 +179,14 @@ class LogManager(commands.Cog):
 
 
     async def log_to_file(self, log_entry: str):
-        """Write log entry and handle rotation if needed"""
+        """Write log entry and check for daily rotation"""
         current_date = datetime.now().strftime('%Y-%m-%d')
         log_file = self.log_dir / f"discord_log_{current_date}.txt"
         
-        # Add daily rotation check
-        if log_file.exists():
-            file_date = datetime.strptime(current_date, '%Y-%m-%d')
-            if file_date.date() < datetime.now().date():
-                await self.rotate_log(log_file)
-        
-        # Size-based rotation
-        if log_file.exists() and log_file.stat().st_size >= self.max_file_size:
-            await self.rotate_log(log_file)
+        # Check for previous day's log and rotate it
+        for old_log in self.log_dir.glob('*.txt'):
+            if old_log.name != log_file.name:  # If it's not today's log file
+                await self.rotate_log(old_log)
             
         # Write new log entry
         with open(log_file, 'a', encoding='utf-8') as f:
@@ -199,7 +194,7 @@ class LogManager(commands.Cog):
 
 
     async def rotate_log(self, log_file: Path):
-        """Compress and archive the current log file"""
+        """Compress and archive the log file"""
         try:
             if not log_file.exists() or log_file.stat().st_size == 0:
                 return
@@ -214,14 +209,14 @@ class LogManager(commands.Cog):
             
             # Verify the archive was created successfully
             if archive_name.exists() and archive_name.stat().st_size > 0:
-                # Clear the original file
-                log_file.write_text('')
-                print(f"Successfully rotated {log_file} to {archive_name}")
+                # Remove the original file after successful compression
+                log_file.unlink()
+                print(f"Successfully archived {log_file} to {archive_name}")
             else:
                 print(f"Failed to create archive for {log_file}")
                 
         except Exception as e:
-            print(f"Error rotating log file {log_file}: {e}")
+            print(f"Error archiving log file {log_file}: {e}")
 
 
     @tasks.loop(hours=24)
