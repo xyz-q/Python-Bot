@@ -180,14 +180,16 @@ class LogManager(commands.Cog):
 
     async def log_to_file(self, log_entry: str):
         """Write log entry and handle rotation if needed"""
-        # Skip logging if it contains the bot name 'xyz'
-        if "- xyz:" in log_entry:
-            return
-            
         current_date = datetime.now().strftime('%Y-%m-%d')
         log_file = self.log_dir / f"discord_log_{current_date}.txt"
         
-        # Check if file needs rotation
+        # Add daily rotation check
+        if log_file.exists():
+            file_date = datetime.strptime(current_date, '%Y-%m-%d')
+            if file_date.date() < datetime.now().date():
+                await self.rotate_log(log_file)
+        
+        # Size-based rotation
         if log_file.exists() and log_file.stat().st_size >= self.max_file_size:
             await self.rotate_log(log_file)
             
@@ -195,18 +197,32 @@ class LogManager(commands.Cog):
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(f"{log_entry}\n")
 
+
     async def rotate_log(self, log_file: Path):
         """Compress and archive the current log file"""
-        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        archive_name = self.archive_dir / f"{log_file.stem}_{timestamp}.gz"
-        
-        # Compress the file
-        with open(log_file, 'rb') as f_in:
-            with gzip.open(archive_name, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-        
-        # Clear the original file
-        log_file.write_text('')
+        try:
+            if not log_file.exists() or log_file.stat().st_size == 0:
+                return
+                
+            timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+            archive_name = self.archive_dir / f"{log_file.stem}_{timestamp}.gz"
+            
+            # Compress the file
+            with open(log_file, 'rb') as f_in:
+                with gzip.open(archive_name, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            
+            # Verify the archive was created successfully
+            if archive_name.exists() and archive_name.stat().st_size > 0:
+                # Clear the original file
+                log_file.write_text('')
+                print(f"Successfully rotated {log_file} to {archive_name}")
+            else:
+                print(f"Failed to create archive for {log_file}")
+                
+        except Exception as e:
+            print(f"Error rotating log file {log_file}: {e}")
+
 
     @tasks.loop(hours=24)
     async def cleanup_old_logs(self):
@@ -216,13 +232,30 @@ class LogManager(commands.Cog):
         # Check archived logs
         for archive_file in self.archive_dir.glob('*.gz'):
             try:
-                date_str = archive_file.stem.split('_')[2]
+                # Extract date from filename (discord_log_2024-01-20_15-30-45.gz)
+                date_str = archive_file.stem.split('_')[2]  # Gets YYYY-MM-DD
                 file_date = datetime.strptime(date_str, '%Y-%m-%d')
                 
                 if file_date < cutoff_date:
+                    print(f"Removing old archive: {archive_file}")
                     archive_file.unlink()
-            except (ValueError, IndexError):
+            except (ValueError, IndexError) as e:
+                print(f"Error processing archive file {archive_file}: {e}")
                 continue
+                
+        # Also check current logs
+        for log_file in self.log_dir.glob('*.txt'):
+            try:
+                date_str = log_file.stem.split('_')[2]  # Gets YYYY-MM-DD
+                file_date = datetime.strptime(date_str, '%Y-%m-%d')
+                
+                if file_date < cutoff_date:
+                    print(f"Rotating old log: {log_file}")
+                    await self.rotate_log(log_file)
+            except (ValueError, IndexError) as e:
+                print(f"Error processing log file {log_file}: {e}")
+                continue
+
 
     @cleanup_old_logs.before_loop
     async def before_cleanup(self):

@@ -17,3 +17,11 @@ data/vaults.txt
 !.json/levels.json
 *.txt
 *.mp4
+harp.py
+initial_page.html
+ocr_errors.log
+phishing_page.html
+rs_chat.log
+screenregion.py
+successful_access_1.html
+webpage.html
