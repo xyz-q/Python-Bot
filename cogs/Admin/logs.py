@@ -555,14 +555,15 @@ class LogManager(commands.Cog):
                             shutil.copyfileobj(f_in, f_out)
                     
                     # Send file first, then delete after message is sent
-                    await ctx.send(file=discord.File(str(temp_file)))  # Convert Path to string
+                    await ctx.send(file=discord.File(str(temp_file)))
                     temp_file.unlink()  # Delete after sending
                     return
                     
                 except Exception as e:
                     if temp_file.exists():
                         temp_file.unlink()
-                    raise e
+                    await ctx.send(f"Error processing archive: {str(e)}")
+                    return
 
             # If we get here, no logs were found
             await ctx.send(f"No logs found for {date_str}")
@@ -571,6 +572,7 @@ class LogManager(commands.Cog):
             await ctx.send("Invalid date format. Please use: ,searchlog month date year\nExample: ,searchlog 1 15 2024")
         except Exception as e:
             await ctx.send(f"Error searching logs: {str(e)}")
+
 
 
 
