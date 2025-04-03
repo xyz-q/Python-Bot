@@ -548,22 +548,19 @@ class LogManager(commands.Cog):
             # If not in current logs, check archives
             for archive in self.archive_dir.glob(f"discord_log_{date_str}*.gz"):
                 temp_file = self.log_dir / f"temp_{date_str}.txt"
-                try:
-                    # Decompress the archive
-                    with gzip.open(archive, 'rb') as f_in:
-                        with open(temp_file, 'wb') as f_out:
-                            shutil.copyfileobj(f_in, f_out)
-                    
-                    # Send file first, then delete after message is sent
-                    await ctx.send(file=discord.File(str(temp_file)))
-                    temp_file.unlink()  # Delete after sending
-                    return
-                    
-                except Exception as e:
-                    if temp_file.exists():
-                        temp_file.unlink()
-                    await ctx.send(f"Error processing archive: {str(e)}")
-                    return
+                
+                # Decompress the archive
+                with gzip.open(archive, 'rb') as f_in:
+                    with open(temp_file, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                
+                # Send file
+                await ctx.send(file=discord.File(str(temp_file)))
+                
+                # Clean up temp file if it exists
+                if temp_file.exists():
+                    temp_file.unlink()
+                return
 
             # If we get here, no logs were found
             await ctx.send(f"No logs found for {date_str}")
