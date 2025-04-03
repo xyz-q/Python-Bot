@@ -542,25 +542,33 @@ class LogManager(commands.Cog):
             current_log = self.log_dir / f"discord_log_{date_str}.txt"
             
             if current_log.exists():
+                # Check if file is empty
+                if current_log.stat().st_size == 0:
+                    await ctx.send(f"Log file exists for {date_str} but is empty.")
+                    return
+                    
                 # If file is too large, split into multiple messages
                 if current_log.stat().st_size > 1900000:  # Discord's limit is 2MB
                     with open(current_log, 'r', encoding='utf-8') as f:
                         content = f.read()
+                        if not content.strip():  # Check if content is empty or just whitespace
+                            await ctx.send(f"Log file exists for {date_str} but is empty.")
+                            return
                         chunks = [content[i:i+1900] for i in range(0, len(content), 1900)]
                         
                     for i, chunk in enumerate(chunks):
-                        await ctx.send(f"```Part {i+1}/{len(chunks)}:\n{chunk}```")
-                    return  # Add return here to prevent "No logs found" message
+                        if chunk.strip():  # Only send non-empty chunks
+                            await ctx.send(f"```Part {i+1}/{len(chunks)}:\n{chunk}```")
+                    return
                 else:
                     # Send as a single file attachment
-                    await ctx.send(file=discord.File(current_log))
-                    return  # Add return here to prevent "No logs found" message
+                    await ctx.send(f"Log file for {date_str}:", file=discord.File(current_log))
+                    return
 
             # If not in current logs, check archives
-            found = False  # Add a flag to track if we found a log
+            found = False
             for archive in self.archive_dir.glob(f"discord_log_{date_str}*.gz"):
-                found = True  # Set flag when we find a matching archive
-                # Create a temporary file to decompress to
+                found = True
                 temp_file = self.log_dir / f"temp_{date_str}.txt"
                 
                 try:
@@ -569,13 +577,20 @@ class LogManager(commands.Cog):
                         with open(temp_file, 'wb') as f_out:
                             shutil.copyfileobj(f_in, f_out)
                     
-                    # Send the decompressed file
-                    await ctx.send(file=discord.File(temp_file))
+                    # Check if decompressed file is empty
+                    if temp_file.stat().st_size == 0:
+                        await ctx.send(f"Archive exists for {date_str} but is empty.")
+                        if temp_file.exists():
+                            temp_file.unlink()
+                        continue
+                    
+                    # Send the decompressed file with a message
+                    await ctx.send(f"Archived log for {date_str}:", file=discord.File(temp_file))
                     
                     # Clean up temp file
                     if temp_file.exists():
                         temp_file.unlink()
-                    return  # Add return here to prevent "No logs found" message
+                    return
                     
                 except Exception as e:
                     if temp_file.exists():
@@ -591,6 +606,7 @@ class LogManager(commands.Cog):
             await ctx.send("Invalid date format. Please use: ,searchlog month date year\nExample: ,searchlog 1 15 2024")
         except Exception as e:
             await ctx.send(f"Error searching logs: {str(e)}")
+
 
 
 
