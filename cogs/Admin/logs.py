@@ -554,9 +554,9 @@ class LogManager(commands.Cog):
                         with open(temp_file, 'wb') as f_out:
                             shutil.copyfileobj(f_in, f_out)
                     
-                    # Send file and clean up
-                    await ctx.send(file=discord.File(temp_file))
-                    temp_file.unlink()
+                    # Send file first, then delete after message is sent
+                    await ctx.send(file=discord.File(str(temp_file)))  # Convert Path to string
+                    temp_file.unlink()  # Delete after sending
                     return
                     
                 except Exception as e:
@@ -571,6 +571,7 @@ class LogManager(commands.Cog):
             await ctx.send("Invalid date format. Please use: ,searchlog month date year\nExample: ,searchlog 1 15 2024")
         except Exception as e:
             await ctx.send(f"Error searching logs: {str(e)}")
+
 
 
 
