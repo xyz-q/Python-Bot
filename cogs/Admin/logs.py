@@ -550,13 +550,16 @@ class LogManager(commands.Cog):
                         
                     for i, chunk in enumerate(chunks):
                         await ctx.send(f"```Part {i+1}/{len(chunks)}:\n{chunk}```")
+                    return  # Add return here to prevent "No logs found" message
                 else:
                     # Send as a single file attachment
                     await ctx.send(file=discord.File(current_log))
-                return
+                    return  # Add return here to prevent "No logs found" message
 
             # If not in current logs, check archives
+            found = False  # Add a flag to track if we found a log
             for archive in self.archive_dir.glob(f"discord_log_{date_str}*.gz"):
+                found = True  # Set flag when we find a matching archive
                 # Create a temporary file to decompress to
                 temp_file = self.log_dir / f"temp_{date_str}.txt"
                 
@@ -570,8 +573,9 @@ class LogManager(commands.Cog):
                     await ctx.send(file=discord.File(temp_file))
                     
                     # Clean up temp file
-                    temp_file.unlink()
-                    return
+                    if temp_file.exists():
+                        temp_file.unlink()
+                    return  # Add return here to prevent "No logs found" message
                     
                 except Exception as e:
                     if temp_file.exists():
@@ -579,13 +583,16 @@ class LogManager(commands.Cog):
                     print(f"Error processing archive {archive}: {e}")
                     continue
 
-            # If no log found
-            await ctx.send(f"No logs found for {date_str}")
-            
+            # Only send "No logs found" if we actually didn't find any
+            if not found:
+                await ctx.send(f"No logs found for {date_str}")
+                
         except ValueError:
             await ctx.send("Invalid date format. Please use: ,searchlog month date year\nExample: ,searchlog 1 15 2024")
         except Exception as e:
             await ctx.send(f"Error searching logs: {str(e)}")
+
+
 
 async def setup(bot):
     await bot.add_cog(LogManager(bot))
