@@ -543,23 +543,22 @@ class LogManager(commands.Cog):
             # Check current logs folder first
             current_log = self.log_dir / f"discord_log_{date_str}.txt"
             if current_log.exists():
-                await ctx.send("Current log:", file=discord.File(current_log))
+                await ctx.send(file=discord.File(current_log))
                 found_logs = True
 
             # Check archives for any logs from that day
             archives = list(self.archive_dir.glob(f"discord_log_{date_str}*.gz"))
             if archives:
-                for i, archive in enumerate(archives, 1):
-                    temp_file = self.log_dir / f"temp_{date_str}_{i}.txt"
+                for archive in archives:
+                    temp_file = self.log_dir / f"temp_{date_str}.txt"
                     
                     # Decompress the archive
                     with gzip.open(archive, 'rb') as f_in:
                         with open(temp_file, 'wb') as f_out:
                             shutil.copyfileobj(f_in, f_out)
                     
-                    # Send file with archive timestamp
-                    timestamp = archive.stem.split('_')[-1]  # Get timestamp from filename
-                    await ctx.send(f"Archived log (from {timestamp}):", file=discord.File(str(temp_file)))
+                    # Send file without timestamp
+                    await ctx.send(file=discord.File(str(temp_file)))
                     
                     # Clean up temp file
                     if temp_file.exists():
@@ -574,6 +573,7 @@ class LogManager(commands.Cog):
             await ctx.send("Invalid date format. Please use: ,searchlog month date year\nExample: ,searchlog 1 15 2024")
         except Exception as e:
             await ctx.send(f"Error searching logs: {str(e)}")
+
 
 
 
