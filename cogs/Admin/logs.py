@@ -542,7 +542,7 @@ class LogManager(commands.Cog):
             
             # Check current logs folder first
             current_log = self.log_dir / f"discord_log_{date_str}.txt"
-            if current_log.exists():
+            if current_log.exists() and current_log.stat().st_size > 0:
                 await ctx.send(file=discord.File(current_log))
                 found_logs = True
 
@@ -550,22 +550,26 @@ class LogManager(commands.Cog):
             archives = list(self.archive_dir.glob(f"discord_log_{date_str}*.gz"))
             if archives:
                 for i, archive in enumerate(archives):
+                    if archive.stat().st_size == 0:  # Skip empty archives
+                        continue
+                        
                     # Use unique temp file name for each archive
                     temp_file = self.log_dir / f"temp_{date_str}_{i}.txt"
                     
-                    # Decompress the archive
-                    with gzip.open(archive, 'rb') as f_in:
-                        with open(temp_file, 'wb') as f_out:
-                            shutil.copyfileobj(f_in, f_out)
-                    
-                    # Send file
-                    await ctx.send(file=discord.File(str(temp_file)))
-                    
-                    # Clean up temp file
-                    if temp_file.exists():
-                        temp_file.unlink()
-                    
-                    found_logs = True
+                    try:
+                        # Decompress the archive
+                        with gzip.open(archive, 'rb') as f_in:
+                            with open(temp_file, 'wb') as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+                        
+                        # Check if decompressed file has content
+                        if temp_file.stat().st_size > 0:
+                            await ctx.send(file=discord.File(str(temp_file)))
+                            found_logs = True
+                    finally:
+                        # Clean up temp file
+                        if temp_file.exists():
+                            temp_file.unlink()
 
             if not found_logs:
                 await ctx.send(f"No logs found for {date_str}")
@@ -574,6 +578,7 @@ class LogManager(commands.Cog):
             await ctx.send("Invalid date format. Please use: ,searchlog month date year\nExample: ,searchlog 1 15 2024")
         except Exception as e:
             await ctx.send(f"Error searching logs: {str(e)}")
+
 
 
 
