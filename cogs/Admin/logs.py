@@ -6,6 +6,7 @@ import gzip
 from pathlib import Path
 import shutil
 import asyncio
+import io
 
 class LogManager(commands.Cog):
     def __init__(self, bot):
@@ -544,43 +545,54 @@ class LogManager(commands.Cog):
             # Check current logs folder first
             current_log = self.log_dir / f"discord_log_{date_str}.txt"
             if current_log.exists():
-                try:
-                    if current_log.stat().st_size <= MAX_SIZE:
+                if current_log.stat().st_size <= MAX_SIZE:
+                    try:
+                        # Read file contents into buffer first
                         with open(current_log, 'rb') as f:
-                            await ctx.send("Current log:", file=discord.File(fp=f, filename=current_log.name))
-                    else:
-                        await ctx.send("Log file is too large to send directly.")
-                    found_logs = True
-                    await asyncio.sleep(1)
-                except discord.HTTPException as e:
-                    await ctx.send(f"Error sending current log: {str(e)}")
+                            file_data = f.read()
+                        
+                        # Create a BytesIO object
+                        file_buffer = io.BytesIO(file_data)
+                        file_buffer.seek(0)
+                        
+                        # Send the file
+                        await ctx.send(
+                            "Current log:", 
+                            file=discord.File(fp=file_buffer, filename=f"log_{date_str}.txt")
+                        )
+                        found_logs = True
+                        await asyncio.sleep(1)
+                    except Exception as e:
+                        await ctx.send(f"Error sending current log: {str(e)}")
 
             # Check archives for any logs from that day
             archives = list(self.archive_dir.glob(f"discord_log_{date_str}*.gz"))
+            
             for i, archive in enumerate(archives, 1):
-                temp_file = self.log_dir / f"temp_{date_str}_{i}.txt"
-                
-                try:
-                    # Decompress the archive
-                    with gzip.open(archive, 'rb') as f_in:
-                        with open(temp_file, 'wb') as f_out:
-                            shutil.copyfileobj(f_in, f_out)
+                if found_logs:
+                    await asyncio.sleep(1)  # Add delay between files
                     
-                    # Check file size and send
-                    if temp_file.stat().st_size <= MAX_SIZE:
-                        with open(temp_file, 'rb') as f:
-                            await ctx.send(f"Archive {i}:", file=discord.File(fp=f, filename=f"log_{date_str}_{i}.txt"))
+                try:
+                    # Read and decompress archive directly into memory
+                    with gzip.open(archive, 'rb') as f:
+                        file_data = f.read()
+                    
+                    if len(file_data) <= MAX_SIZE:
+                        # Create a BytesIO object
+                        file_buffer = io.BytesIO(file_data)
+                        file_buffer.seek(0)
+                        
+                        # Send the file
+                        await ctx.send(
+                            f"Archive {i}:", 
+                            file=discord.File(fp=file_buffer, filename=f"log_{date_str}_{i}.txt")
+                        )
                         found_logs = True
-                        await asyncio.sleep(1)
                     else:
                         await ctx.send(f"Archive {i} is too large to send directly.")
                         
                 except Exception as e:
                     await ctx.send(f"Error processing archive {i}: {str(e)}")
-                finally:
-                    # Clean up temp file
-                    if temp_file.exists():
-                        temp_file.unlink()
 
             if not found_logs:
                 await ctx.send(f"No logs found for {date_str}")
@@ -589,6 +601,7 @@ class LogManager(commands.Cog):
             await ctx.send("Invalid date format. Please use: ,searchlog month date year\nExample: ,searchlog 1 15 2024")
         except Exception as e:
             await ctx.send(f"Error searching logs: {str(e)}")
+
 
 
 
