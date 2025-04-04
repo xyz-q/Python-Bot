@@ -539,14 +539,15 @@ class LogManager(commands.Cog):
             date_str = search_date.strftime('%Y-%m-%d')
             
             found_logs = False
-            MAX_SIZE = 7_340_032  # ~7MB to be safe with Discord's 8MB limit
+            MAX_SIZE = 7_340_032  # ~7MB to be safe
             
             # Check current logs folder first
             current_log = self.log_dir / f"discord_log_{date_str}.txt"
             if current_log.exists():
                 try:
                     if current_log.stat().st_size <= MAX_SIZE:
-                        await ctx.send("Current log:", file=discord.File(current_log))
+                        with open(current_log, 'rb') as f:
+                            await ctx.send("Current log:", file=discord.File(fp=f, filename=current_log.name))
                     else:
                         await ctx.send("Log file is too large to send directly.")
                     found_logs = True
@@ -565,9 +566,10 @@ class LogManager(commands.Cog):
                         with open(temp_file, 'wb') as f_out:
                             shutil.copyfileobj(f_in, f_out)
                     
-                    # Check file size
+                    # Check file size and send
                     if temp_file.stat().st_size <= MAX_SIZE:
-                        await ctx.send(f"Archive {i}:", file=discord.File(str(temp_file)))
+                        with open(temp_file, 'rb') as f:
+                            await ctx.send(f"Archive {i}:", file=discord.File(fp=f, filename=f"log_{date_str}_{i}.txt"))
                         found_logs = True
                         await asyncio.sleep(1)
                     else:
@@ -587,6 +589,7 @@ class LogManager(commands.Cog):
             await ctx.send("Invalid date format. Please use: ,searchlog month date year\nExample: ,searchlog 1 15 2024")
         except Exception as e:
             await ctx.send(f"Error searching logs: {str(e)}")
+
 
 
 
