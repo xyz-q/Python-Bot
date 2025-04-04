@@ -539,14 +539,18 @@ class LogManager(commands.Cog):
             date_str = search_date.strftime('%Y-%m-%d')
             
             found_logs = False
+            MAX_SIZE = 7_340_032  # ~7MB to be safe with Discord's 8MB limit
             
             # Check current logs folder first
             current_log = self.log_dir / f"discord_log_{date_str}.txt"
             if current_log.exists():
                 try:
-                    await ctx.send("Current log:", file=discord.File(current_log))
+                    if current_log.stat().st_size <= MAX_SIZE:
+                        await ctx.send("Current log:", file=discord.File(current_log))
+                    else:
+                        await ctx.send("Log file is too large to send directly.")
                     found_logs = True
-                    await asyncio.sleep(1)  # Add small delay between sends
+                    await asyncio.sleep(1)
                 except discord.HTTPException as e:
                     await ctx.send(f"Error sending current log: {str(e)}")
 
@@ -561,14 +565,16 @@ class LogManager(commands.Cog):
                         with open(temp_file, 'wb') as f_out:
                             shutil.copyfileobj(f_in, f_out)
                     
-                    # Send file with number if multiple archives exist
-                    message = f"Archive {i}:" if len(archives) > 1 else "Archive:"
-                    await ctx.send(message, file=discord.File(str(temp_file)))
-                    found_logs = True
-                    await asyncio.sleep(1)  # Add small delay between sends
-                    
-                except discord.HTTPException as e:
-                    await ctx.send(f"Error sending archive {i}: {str(e)}")
+                    # Check file size
+                    if temp_file.stat().st_size <= MAX_SIZE:
+                        await ctx.send(f"Archive {i}:", file=discord.File(str(temp_file)))
+                        found_logs = True
+                        await asyncio.sleep(1)
+                    else:
+                        await ctx.send(f"Archive {i} is too large to send directly.")
+                        
+                except Exception as e:
+                    await ctx.send(f"Error processing archive {i}: {str(e)}")
                 finally:
                     # Clean up temp file
                     if temp_file.exists():
@@ -581,6 +587,7 @@ class LogManager(commands.Cog):
             await ctx.send("Invalid date format. Please use: ,searchlog month date year\nExample: ,searchlog 1 15 2024")
         except Exception as e:
             await ctx.send(f"Error searching logs: {str(e)}")
+
 
 
 
