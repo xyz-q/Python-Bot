@@ -280,11 +280,10 @@ class VIPSystem(commands.Cog):
             next_payment = datetime.fromisoformat(data['next_payment'])
             
             if current_time >= next_payment:
-                tier_price = self.vip_tiers[data['tier']]['price']
-
-                if await self.process_vip_payment(user_id, tier_price):
+                # Use self.vip_price instead of tier_price
+                if await self.process_vip_payment(user_id, self.vip_price):
                     self.vip_data[user_id]['next_payment'] = (
-                        next_payment + timedelta(days=self.vip_tiers[data['tier']]['period'])
+                        next_payment + timedelta(days=30)  # Fixed 30-day period
                     ).isoformat()
                     self.save_vip_data()
                 else:
@@ -299,6 +298,7 @@ class VIPSystem(commands.Cog):
                             await user.send("Your VIP subscription has been cancelled due to insufficient funds.")
                     except discord.HTTPException:
                         pass
+
 
 
 async def setup(bot):

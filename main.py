@@ -6,8 +6,10 @@ from discord.ext import commands
 import os
 import glob
 import asyncio
+import time  # Add this line
 from discord import app_commands, Interaction, Object
 from discord.ui import Button, View
+
 
 
 load_dotenv()
@@ -17,6 +19,7 @@ intents = discord.Intents.all()
 intents.message_content = True
 intents.dm_messages = True
 intents.members = True
+intents.voice_states = True
 bot = commands.Bot(command_prefix=',', owner_id=110927272210354176, intents=intents)
 
 
@@ -31,12 +34,16 @@ class Client(commands.Bot):
         return [f.replace("/", ".").replace("\\", ".")[:-3] for f in glob.glob(pattern, recursive=True)]
 
     async def setup_hook(self):
+        print("\n=== Loading Cogs ===\n")
         for ext in self.cogslist:
             try:
                 await self.load_extension(ext)
-                print(f"Loaded extension: {ext}")
+                print(f"{Fore.GREEN}✓ {ext}{Style.RESET_ALL}")
             except Exception as e:
-                print(f"Failed to load extension {ext}: {e}")
+                print(f"{Fore.RED}✗ {ext}: {str(e)}{Style.RESET_ALL}")
+        print("\n")
+        print("=== All Cogs Loaded ===\n")
+
 
     async def on_ready(self):
         prfx = (Back.BLACK + Fore.GREEN + time.strftime("%H:%M:%S UTC", time.gmtime()) + Back.RESET + Fore.WHITE + Style.BRIGHT)

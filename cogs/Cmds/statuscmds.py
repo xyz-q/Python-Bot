@@ -66,7 +66,7 @@ class StatusCommands(commands.Cog):
     async def on_ready(self):
         if self.is_dnd:
             await self.bot.change_presence(status=discord.Status.dnd, activity=dnd_activity)
-            await asyncio.sleep(3)
+            await asyncio.sleep(4.5)
             print("\033[91mBot is now in Do Not Disturb mode.\033[0m")
 
 async def setup(bot):

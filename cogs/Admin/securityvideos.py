@@ -383,13 +383,12 @@ class StorageMonitor(commands.Cog):
     async def cleanup_storage(self):
         """Main cleanup task"""
         try:
-            print("\n=== Starting cleanup process ===")
-            print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
             
             # Gather all files with their info
             files = []
             total_size = 0
-            print("\nGathering file information...")
+
             
             for root, _, filenames in os.walk(self.backup_path):
                 for filename in filenames:
@@ -414,13 +413,11 @@ class StorageMonitor(commands.Cog):
             # Sort files by age (oldest first)
             old_files = sorted(files, key=lambda x: x['age'], reverse=True)
 
-            print(f"\nFound {len(files)} files")
-            print(f"Total size: {self.format_size(total_size)}")
-            print("\nLargest files:")
+
             for f in large_files[:5]:  # Show top 5 largest
                 print(f"- {f['name']}: {self.format_size(f['size'])} ({f['age']:.1f} days old)")
             
-            print("\nOldest files:")
+
             for f in old_files[:5]:  # Show top 5 oldest
                 print(f"- {f['name']}: {f['age']:.1f} days old ({self.format_size(f['size'])})")
 
@@ -472,8 +469,7 @@ class StorageMonitor(commands.Cog):
                 self.deleted_files_log = (deleted + getattr(self, 'deleted_files_log', []))[:20]
                 print("\nUpdating monitor message with deletion information...")
                 await self.monitor_storage()
-            else:
-                print("\nNo files were deleted")
+
                 
         except Exception as e:
             print(f"\n❌ Error in cleanup_storage: {e}")

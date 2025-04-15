@@ -57,7 +57,7 @@ class SecurityCamera(commands.Cog):
                 embed.set_footer(text="Stream updates every 5 seconds")
                 self.message = await channel.send(embed=embed)
                 self.message_id = self.message.id
-                print(f"Created new message with ID: {self.message_id}")
+
 
             return self.message
 

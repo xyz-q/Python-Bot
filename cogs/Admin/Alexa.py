@@ -26,7 +26,7 @@ class LightControl(commands.Cog):
         
     @commands.Cog.listener()
     async def on_ready(self):
-        logger.info("LightControl cog on_ready event triggered")
+
         
         # Avoid running setup multiple times if on_ready fires more than once
         if self.setup_complete:
@@ -37,7 +37,7 @@ class LightControl(commands.Cog):
         
     async def setup_control_panel(self):
         try:
-            logger.info("Setting up light control panel")
+
             
             # Get the channel where you want to post the embed
             if not CHANNEL_ID:
@@ -56,7 +56,7 @@ class LightControl(commands.Cog):
                     logger.error(f"Failed to fetch channel: {e}")
                     return
             
-            logger.info(f"Found channel: {channel.name} (ID: {channel.id})")
+
             
             # Check permissions
             bot_member = channel.guild.get_member(self.bot.user.id)
@@ -70,10 +70,10 @@ class LightControl(commands.Cog):
                 logger.warning("Bot doesn't have permission to delete messages in this channel")
             else:
                 # Clear all messages in the channel
-                logger.info("Purging channel messages")
+
                 try:
                     await channel.purge(limit=100)  # Limit to 100 messages for safety
-                    logger.info("Channel purged successfully")
+
                 except Exception as e:
                     logger.error(f"Error purging channel: {e}")
             
@@ -88,9 +88,9 @@ class LightControl(commands.Cog):
             view = LightControlView()
             
             # Send the embed with buttons
-            logger.info("Sending control panel embed")
+
             await channel.send(embed=embed, view=view)
-            logger.info("Control panel sent successfully")
+
             
             self.setup_complete = True
             
@@ -139,6 +139,6 @@ class LightControlView(discord.ui.View):
 
 
 async def setup(bot):
-    logger.info("Adding LightControl cog to bot")
+
     await bot.add_cog(LightControl(bot))
-    logger.info("LightControl cog added successfully")
+
