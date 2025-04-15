@@ -13,6 +13,9 @@ class AutoPublish(commands.Cog):
         self.data_file = '.json/autopublish_channels.json'
         self.load_channels()
         self.cleanup_task.start()
+        # Add rate limit tracking
+        self.last_publish = {}  # Track last publish time per channel
+        self.publish_cooldown = 60  # C
 
     def load_channels(self):
         """Load auto-publish channels from JSON file"""
@@ -92,89 +95,62 @@ class AutoPublish(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        await asyncio.sleep(2)
-
-        
         if not isinstance(message.channel, discord.TextChannel):
-
             return
 
+        if message.channel.id not in self.auto_publish_channels:
+            return
+
+        # Check cooldown
+        current_time = discord.utils.utcnow().timestamp()
+        last_publish_time = self.last_publish.get(message.channel.id, 0)
         
-        if message.channel.id in self.auto_publish_channels:
-            bot_permissions = message.channel.permissions_for(message.guild.me)
+        if current_time - last_publish_time < self.publish_cooldown:
+            # Still in cooldown period, skip publishing
+            return
 
-            
-            max_retries = 3
-            retry_count = 0
-            
-            while retry_count < max_retries:
+        try:
+            # Verify message still exists and isn't already crossposted
+            try:
+                message = await message.channel.fetch_message(message.id)
+                
+                # Check if message is already crossposted or has the publish reaction
+                if message.flags.crossposted or "📢" in [r.emoji for r in message.reactions]:
+                    return
+                    
+            except discord.NotFound:
+                return
+            except Exception as e:
+                print(f"Error fetching message: {e}")
+                return
+
+            # Implement exponential backoff
+            for attempt in range(3):
                 try:
-
-                    
-                    # Try to fetch the message first to ensure it exists
-                    try:
-                        # Refresh message object
-                        message = await message.channel.fetch_message(message.id)
-                        if message.flags.crossposted:
-                            print("Message is already crossposted")
-                            break
-                    except discord.NotFound:
-
+                    await message.publish()
+                    await message.add_reaction("📢")
+                    self.last_publish[message.channel.id] = current_time
+                    break
+                except discord.HTTPException as e:
+                    if e.code == 429:  # Rate limit error
+                        retry_after = e.retry_after if hasattr(e, 'retry_after') else (2 ** attempt) * 5
+                        print(f"Rate limited in channel {message.channel.id}. Waiting {retry_after} seconds")
+                        await asyncio.sleep(retry_after)
+                        continue
+                    else:
+                        print(f"HTTP Exception: {e.status} - {e.text}")
                         break
-                    except Exception as e:
-                        print(f"Error fetching message: {e}")
-                    
-                    # Attempt to publish with shorter timeout
-                    try:
-                        publish_task = asyncio.create_task(message.publish())
-                        await asyncio.wait_for(publish_task, timeout=5.0)
-
-                        await message.add_reaction("📢")
-
-                        break
-                        
-                    except asyncio.TimeoutError:
-
-                        # Cancel the publish task if it's still running
-                        if not publish_task.done():
-                            publish_task.cancel()
-                            try:
-                                await publish_task
-                            except asyncio.CancelledError:
-                                print("Publish task cancelled")
-                        
-                        if retry_count < max_retries - 1:
-                            wait_time = (retry_count + 1) * 2
-
-                            await asyncio.sleep(wait_time)
-                            retry_count += 1
-                            continue
-
-
-                            
-                except discord.Forbidden as e:
-                    print(f"Forbidden error: {e}")
+                except discord.Forbidden:
+                    print(f"Forbidden: Cannot publish in channel {message.channel.id}")
                     self.auto_publish_channels.remove(message.channel.id)
                     self.save_channels()
-                    print(f"Removed channel {message.channel.id} from auto_publish_channels")
                     break
-                    
-                except discord.HTTPException as e:
-                    print(f"HTTP Exception: {e.status} - {e.text}")
-                    if e.code == 429:  # Rate limit error
-                        if retry_count < max_retries - 1:
-                            wait_time = e.retry_after if hasattr(e, 'retry_after') else 5
-                            print(f"Rate limited - waiting {wait_time} seconds")
-                            await asyncio.sleep(wait_time)
-                            retry_count += 1
-                            continue
-
-                        
                 except Exception as e:
                     print(f"Unexpected error: {type(e).__name__}: {e}")
                     break
 
-
+        except Exception as e:
+            print(f"Error in publish handler: {e}")
 
 
 
