@@ -298,9 +298,14 @@ class LogManager(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
+        # Skip logging for DMs
+        if before.guild is None:
+            return
+            
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] [{before.guild.name}] MESSAGE EDITED - {before.author.name}: {before.content} -> {after.content}"
         await self.log_to_file(log_entry)
+
 
     # Member Events
     @commands.Cog.listener()

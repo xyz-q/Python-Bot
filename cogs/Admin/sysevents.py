@@ -255,7 +255,7 @@ class SystemEvents(commands.Cog):
     async def on_command_error(self, ctx, error):
         try:
             print(f"\033[91mCommand Error: {str(error)}\033[0m")
-            traceback.print_exc()
+            
 
             if isinstance(error, commands.CommandNotFound):
                 try:
@@ -311,7 +311,8 @@ class SystemEvents(commands.Cog):
                 return
 
             else:
-                warning = print(f" An unexpected error occurred: {str(error)}")
+                warning = print(f" ")
+                #warning = print(f" An unexpected error occurred: {str(error)}")
                 
             try:
                 await asyncio.sleep(7)

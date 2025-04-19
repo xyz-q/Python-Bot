@@ -57,7 +57,7 @@ class Twitch(commands.Cog):
         for config in self.configurations:
             channel = self.bot.get_channel(config['discord_channel_id'])
             if channel is None:
-                print(f"Error: Discord channel with ID {config['discord_channel_id']} not found.")
+                #print(f"Error: Discord channel with ID {config['discord_channel_id']} not found. For TTV config: {config}")
                 continue
 
             is_live = self.check_stream_status(config['twitch_username'])
