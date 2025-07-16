@@ -13,11 +13,17 @@ class MessageAll(commands.Cog):
         
         await interaction.response.send_message("Sending messages to all channels...", ephemeral=True)
         
-        total_channels = len(interaction.guild.text_channels)
+        all_channels = interaction.guild.channels
+        text_channels = interaction.guild.text_channels
+        total_channels = len(text_channels)
         sent_count = 0
         failed_channels = []
         
-        for channel in interaction.guild.text_channels:
+        print(f"Total channels: {len(all_channels)}, Text channels: {len(text_channels)}")
+        for ch in all_channels:
+            print(f"Channel: {ch.name} - Type: {type(ch)}")
+        
+        for channel in text_channels:
             if channel.permissions_for(interaction.guild.me).send_messages:
                 try:
                     for _ in range(times):
