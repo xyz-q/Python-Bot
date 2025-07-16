@@ -11,17 +11,17 @@ class MessageAll(commands.Cog):
     async def msgall(self, interaction: discord.Interaction, message: str, times: int = 1):
         times = min(times, 10)
         
+        if not interaction.guild.me.guild_permissions.view_channel:
+            await interaction.response.send_message("❌ Bot needs 'View Channels' permission!", ephemeral=True)
+            return
+            
         await interaction.response.send_message("Sending messages to all channels...", ephemeral=True)
         
-        all_channels = interaction.guild.channels
-        text_channels = interaction.guild.text_channels
+        # Get channels the bot can actually see
+        text_channels = [ch for ch in interaction.guild.channels if isinstance(ch, discord.TextChannel)]
         total_channels = len(text_channels)
         sent_count = 0
         failed_channels = []
-        
-        print(f"Total channels: {len(all_channels)}, Text channels: {len(text_channels)}")
-        for ch in all_channels:
-            print(f"Channel: {ch.name} - Type: {type(ch)}")
         
         for channel in text_channels:
             if channel.permissions_for(interaction.guild.me).send_messages:
