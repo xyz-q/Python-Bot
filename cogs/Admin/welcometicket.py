@@ -77,7 +77,7 @@ class AcceptDeclineView(discord.ui.View):
         role = self.guild.get_role(ROLE_ID)
         if role and self.user:
             await self.user.add_roles(role)
-            await self.user.send("Welcome to the server! Enjoy your stay.")
+            await self.user.send("Your request for the server `xyz` has been accepted, welcome to the server! Enjoy your stay.")
         try:
             await self.message.delete()
         except discord.errors.NotFound:
