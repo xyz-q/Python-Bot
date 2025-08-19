@@ -103,9 +103,14 @@ class CheckHTML(commands.Cog):
             await message.edit(embed=embed)
             
         except Exception as e:
+            # More detailed error info
+            error_msg = f"Error: {type(e).__name__}: {str(e)}"
+            if hasattr(e, 'status'):
+                error_msg += f" (HTTP {e.status})"
+            
             embed = discord.Embed(
                 title="❌ Error",
-                description=f"Failed to fetch HTML: {str(e)}",
+                description=f"Failed to fetch HTML from {url}\n{error_msg}",
                 color=0xff0000
             )
             await message.edit(embed=embed)
