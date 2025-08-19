@@ -49,12 +49,12 @@ class RoleViewer(commands.Cog):
                 await ctx.send("Could not find the specified server.")
                 return
 
-            member = guild.get_member(ctx.author.id)
-            if not member:
-                await ctx.send("You are not in that server.")
+            bot_member = guild.get_member(self.bot.user.id)
+            if not bot_member:
+                await ctx.send("Bot is not in that server.")
                 return
 
-            perms = member.guild_permissions
+            perms = bot_member.guild_permissions
             top_perms = []
             
             # Check for highest level permissions first
