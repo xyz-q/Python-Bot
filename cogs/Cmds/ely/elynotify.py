@@ -1,19 +1,19 @@
 import discord
 from discord.ext import commands, tasks
 import aiohttp
-import sys
 import os
 import asyncio
 import json
 from difflib import get_close_matches
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from cogs.Cmds.ely.elydata import data
+def load_ely_data():
+    with open(os.path.join(os.path.dirname(__file__), 'elydata.json'), 'r') as f:
+        return json.load(f)
 
 class ElyNotify(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.item_dictionary = data
+        self.item_dictionary = load_ely_data()
         self.price_alerts = {}
         self.alerts_file = '.json/alerts.json'
         self.load_alerts()
