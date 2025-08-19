@@ -9,6 +9,9 @@ class ServerButton(Button):
         self.server = server
 
     async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != 110927272210354176:
+            await interaction.response.send_message("Unauthorized.", ephemeral=True)
+            return
         confirm_view = ConfirmView(self.server, interaction.message)
         await interaction.response.send_message(
             f"Are you sure you want to remove the bot from {self.server.name}?",
@@ -24,6 +27,9 @@ class ConfirmView(View):
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.danger)
     async def confirm(self, interaction: discord.Interaction, button: Button):
+        if interaction.user.id != 110927272210354176:
+            await interaction.response.send_message("Unauthorized.", ephemeral=True)
+            return
         try:
             await self.server.leave()
             await interaction.response.edit_message(
@@ -42,6 +48,9 @@ class ConfirmView(View):
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey)
     async def cancel(self, interaction: discord.Interaction, button: Button):
+        if interaction.user.id != 110927272210354176:
+            await interaction.response.send_message("Unauthorized.", ephemeral=True)
+            return
         await interaction.response.edit_message(
             content="Operation cancelled.",
             view=None
@@ -56,8 +65,13 @@ class ServerManagement(commands.Cog):
         self.bot = bot
 
     @commands.command(name="leaveserver")
-    @commands.is_owner()  # This ensures only the bot owner can use this command
     async def leave_server(self, ctx: commands.Context):
+        if ctx.author.id != 110927272210354176:
+            try:
+                await ctx.message.delete()
+            except:
+                pass
+            return
         """Lists all servers the bot is in and allows the owner to remove the bot from selected servers"""
         
         # Delete the command message
