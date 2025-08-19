@@ -39,16 +39,22 @@ class CommandComparison(commands.Cog):
         embed = discord.Embed(title="Command Comparison", color=discord.Color.blue())
         
         if missing_in_list:
+            missing_text = "\n".join(f"`,{cmd}`" for cmd in sorted(missing_in_list))
+            if len(missing_text) > 1020:
+                missing_text = missing_text[:1020] + "..."
             embed.add_field(
                 name="❌ Missing from ,list (in bot but not in hardcoded list)",
-                value="\n".join(f"`,{cmd}`" for cmd in sorted(missing_in_list)) or "None",
+                value=missing_text or "None",
                 inline=False
             )
         
         if missing_in_bot:
+            bot_text = "\n".join(f"`,{cmd}`" for cmd in sorted(missing_in_bot))
+            if len(bot_text) > 1020:
+                bot_text = bot_text[:1020] + "..."
             embed.add_field(
                 name="⚠️ In ,list but not in bot (hardcoded but no actual command)",
-                value="\n".join(f"`,{cmd}`" for cmd in sorted(missing_in_bot)) or "None",
+                value=bot_text or "None",
                 inline=False
             )
         
