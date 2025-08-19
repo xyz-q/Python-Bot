@@ -26,7 +26,7 @@ bot = commands.Bot(command_prefix=',', owner_id=110927272210354176, intents=inte
  
 class Client(commands.Bot):
     def __init__(self):
-        super().__init__(   help_command=None, command_prefix=commands.when_mentioned_or(','), intents=discord.Intents().all())
+        super().__init__(help_command=None, command_prefix=commands.when_mentioned_or(','), owner_id=110927272210354176, intents=discord.Intents().all())
         self.cogslist = self.get_all_cogs("cogs")
 
     def get_all_cogs(self, directory):
