@@ -75,9 +75,9 @@ class SetImage(commands.Cog):
             # Reload ely cog
             try:
                 await self.bot.reload_extension('cogs.Cmds.ely.ely')
-                reload_msg = "\n\n✅ Ely cog reloaded!"
+                reload_msg = "\n\n✅ Data file reloaded!"
             except:
-                reload_msg = "\n\n⚠️ Could not reload ely cog. Use `!reload ely`."
+                reload_msg = "\n\n⚠️ Could not reload data file."
             
             embed = discord.Embed(
                 title="✅ Image Updated!",

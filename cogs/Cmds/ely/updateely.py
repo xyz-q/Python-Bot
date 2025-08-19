@@ -41,9 +41,9 @@ class UpdateView(discord.ui.View):
             # Reload the ely cog to refresh data
             try:
                 await interaction.client.reload_extension('cogs.Cmds.ely.ely')
-                reload_msg = "\n\n✅ Ely cog reloaded successfully!"
+                reload_msg = "\n\n✅ Data file reloaded successfully!"
             except:
-                reload_msg = "\n\n⚠️ Could not reload ely cog automatically. Use `!reload ely` command."
+                reload_msg = "\n\n⚠️ Could not reload data file automatically."
             
             embed = discord.Embed(
                 title="✅ Data Updated Successfully!",
@@ -129,6 +129,24 @@ class UpdateEly(commands.Cog):
         return embed
     
 
+    
+    @commands.command(name='reloadely')
+    async def reload_ely(self, ctx):
+        """Reload the ely cog"""
+        try:
+            await self.bot.reload_extension('cogs.Cmds.ely.ely')
+            embed = discord.Embed(
+                title="✅ Ely Cog Reloaded",
+                description="Successfully reloaded the ely cog!",
+                color=0x00ff00
+            )
+        except Exception as e:
+            embed = discord.Embed(
+                title="❌ Reload Failed",
+                description=f"Error: {str(e)}",
+                color=0xff0000
+            )
+        await ctx.send(embed=embed)
     
     @commands.command(name='updateely')
     async def update_ely_command(self, ctx, url: str = None):
