@@ -38,9 +38,16 @@ class SetImage(commands.Cog):
         return [item for item in data if item['value'] in close_matches]
     
     @commands.command(name='setimage')
-    async def set_image(self, ctx, item_name: str, image_url: str):
+    async def set_image(self, ctx, *, args: str):
         """Set/update an item's image. Usage: ,setimage "item name" "image_url" """
         
+        # Split args to get item name and image URL
+        parts = args.rsplit(' ', 1)
+        if len(parts) != 2:
+            await ctx.send("Usage: `,setimage item_name image_url`")
+            return
+        
+        item_name, image_url = parts
         matches = self.search_items(item_name)
         
         if not matches:
