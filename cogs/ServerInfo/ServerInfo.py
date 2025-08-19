@@ -5,7 +5,7 @@ class ServerInfo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @commands.dm_only()
+    
     @commands.command()
     async def serverlist(self, ctx):
         try:
@@ -24,7 +24,7 @@ class ServerInfo(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
     
-    @commands.dm_only()
+    
     @commands.command()
     async def channellist(self, ctx, server_id: int):
         try:
