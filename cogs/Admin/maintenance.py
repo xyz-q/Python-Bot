@@ -59,14 +59,14 @@ class Maintenance(commands.Cog):
                 # Extract original name by removing all maintenance prefixes
                 if current_nickname:
                     original_name = current_nickname
-                    while original_name.startswith("[MAINTENANCE] "):
+                    while original_name.startswith("[UNDER MAINTENANCE] "):
                         original_name = original_name[13:]
                 else:
                     original_name = guild.me.name
 
                 # Build new nickname based on maintenance mode
                 if self.maintenance_mode:
-                    new_nickname = f"[MAINTENANCE] {original_name}"
+                    new_nickname = f"[UNDER MAINTENANCE] {original_name}"
                 else:
                     new_nickname = original_name
 
