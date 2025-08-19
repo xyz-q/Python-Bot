@@ -1,31 +1,29 @@
 import discord
 from discord.ext import commands
-import os
+import json
 
 class Maintenance(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config_file = "data/maintenance_config.txt"
+        self.config_file = ".json/maintenance.json"
         self.maintenance_mode = self.load_maintenance_state()
 
     def load_maintenance_state(self):
         """Load maintenance state from file"""
         try:
-            if os.path.exists(self.config_file):
-                with open(self.config_file, 'r') as f:
-                    state = f.read().strip()
-                    return state.lower() == 'true'
+            with open(self.config_file, 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return False
         except Exception as e:
             print(f"Error loading maintenance state: {e}")
-        return False
+            return False
 
     def save_maintenance_state(self):
         """Save maintenance state to file"""
         try:
-            # Ensure the directory exists
-            os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
             with open(self.config_file, 'w') as f:
-                f.write(str(self.maintenance_mode))
+                json.dump(self.maintenance_mode, f)
         except Exception as e:
             print(f"Error saving maintenance state: {e}")
 
@@ -40,6 +38,17 @@ class Maintenance(commands.Cog):
         status = "enabled" if self.maintenance_mode else "disabled"
         await ctx.send(f"Maintenance mode {status}")
 
+    @commands.command()
+    @commands.is_owner()
+    async def resetname(self, ctx):
+        """Reset bot nickname to default in all servers"""
+        for guild in self.bot.guilds:
+            try:
+                await guild.me.edit(nick=None)
+            except (discord.HTTPException, discord.Forbidden) as e:
+                print(f"Failed to reset nickname in {guild.name}: {e}")
+        await ctx.send("Bot nickname reset in all servers")
+
     async def update_bot_nickname(self):
         """Update the bot's nickname in all guilds"""
         for guild in self.bot.guilds:
@@ -47,12 +56,13 @@ class Maintenance(commands.Cog):
                 # Get current nickname
                 current_nickname = guild.me.nick
                 
-                # Extract original name by removing prefix if it exists
-                if current_nickname and current_nickname.startswith("[MAINTENANCE] "):
-                    original_name = current_nickname[13:]
+                # Extract original name by removing all maintenance prefixes
+                if current_nickname:
+                    original_name = current_nickname
+                    while original_name.startswith("[MAINTENANCE] "):
+                        original_name = original_name[13:]
                 else:
-                    # Use current nickname or fall back to bot's default name
-                    original_name = current_nickname or guild.me.name
+                    original_name = guild.me.name
 
                 # Build new nickname based on maintenance mode
                 if self.maintenance_mode:
