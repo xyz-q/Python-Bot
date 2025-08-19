@@ -130,24 +130,8 @@ class UpdateEly(commands.Cog):
     
 
     
-    @commands.command(name='reloadely')
-    async def reload_ely(self, ctx):
-        """Reload the ely cog"""
-        try:
-            await self.bot.reload_extension('cogs.Cmds.ely.ely')
-            embed = discord.Embed(
-                title="✅ Ely Cog Reloaded",
-                description="Successfully reloaded the ely cog!",
-                color=0x00ff00
-            )
-        except Exception as e:
-            embed = discord.Embed(
-                title="❌ Reload Failed",
-                description=f"Error: {str(e)}",
-                color=0xff0000
-            )
-        await ctx.send(embed=embed)
-    
+
+    @commands.is_owner()
     @commands.command(name='updateely')
     async def update_ely_command(self, ctx, url: str = None):
         """Check for new items from ely.gg and offer to merge them"""

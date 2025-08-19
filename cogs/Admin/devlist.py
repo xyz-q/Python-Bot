@@ -20,6 +20,7 @@ class InfoCog(commands.Cog):
         
         # Sort cogs and commands
         formatted_commands = []
+        counter = 1
         for cog_name in sorted(cog_commands.keys()):
             # Get file name from cog
             cog_obj = self.bot.get_cog(cog_name)
@@ -29,9 +30,10 @@ class InfoCog(commands.Cog):
             else:
                 formatted_commands.append(f"\n**{cog_name}**")
             
-            # Sort and add commands
+            # Sort and add commands with numbers
             for cmd in sorted(cog_commands[cog_name]):
-                formatted_commands.append(f"• {cmd}")
+                formatted_commands.append(f"`{counter}`. {cmd}")
+                counter += 1
 
         message_content = "**Commands by File > Cog > Command**\n" + "\n".join(formatted_commands)
         

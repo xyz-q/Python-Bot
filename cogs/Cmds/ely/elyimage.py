@@ -36,7 +36,7 @@ class SetImage(commands.Cog):
         close_matches = get_close_matches(query, item_names, n=10, cutoff=0.6)
         
         return [item for item in data if item['value'] in close_matches]
-    
+    @commands.is_owner()
     @commands.command(name='setimage')
     async def set_image(self, ctx, *, args: str):
         """Set/update an item's image. Usage: ,setimage "item name" "image_url" """
