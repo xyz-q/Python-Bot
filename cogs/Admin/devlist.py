@@ -33,13 +33,9 @@ class InfoCog(commands.Cog):
             for cmd in sorted(cog_commands[cog_name]):
                 formatted_commands.append(f"• {cmd}")
 
-        embed = discord.Embed(
-            title="Commands by File > Cog > Command",
-            description="\n".join(formatted_commands),
-            color=discord.Color.gold()
-        )
-
-        message = await ctx.send(embed=embed)
+        message_content = "**Commands by File > Cog > Command**\n" + "\n".join(formatted_commands)
+        
+        message = await ctx.send(message_content)
         await message.delete(delay=60)
 
 async def setup(bot):
