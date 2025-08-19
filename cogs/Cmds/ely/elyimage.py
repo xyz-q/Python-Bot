@@ -26,9 +26,14 @@ class SetImage(commands.Cog):
         if exact_matches:
             return exact_matches
         
-        # Fuzzy matching
+        # Contains match
+        contains_matches = [item for item in data if query.lower() in item['value'].lower()]
+        if contains_matches:
+            return contains_matches
+        
+        # Fuzzy matching with higher cutoff
         item_names = [item['value'] for item in data]
-        close_matches = get_close_matches(query, item_names, n=10, cutoff=0.3)
+        close_matches = get_close_matches(query, item_names, n=10, cutoff=0.6)
         
         return [item for item in data if item['value'] in close_matches]
     
