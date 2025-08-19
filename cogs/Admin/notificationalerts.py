@@ -113,7 +113,7 @@ class NotificationSystem(commands.Cog):
             embed.set_footer(text=f"You were #{reader_number} to read this alert!")
 
         notifembed = await ctx.send(embed=embed, ephemeral=True, delete_after=8)
-        await asyncio.sleep(25)
+        await asyncio.sleep(45)
         await notifembed.delete()
 
     @commands.command(name="setnotification", aliases=['setnotif', 'notifset'])
