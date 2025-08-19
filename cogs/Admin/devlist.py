@@ -35,8 +35,37 @@ class InfoCog(commands.Cog):
 
         message_content = "**Commands by File > Cog > Command**\n" + "\n".join(formatted_commands)
         
-        message = await ctx.send(message_content)
-        await message.delete(delay=60)
+        # Split message if too long
+        if len(message_content) > 2000:
+            chunks = []
+            current_chunk = "**Commands by File > Cog > Command**\n"
+            
+            for line in formatted_commands:
+                if len(current_chunk + line + "\n") > 1900:
+                    chunks.append(current_chunk)
+                    current_chunk = line + "\n"
+                else:
+                    current_chunk += line + "\n"
+            
+            if current_chunk:
+                chunks.append(current_chunk)
+            
+            messages = []
+            for chunk in chunks:
+                msg = await ctx.send(chunk)
+                messages.append(msg)
+            
+            # Delete all messages after delay
+            import asyncio
+            await asyncio.sleep(60)
+            for msg in messages:
+                try:
+                    await msg.delete()
+                except:
+                    pass
+        else:
+            message = await ctx.send(message_content)
+            await message.delete(delay=60)
 
 async def setup(bot):
     await bot.add_cog(InfoCog(bot))
