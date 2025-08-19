@@ -136,6 +136,24 @@ class ServerVoiceJoin(commands.Cog):
         else:
             await ctx.send(f"An error occurred: {str(error)}")
 
+    @commands.command()
+    async def leavevc(self, ctx):
+        """Disconnect from all voice channels"""
+        try:
+            disconnected = []
+            for vc in self.bot.voice_clients:
+                guild_name = vc.guild.name
+                await vc.disconnect()
+                disconnected.append(guild_name)
+            
+            if disconnected:
+                await ctx.send(f"✅ Disconnected from voice channels in: {', '.join(disconnected)}")
+            else:
+                await ctx.send("❌ Bot is not connected to any voice channels.")
+                
+        except Exception as e:
+            await ctx.send(f"An error occurred: {str(e)}")
+
 
 async def setup(bot):
     await bot.add_cog(ServerVoiceJoin(bot))
