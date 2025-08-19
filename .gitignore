@@ -26,3 +26,4 @@ screenregion.py
 successful_access_1.html
 webpage.html
 *.gz
+cogs/Cmds/ely/elydata.py

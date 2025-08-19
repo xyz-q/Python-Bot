@@ -8,7 +8,7 @@ import asyncio
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from elydata import data
+from cogs.Cmds.ely.elydata import data
 
 class PriceChecker(commands.Cog):
     def __init__(self, bot):

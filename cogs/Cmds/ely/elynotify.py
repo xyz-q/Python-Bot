@@ -8,7 +8,7 @@ import json
 from difflib import get_close_matches
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from elydata import data
+from cogs.Cmds.ely.elydata import data
 
 class ElyNotify(commands.Cog):
     def __init__(self, bot):
