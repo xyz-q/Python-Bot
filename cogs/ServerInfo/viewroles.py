@@ -87,10 +87,10 @@ class RoleViewer(commands.Cog):
             if not top_perms:
                 top_perms.append("🔵 Basic Member (No special permissions)")
             
-            highest_role = member.top_role.name if member.top_role.name != "@everyone" else "No roles"
+            highest_role = bot_member.top_role.name if bot_member.top_role.name != "@everyone" else "No roles"
             
             embed = discord.Embed(
-                title=f"Your Access in {guild.name}",
+                title=f"Bot Access in {guild.name}",
                 color=discord.Color.gold()
             )
             embed.add_field(
