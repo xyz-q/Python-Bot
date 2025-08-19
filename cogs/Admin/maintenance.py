@@ -44,7 +44,7 @@ class Maintenance(commands.Cog):
         """Reset bot nickname to default in all servers"""
         for guild in self.bot.guilds:
             try:
-                await guild.me.edit(nick=xyz)
+                await guild.me.edit(nick=None)
             except (discord.HTTPException, discord.Forbidden) as e:
                 print(f"Failed to reset nickname in {guild.name}: {e}")
         await ctx.send("Bot nickname reset in all servers")
