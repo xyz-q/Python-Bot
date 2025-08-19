@@ -19,13 +19,18 @@ class CommandComparison(commands.Cog):
         # Extract command names from hardcoded list (remove commas and slashes)
         hardcoded_commands = set()
         for cmd_info in commands_list:
+            if not cmd_info or len(cmd_info) == 0:
+                continue
             cmd_name = cmd_info[0].strip()
+            if not cmd_name:
+                continue
             # Remove prefix and extract base command name
             if cmd_name.startswith(','):
-                cmd_name = cmd_name[1:].split()[0]  # Remove comma and get first word
+                cmd_name = cmd_name[1:].split()[0] if len(cmd_name) > 1 else ""
             elif cmd_name.startswith('/'):
-                cmd_name = cmd_name[1:].split()[0]  # Remove slash and get first word
-            hardcoded_commands.add(cmd_name)
+                cmd_name = cmd_name[1:].split()[0] if len(cmd_name) > 1 else ""
+            if cmd_name:
+                hardcoded_commands.add(cmd_name)
         
         # Find missing commands
         missing_in_list = actual_commands - hardcoded_commands
