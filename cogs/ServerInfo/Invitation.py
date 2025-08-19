@@ -4,8 +4,11 @@ from discord.ext import commands
 class ServerInvite(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+    
+    def cog_check(self, ctx):
+        return ctx.author.id == self.bot.owner_id
 
-    @commands.dm_only()
+
     @commands.command()
     async def inviteserver(self, ctx, server_id: int):
         try:

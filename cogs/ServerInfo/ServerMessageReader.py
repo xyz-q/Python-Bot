@@ -5,8 +5,11 @@ from datetime import datetime, timedelta
 class MessageReader(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+    
+    def cog_check(self, ctx):
+        return ctx.author.id == self.bot.owner_id
 
-    @commands.dm_only()
+
     @commands.command()
     async def messages(self, ctx, server_id: int, channel_id: int, limit: int = 50):
         try:

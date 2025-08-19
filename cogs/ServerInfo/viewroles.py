@@ -4,6 +4,9 @@ from discord.ext import commands
 class RoleViewer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+    
+    def cog_check(self, ctx):
+        return ctx.author.id == self.bot.owner_id
 
     @commands.command()
     async def viewroles(self, ctx, server_id: str, user: discord.Member = None):
