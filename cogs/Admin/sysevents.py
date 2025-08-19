@@ -95,10 +95,7 @@ class SystemEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        try:            
-            if not hasattr(self, 'connection_monitor'):
-                self.connection_monitor.start() 
-                            
+        try:                            
             print("\033[90mLogged in as {0}\033[0m".format(self.bot.user))
 
             print("\033[0;32mGuilds:\033[0m")
