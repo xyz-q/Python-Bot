@@ -30,7 +30,7 @@ class Maintenance(commands.Cog):
             print(f"Error saving maintenance state: {e}")
 
     @commands.command()
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def maintenance(self, ctx):
         """Toggle maintenance mode for the bot"""
         self.maintenance_mode = not self.maintenance_mode
@@ -44,14 +44,15 @@ class Maintenance(commands.Cog):
         """Update the bot's nickname in all guilds"""
         for guild in self.bot.guilds:
             try:
-                # Get current nickname or default to bot's name
-                current_nickname = guild.me.nick or guild.me.name
-
-                # Remove [MAINTENANCE] prefix if it exists
-                if current_nickname.startswith("[MAINTENANCE] "):
+                # Get current nickname
+                current_nickname = guild.me.nick
+                
+                # Extract original name by removing prefix if it exists
+                if current_nickname and current_nickname.startswith("[MAINTENANCE] "):
                     original_name = current_nickname[13:]
                 else:
-                    original_name = current_nickname
+                    # Use current nickname or fall back to bot's default name
+                    original_name = current_nickname or guild.me.name
 
                 # Build new nickname based on maintenance mode
                 if self.maintenance_mode:
