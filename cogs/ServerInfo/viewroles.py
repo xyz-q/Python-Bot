@@ -40,7 +40,7 @@ class RoleViewer(commands.Cog):
 
     @commands.command()
     async def myaccess(self, ctx, server_id: str):
-        """Show your top permissions in a server"""
+        """Show bot permissions and recent messages in a server"""
 
 
         try:
@@ -103,6 +103,38 @@ class RoleViewer(commands.Cog):
                 value="\n".join(top_perms),
                 inline=False
             )
+            
+            # Get last 10 bot messages
+            bot_messages = []
+            for channel in guild.text_channels:
+                if channel.permissions_for(bot_member).read_message_history:
+                    try:
+                        async for message in channel.history(limit=50):
+                            if message.author.id == self.bot.user.id:
+                                timestamp = message.created_at.strftime("%m/%d %H:%M")
+                                content = message.content[:50] + "..." if len(message.content) > 50 else message.content
+                                if not content:
+                                    content = "[Embed/File]"
+                                bot_messages.append(f"[{timestamp}] #{channel.name}: {content}")
+                                if len(bot_messages) >= 10:
+                                    break
+                    except discord.Forbidden:
+                        continue
+                if len(bot_messages) >= 10:
+                    break
+            
+            if bot_messages:
+                embed.add_field(
+                    name="Last 10 Bot Messages",
+                    value="\n".join(bot_messages[:10]),
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="Last 10 Bot Messages",
+                    value="No recent messages found",
+                    inline=False
+                )
             
             await ctx.send(embed=embed)
 
