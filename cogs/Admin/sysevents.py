@@ -305,7 +305,7 @@ class SystemEvents(commands.Cog):
                 
             elif isinstance(error, commands.NotOwner):
                 print("NotOwner error triggered")
-                warning = await ctx.send(f"<:remove:1328511957208268800> You are not <@110927272210354176>")
+                warning = await ctx.send(f"<:remove:1328511957208268800> Unauthrorized. This command is restricted to the bot owner.")
 
             elif isinstance(error, discord.NotFound) and error.code == 10008:  # 10008 is the error code for Unknown Message
                 return
