@@ -44,6 +44,23 @@ class ServerInvite(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
 
+    @commands.command()
+    async def checkinvites(self, ctx):
+        """Check who invited the bot to each server"""
+        for guild in self.bot.guilds:
+            try:
+                async for entry in guild.audit_logs(action=discord.AuditLogAction.bot_add, limit=10):
+                    if entry.target.id == self.bot.user.id:
+                        await ctx.send(f"**{guild.name}** - Invited by {entry.user.name}#{entry.user.discriminator} on {entry.created_at.strftime('%Y-%m-%d %H:%M:%S')}")
+                        break
+                else:
+                    await ctx.send(f"**{guild.name}** - No audit log found (missing permissions or too old)")
+            except discord.Forbidden:
+                await ctx.send(f"**{guild.name}** - No audit log access")
+            except Exception as e:
+                await ctx.send(f"**{guild.name}** - Error: {str(e)}")
+
+
     @inviteserver.error
     async def inviteserver_error(self, ctx, error):
         if isinstance(error, commands.PrivateMessageOnly):
