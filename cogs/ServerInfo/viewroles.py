@@ -104,6 +104,18 @@ class RoleViewer(commands.Cog):
                 inline=False
             )
             
+            # Show all permissions
+            all_perms = []
+            for perm, value in perms:
+                if value:
+                    all_perms.append(perm.replace('_', ' ').title())
+            
+            embed.add_field(
+                name="All Permissions",
+                value=", ".join(all_perms) if all_perms else "None",
+                inline=False
+            )
+            
             # Get last 10 bot messages
             bot_messages = []
             for channel in guild.text_channels:
