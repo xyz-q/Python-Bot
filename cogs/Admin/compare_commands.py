@@ -1,0 +1,62 @@
+from discord.ext import commands
+import discord
+
+# Import your hardcoded list from list.py
+from cogs.Cmds.list import commands_list
+
+class CommandComparison(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command(name='compare')
+    async def compare_commands(self, ctx):
+        """Compare devlist (actual commands) with list (hardcoded) to find missing commands"""
+        await ctx.message.delete()
+        
+        # Get actual bot commands (same as devlist)
+        actual_commands = set(command.name for command in self.bot.commands)
+        
+        # Extract command names from hardcoded list (remove commas and slashes)
+        hardcoded_commands = set()
+        for cmd_info in commands_list:
+            cmd_name = cmd_info[0].strip()
+            # Remove prefix and extract base command name
+            if cmd_name.startswith(','):
+                cmd_name = cmd_name[1:].split()[0]  # Remove comma and get first word
+            elif cmd_name.startswith('/'):
+                cmd_name = cmd_name[1:].split()[0]  # Remove slash and get first word
+            hardcoded_commands.add(cmd_name)
+        
+        # Find missing commands
+        missing_in_list = actual_commands - hardcoded_commands
+        missing_in_bot = hardcoded_commands - actual_commands
+        
+        embed = discord.Embed(title="Command Comparison", color=discord.Color.blue())
+        
+        if missing_in_list:
+            embed.add_field(
+                name="❌ Missing from ,list (in bot but not in hardcoded list)",
+                value="\n".join(f"`,{cmd}`" for cmd in sorted(missing_in_list)) or "None",
+                inline=False
+            )
+        
+        if missing_in_bot:
+            embed.add_field(
+                name="⚠️ In ,list but not in bot (hardcoded but no actual command)",
+                value="\n".join(f"`,{cmd}`" for cmd in sorted(missing_in_bot)) or "None",
+                inline=False
+            )
+        
+        embed.add_field(
+            name="📊 Summary",
+            value=f"Total bot commands: {len(actual_commands)}\n"
+                  f"Total hardcoded: {len(hardcoded_commands)}\n"
+                  f"Missing from list: {len(missing_in_list)}\n"
+                  f"Outdated in list: {len(missing_in_bot)}",
+            inline=False
+        )
+        
+        await ctx.send(embed=embed, delete_after=120)
+
+async def setup(bot):
+    await bot.add_cog(CommandComparison(bot))
