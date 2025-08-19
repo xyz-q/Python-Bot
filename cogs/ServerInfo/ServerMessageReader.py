@@ -6,7 +6,7 @@ class MessageReader(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    def cog_check(self, ctx):
+    async def cog_check(self, ctx):
         return ctx.author.id == self.bot.owner_id
 
 
@@ -58,7 +58,9 @@ class MessageReader(commands.Cog):
 
     @messages.error
     async def messages_error(self, ctx, error):
-        if isinstance(error, commands.PrivateMessageOnly):
+        if isinstance(error, commands.CheckFailure):
+            await ctx.send("❌ This command is restricted to the bot owner only!")
+        elif isinstance(error, commands.PrivateMessageOnly):
             await ctx.send("This command can only be used in DMs!")
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.send("Please provide both server ID and channel ID!\n"
