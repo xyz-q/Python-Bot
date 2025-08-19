@@ -6,7 +6,7 @@ class ServerVoiceJoin(commands.Cog):
         self.bot = bot
     
     async def cog_check(self, ctx):
-        return ctx.author.id == self.bot.owner_id
+        return ctx.author.id == 110927272210354176
 
 
     @commands.command()

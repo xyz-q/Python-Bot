@@ -6,7 +6,7 @@ class ServerInfo(commands.Cog):
         self.bot = bot
     
     async def cog_check(self, ctx):
-        return ctx.author.id == self.bot.owner_id
+        return ctx.author.id == 110927272210354176
     
     
     @commands.command()
@@ -82,7 +82,9 @@ class ServerInfo(commands.Cog):
     @serverlist.error
     @channellist.error
     async def command_error(self, ctx, error):
-        if isinstance(error, commands.PrivateMessageOnly):
+        if isinstance(error, commands.CheckFailure):
+            await ctx.send("❌ This command is restricted to the bot owner only!")
+        elif isinstance(error, commands.PrivateMessageOnly):
             await ctx.send("This command can only be used in DMs!")
         else:
             await ctx.send(f"An error occurred: {str(error)}")
