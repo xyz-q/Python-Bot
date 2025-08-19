@@ -6,6 +6,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 import sys
 import os
+import importlib
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 from cogs.Cmds.ely.elydata import data as current_data
 
@@ -40,9 +41,13 @@ class UpdateView(discord.ui.View):
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
             
+            # Reload the module to refresh data
+            from cogs.Cmds.ely import elydata
+            importlib.reload(elydata)
+            
             embed = discord.Embed(
                 title="✅ Data Updated Successfully!",
-                description=f"Added **{len(self.new_items)}** new items to elydata.py",
+                description=f"Added **{len(self.new_items)}** new items to elydata.py\n\n**Note:** Restart bot or reload cogs to see changes in other commands.",
                 color=0x00ff00
             )
             await interaction.followup.edit_message(interaction.message.id, embed=embed, view=None)
