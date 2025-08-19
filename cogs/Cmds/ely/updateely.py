@@ -4,16 +4,11 @@ import re
 import ast
 import aiohttp
 from bs4 import BeautifulSoup
-import json
+import sys
 import os
-
-def load_ely_data():
-    with open(os.path.join(os.path.dirname(__file__), 'elydata.json'), 'r') as f:
-        return json.load(f)
-
-def save_ely_data(data):
-    with open(os.path.join(os.path.dirname(__file__), 'elydata.json'), 'w') as f:
-        json.dump(data, f, indent=2)
+import importlib
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+from cogs.Cmds.ely.elydata import data as current_data
 
 class UpdateView(discord.ui.View):
     def __init__(self, new_items):
@@ -31,12 +26,24 @@ class UpdateView(discord.ui.View):
                 if item['icon'] == '/show-image/elysian-spirit-shield.png':
                     item['icon'] = custom_ely_url
             
-            # Load current data and merge
-            current_data = load_ely_data()
+            # Merge data
             current_data.extend(self.new_items)
             
-            # Save updated data
-            save_ely_data(current_data)
+            # Update file
+            file_path = os.path.join(os.path.dirname(__file__), 'elydata.py')
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            new_data_str = str(current_data)
+            pattern = r'data = \[.*?\]'
+            new_content = re.sub(pattern, f'data = {new_data_str}', content, flags=re.DOTALL)
+            
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            
+            # Reload the module to refresh data
+            from cogs.Cmds.ely import elydata
+            importlib.reload(elydata)
             
             embed = discord.Embed(
                 title="✅ Data Updated Successfully!",
@@ -66,7 +73,7 @@ class UpdateEly(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    async def check_for_updates(self, html_content, current_data):
+    async def check_for_updates(self, html_content):
         """Extract new items from HTML script[4] and compare with existing data"""
         try:
             soup = BeautifulSoup(html_content, 'html.parser')
@@ -142,8 +149,7 @@ class UpdateEly(commands.Cog):
                 async with session.get(url) as response:
                     html_content = await response.text()
             
-            current_data = load_ely_data()
-            new_items, error = await self.check_for_updates(html_content, current_data)
+            new_items, error = await self.check_for_updates(html_content)
             
             if error:
                 embed = discord.Embed(
