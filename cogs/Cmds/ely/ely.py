@@ -2,18 +2,18 @@ import discord
 from discord.ext import commands
 from difflib import get_close_matches
 import aiohttp
-import sys
+import json
 import os
 import asyncio
 
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from cogs.Cmds.ely.elydata import data
+def load_ely_data():
+    with open(os.path.join(os.path.dirname(__file__), 'elydata.json'), 'r') as f:
+        return json.load(f)
 
 class PriceChecker(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.item_dictionary = data
+        self.item_dictionary = load_ely_data()
         
 
         self.item_aliases = {
