@@ -19,11 +19,17 @@ class UpdateView(discord.ui.View):
         await interaction.response.defer()
         
         try:
+            # Replace elysian spirit shield images in new items
+            custom_ely_url = 'https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png?ex=68a50d6d&is=68a3bbed&hm=befb1351fcc88f72f0ab50e2204f92b516a56c6be0d7ca4869e3c780e11c32c9&'
+            for item in self.new_items:
+                if item['icon'] == '/show-image/elysian-spirit-shield.png':
+                    item['icon'] = custom_ely_url
+            
             # Merge data
             current_data.extend(self.new_items)
             
             # Update file
-            file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'elydata.py')
+            file_path = os.path.join(os.path.dirname(__file__), 'elydata.py')
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
