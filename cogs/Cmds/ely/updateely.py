@@ -68,18 +68,18 @@ class UpdateEly(commands.Cog):
             soup = BeautifulSoup(html_content, 'html.parser')
             scripts = soup.find_all('script')
             
-            if len(scripts) < 5:
+            if len(scripts) < 4:
                 return None, "Not enough script tags found"
             
-            script_content = scripts[4].string
+            script_content = scripts[3].string
             if not script_content:
-                return None, "Script[4] is empty"
+                return None, "Script[3] is empty"
             
             pattern = r'data = (\[.*?\]);'
             match = re.search(pattern, script_content, re.DOTALL)
             
             if not match:
-                return None, "No data array found in script[4]"
+                return None, "No data array found in script[3]"
             
             new_data = ast.literal_eval(match.group(1))
             existing_ids = {item['id'] for item in current_data}
