@@ -38,9 +38,16 @@ class UpdateView(discord.ui.View):
             # Save updated data
             save_ely_data(current_data)
             
+            # Reload the ely cog to refresh data
+            try:
+                await interaction.client.reload_extension('cogs.Cmds.ely.ely')
+                reload_msg = "\n\n✅ Ely cog reloaded successfully!"
+            except:
+                reload_msg = "\n\n⚠️ Could not reload ely cog automatically. Use `!reload ely` command."
+            
             embed = discord.Embed(
                 title="✅ Data Updated Successfully!",
-                description=f"Added **{len(self.new_items)}** new items to elydata.json\n\n**Note:** Restart bot or reload cogs to see changes in other commands.",
+                description=f"Added **{len(self.new_items)}** new items to elydata.json{reload_msg}",
                 color=0x00ff00
             )
             await interaction.followup.edit_message(interaction.message.id, embed=embed, view=None)
