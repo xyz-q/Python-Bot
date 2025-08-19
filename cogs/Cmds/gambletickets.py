@@ -1427,6 +1427,8 @@ class GambleSystem(commands.Cog):
     async def on_message(self, message):
         if message.author.bot:
             return
+        
+
                 
         if not isinstance(message.channel, discord.DMChannel):
             return
@@ -1489,9 +1491,12 @@ class GambleSystem(commands.Cog):
 
         user_id = str(message.author.id)
         if user_id not in self.active_sessions:
-            await message.channel.send("<:remove:1328511957208268800> I don't respond to DMs!\nIf theres a green checkmark below to your message, it means I've received it.")
+            # If owner has no active session, just ignore silently
+            if message.author.id == 110927272210354176:
+                return
+            await message.channel.send("<:remove:1328511957208268800> I don't respond to DMs!\nIf theres a green checkmark below your message, it means I've received it.")
             await message.add_reaction("❌")
-            return
+            return   
 
         session = self.active_sessions[user_id]
         admin = self.bot.get_user(int(session['admin_id']))
@@ -1515,10 +1520,7 @@ class GambleSystem(commands.Cog):
                 await message.add_reaction("❌")
 
 
-        if user_id not in self.active_sessions:
-            await message.channel.send("<:remove:1328511957208268800> I don't respond to DMs!\nIf theres a green checkmark below to your message, it means I've received it.")
-            await message.add_reaction("❌")
-            return                
+            
 
 async def setup(bot):
     await asyncio.sleep(0.5)
