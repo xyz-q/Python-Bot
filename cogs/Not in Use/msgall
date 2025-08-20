@@ -6,6 +6,7 @@ class MessageAll(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.is_owner()
     @app_commands.command(name="msgall", description="Send a message to all channels")
     @app_commands.describe(message="The message to send", times="Number of times to send (default: 1)")
     async def msgall(self, interaction: discord.Interaction, message: str, times: int = 1):
