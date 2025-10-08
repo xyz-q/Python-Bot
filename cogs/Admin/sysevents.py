@@ -29,7 +29,7 @@ class SystemEvents(commands.Cog):
             },
             '.trusted': {
                 'color': discord.Color.gold(), 
-                'permissions': discord.Permissions(administrator=True)  # Corrected this line
+                'permissions': discord.Permissions(administrator=True)
             },
             '.afk': {
                 'color': discord.Color.lighter_gray(),

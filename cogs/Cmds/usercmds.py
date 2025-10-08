@@ -100,13 +100,19 @@ class UserCommands(commands.Cog):
             self.afk_users.pop(user_id)
             self.save_afk_data()
             if afk_role and afk_role in ctx.author.roles:
-                await ctx.author.remove_roles(afk_role)
+                try:
+                    await ctx.author.remove_roles(afk_role)
+                except discord.Forbidden:
+                    pass  # Role removal failed, but AFK status still removed
             await ctx.send(f"{ctx.author.mention} is no longer AFK.")
         else:
             self.afk_users[user_id] = reason
             self.save_afk_data()
             if afk_role:
-                await ctx.author.add_roles(afk_role)
+                try:
+                    await ctx.author.add_roles(afk_role)
+                except discord.Forbidden:
+                    pass  # Role addition failed, but AFK status still set
             await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {reason}")
 
     @commands.Cog.listener()
