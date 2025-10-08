@@ -50,8 +50,6 @@ class SystemEvents(commands.Cog):
                         permissions=config['permissions'],
                         reason="Required for bot command permissions"
                     )
-
-
                     print(f"Created {role_name} role in {guild.name}")
                 except discord.Forbidden:
                     print(f"Bot doesn't have permission to create roles in {guild.name}")
