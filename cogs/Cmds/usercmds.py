@@ -95,6 +95,7 @@ class UserCommands(commands.Cog):
     async def afk(self, ctx, *, reason=""):
         user_id = str(ctx.author.id)
         afk_role = discord.utils.get(ctx.guild.roles, name='.afk')
+        errors = []
 
         if user_id in self.afk_users:
             self.afk_users.pop(user_id)
@@ -105,7 +106,9 @@ class UserCommands(commands.Cog):
                 try:
                     await ctx.author.remove_roles(afk_role)
                 except discord.Forbidden:
-                    pass
+                    errors.append("Cannot remove AFK role - Missing permissions")
+                except discord.HTTPException:
+                    errors.append("Cannot remove AFK role - Role hierarchy issue")
             
             # Remove {afk} from current nickname
             try:
@@ -115,9 +118,15 @@ class UserCommands(commands.Cog):
                     original_name = current_nick[5:].strip()
                     await ctx.author.edit(nick=original_name if original_name else None)
             except discord.Forbidden:
-                pass
+                errors.append("Cannot change nickname - Missing permissions")
+            except discord.HTTPException:
+                errors.append("Cannot change nickname - Hierarchy or length issue")
                 
-            await ctx.send(f"{ctx.author.mention} is no longer AFK.")
+            if errors:
+                error_msg = "\n".join([f"⚠️ {error}" for error in errors])
+                await ctx.send(f"{ctx.author.mention} is no longer AFK.\n{error_msg}")
+            else:
+                await ctx.send(f"{ctx.author.mention} is no longer AFK.")
         else:
             self.afk_users[user_id] = reason
             self.save_afk_data()
@@ -127,7 +136,11 @@ class UserCommands(commands.Cog):
                 try:
                     await ctx.author.add_roles(afk_role)
                 except discord.Forbidden:
-                    pass
+                    errors.append("Cannot add AFK role - Missing permissions")
+                except discord.HTTPException:
+                    errors.append("Cannot add AFK role - Role hierarchy issue")
+            else:
+                errors.append("AFK role not found - Contact administrator")
             
             # Add {afk} to current nickname
             try:
@@ -146,10 +159,16 @@ class UserCommands(commands.Cog):
                     
                     await ctx.author.edit(nick=new_nickname)
             except discord.Forbidden:
-                pass
+                errors.append("Cannot change nickname - Missing permissions")
+            except discord.HTTPException:
+                errors.append("Cannot change nickname - Hierarchy or length issue")
                 
             display_reason = reason if reason else "N/A"
-            await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {display_reason}")
+            if errors:
+                error_msg = "\n".join([f"⚠️ {error}" for error in errors])
+                await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {display_reason}\n{error_msg}")
+            else:
+                await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {display_reason}")
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
