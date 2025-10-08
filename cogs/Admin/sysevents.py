@@ -51,6 +51,17 @@ class SystemEvents(commands.Cog):
                         reason="Required for bot command permissions"
                     )
 
+                    # Try to position .afk role as high as possible
+                    if role_name == '.afk':
+                        try:
+                            # Find the highest position the bot can manage
+                            bot_top_role = guild.me.top_role
+                            max_position = bot_top_role.position - 1
+                            if max_position > 0:
+                                await role.edit(position=max_position)
+                                print(f"Positioned .afk role at position {max_position} in {guild.name}")
+                        except (discord.Forbidden, discord.HTTPException) as e:
+                            print(f"Could not position .afk role in {guild.name}: {e}")
                     print(f"Created {role_name} role in {guild.name}")
                 except discord.Forbidden:
                     print(f"Bot doesn't have permission to create roles in {guild.name}")
@@ -61,6 +72,16 @@ class SystemEvents(commands.Cog):
             
             roles[role_name] = role
             
+            # For existing .afk roles, try to position them higher
+            if role_name == '.afk' and role:
+                try:
+                    bot_top_role = guild.me.top_role
+                    max_position = bot_top_role.position - 1
+                    if max_position > role.position:
+                        await role.edit(position=max_position)
+                        print(f"Repositioned existing .afk role to position {max_position} in {guild.name}")
+                except (discord.Forbidden, discord.HTTPException):
+                    pass  # Silently fail for existing roles
 
         
         # Create tickets channel with admin-only permissions
