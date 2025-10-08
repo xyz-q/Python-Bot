@@ -50,12 +50,7 @@ class SystemEvents(commands.Cog):
                         permissions=config['permissions'],
                         reason="Required for bot command permissions"
                     )
-                    # Move .afk role to top position for visibility
-                    if role_name == '.afk':
-                        try:
-                            await role.edit(position=len(guild.roles)-1)
-                        except discord.Forbidden:
-                            print(f"No permission to move .afk role to top in {guild.name}")
+
                     print(f"Created {role_name} role in {guild.name}")
                 except discord.Forbidden:
                     print(f"Bot doesn't have permission to create roles in {guild.name}")
@@ -66,12 +61,7 @@ class SystemEvents(commands.Cog):
             
             roles[role_name] = role
             
-            # Ensure .afk role is at top position if it exists
-            if role_name == '.afk' and role:
-                try:
-                    await role.edit(position=len(guild.roles)-1)
-                except (discord.Forbidden, discord.HTTPException):
-                    print(f"Cannot move .afk role to top in {guild.name} - insufficient permissions")
+
         
         # Create tickets channel with admin-only permissions
         try:
