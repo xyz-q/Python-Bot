@@ -99,21 +99,76 @@ class UserCommands(commands.Cog):
         if user_id in self.afk_users:
             self.afk_users.pop(user_id)
             self.save_afk_data()
+            
+            # Remove role
             if afk_role and afk_role in ctx.author.roles:
                 try:
                     await ctx.author.remove_roles(afk_role)
                 except discord.Forbidden:
-                    pass  # Role removal failed, but AFK status still removed
+                    pass
+            
+            # Remove {afk} from current nickname
+            try:
+                current_nick = ctx.author.nick
+                if current_nick and current_nick.startswith("{afk}"):
+                    # Extract the name after the {afk} tag
+                    original_name = current_nick[5:].strip()
+                    await ctx.author.edit(nick=original_name if original_name else None)
+            except discord.Forbidden:
+                pass
+                
             await ctx.send(f"{ctx.author.mention} is no longer AFK.")
         else:
             self.afk_users[user_id] = reason
             self.save_afk_data()
+            
+            # Add role
             if afk_role:
                 try:
                     await ctx.author.add_roles(afk_role)
                 except discord.Forbidden:
-                    pass  # Role addition failed, but AFK status still set
+                    pass
+            
+            # Add {afk} to current nickname
+            try:
+                current_nickname = ctx.author.nick
+                if current_nickname and current_nickname.startswith("{afk}"):
+                    # Already has {afk}, don't add again
+                    pass
+                else:
+                    # Use current nickname or default username as the original name
+                    original_name = ctx.author.nick or ctx.author.name
+                    new_nickname = f"{{afk}} {original_name}"
+                    
+                    # Ensure the nickname doesn't exceed 32 characters
+                    if len(new_nickname) > 32:
+                        new_nickname = new_nickname[:32]
+                    
+                    await ctx.author.edit(nick=new_nickname)
+            except discord.Forbidden:
+                pass
+                
             await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {reason}")
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        """Detect nickname changes and re-add {afk} if user is AFK"""
+        user_id = str(after.id)
+        
+        # Only care about nickname changes for AFK users
+        if user_id in self.afk_users and before.nick != after.nick:
+            # Check if the new nickname doesn't have {afk} at the start
+            if after.nick and not after.nick.startswith("{afk}"):
+                try:
+                    new_nickname = f"{{afk}} {after.nick}"
+                    
+                    # Ensure the nickname doesn't exceed 32 characters
+                    if len(new_nickname) > 32:
+                        new_nickname = new_nickname[:32]
+                    
+                    await after.edit(nick=new_nickname)
+                except discord.Forbidden:
+                    pass
 
     @commands.Cog.listener()
     async def on_message(self, message):
