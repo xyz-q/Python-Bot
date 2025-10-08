@@ -148,7 +148,8 @@ class UserCommands(commands.Cog):
             except discord.Forbidden:
                 pass
                 
-            await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {reason}")
+            display_reason = reason if reason else "N/A"
+            await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {display_reason}")
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
@@ -180,7 +181,8 @@ class UserCommands(commands.Cog):
             for user_id in mentioned_afk_users:
                 reason = self.afk_users[user_id]
                 user = message.guild.get_member(int(user_id))
-                await message.channel.send(f"{user.mention} is currently AFK. Reason: {reason}")
+                display_reason = reason if reason else "N/A"
+                await message.channel.send(f"{user.mention} is currently AFK. Reason: {display_reason}")
 
 
     @commands.command(name='nickname', aliases=['nick'])
