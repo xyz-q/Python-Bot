@@ -106,6 +106,33 @@ class SystemEvents(commands.Cog):
             'tickets_channel': tickets_channel
         }
 
+    async def sync_afk_roles(self, guild):
+        """Sync AFK roles with JSON data on startup"""
+        try:
+            import json
+            import os
+            
+            AFK_FILE = ".json/afk_data.json"
+            if not os.path.exists(AFK_FILE):
+                return
+                
+            with open(AFK_FILE, 'r') as file:
+                afk_users = json.load(file)
+            
+            afk_role = discord.utils.get(guild.roles, name='.afk')
+            if not afk_role:
+                return
+                
+            # Add role to users who are AFK in JSON but don't have the role
+            for user_id in afk_users:
+                member = guild.get_member(int(user_id))
+                if member and afk_role not in member.roles:
+                    await member.add_roles(afk_role)
+                    print(f"Added .afk role to {member.name} (sync)")
+                    
+        except Exception as e:
+            print(f"Error syncing AFK roles: {e}")
+
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -119,6 +146,7 @@ class SystemEvents(commands.Cog):
                     "\033[92m" + guild.name + "\033[0m"
                 ))
                 await self.setup_server_roles_and_channels(guild)
+                await self.sync_afk_roles(guild)
             channel = discord.utils.get(self.bot.get_all_channels(), name='bot-status')
             if channel:
                 try:
