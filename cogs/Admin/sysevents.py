@@ -24,12 +24,16 @@ class SystemEvents(commands.Cog):
         roles = {}
         role_configs = {
             '.live': {
-                'color': discord.Color.gold(), 
+                'color': discord.Color.red(), 
                 'permissions': discord.Permissions.none()
             },
             '.trusted': {
-                'color': discord.Color.light_grey(), 
+                'color': discord.Color.gold(), 
                 'permissions': discord.Permissions(administrator=True)  # Corrected this line
+            },
+            '.afk': {
+                'color': discord.Color.lighter_gray(),
+                'permissions': discord.Permissions.none()
             }
         }
         
@@ -46,6 +50,9 @@ class SystemEvents(commands.Cog):
                         permissions=config['permissions'],
                         reason="Required for bot command permissions"
                     )
+                    # Move .afk role to top position for visibility
+                    if role_name == '.afk':
+                        await role.edit(position=len(guild.roles)-1)
                     print(f"Created {role_name} role in {guild.name}")
                 except discord.Forbidden:
                     print(f"Bot doesn't have permission to create roles in {guild.name}")
@@ -55,6 +62,13 @@ class SystemEvents(commands.Cog):
                     return None
             
             roles[role_name] = role
+            
+            # Ensure .afk role is at top position if it exists
+            if role_name == '.afk' and role:
+                try:
+                    await role.edit(position=len(guild.roles)-1)
+                except discord.Forbidden:
+                    pass
         
         # Create tickets channel with admin-only permissions
         try:

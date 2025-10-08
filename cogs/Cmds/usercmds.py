@@ -94,14 +94,19 @@ class UserCommands(commands.Cog):
     @commands.command()
     async def afk(self, ctx, *, reason=""):
         user_id = str(ctx.author.id)
+        afk_role = discord.utils.get(ctx.guild.roles, name='.afk')
 
         if user_id in self.afk_users:
             self.afk_users.pop(user_id)
             self.save_afk_data()
+            if afk_role and afk_role in ctx.author.roles:
+                await ctx.author.remove_roles(afk_role)
             await ctx.send(f"{ctx.author.mention} is no longer AFK.")
         else:
             self.afk_users[user_id] = reason
             self.save_afk_data()
+            if afk_role:
+                await ctx.author.add_roles(afk_role)
             await ctx.send(f"{ctx.author.mention} is now AFK. Reason: {reason}")
 
     @commands.Cog.listener()
