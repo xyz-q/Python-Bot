@@ -116,12 +116,29 @@ class SystemEvents(commands.Cog):
             if not afk_role:
                 return
                 
-            # Add role to users who are AFK in JSON but don't have the role
+            # Add role and nickname tag to users who are AFK in JSON
             for user_id in afk_users:
                 member = guild.get_member(int(user_id))
-                if member and afk_role not in member.roles:
-                    await member.add_roles(afk_role)
-                    print(f"Added .afk role to {member.name} (sync)")
+                if member:
+                    # Add role if missing
+                    if afk_role not in member.roles:
+                        try:
+                            await member.add_roles(afk_role)
+                            print(f"Added .afk role to {member.name} (sync)")
+                        except discord.Forbidden:
+                            pass
+                    
+                    # Add {afk} tag to nickname if missing
+                    if member.nick and not member.nick.startswith("{afk}"):
+                        try:
+                            new_nickname = f"{{afk}} {member.nick}"
+                            if len(new_nickname) > 32:
+                                new_nickname = new_nickname[:32]
+                            await member.edit(nick=new_nickname)
+                            print(f"Added {{afk}} tag to {member.name} (sync)")
+                        except discord.Forbidden:
+                            pass
+
                     
         except Exception as e:
             print(f"Error syncing AFK roles: {e}")
