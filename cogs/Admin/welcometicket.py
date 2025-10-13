@@ -74,6 +74,7 @@ class AcceptDeclineView(discord.ui.View):
 
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.success, custom_id="persistent:welcome_accept")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
         guild = interaction.guild
         user = guild.get_member(self.user_id)
         
@@ -96,7 +97,7 @@ class AcceptDeclineView(discord.ui.View):
                     print("Debug: no user mention found in description")
         
         if not user:
-            await interaction.response.send_message("User not found.", ephemeral=True)
+            await interaction.followup.send("User not found.", ephemeral=True)
             return
             
         role = guild.get_role(ROLE_ID)
@@ -117,6 +118,7 @@ class AcceptDeclineView(discord.ui.View):
 
     @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger, custom_id="persistent:welcome_decline")
     async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
         guild = interaction.guild
         user = guild.get_member(self.user_id)
         

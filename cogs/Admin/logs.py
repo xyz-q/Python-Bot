@@ -229,12 +229,16 @@ class LogManager(commands.Cog):
         for archive_file in self.archive_dir.glob('*.gz'):
             try:
                 # Extract date from filename (discord_log_2024-01-20_15-30-45.gz)
-                date_str = archive_file.stem.split('_')[2]  # Gets YYYY-MM-DD
-                file_date = datetime.strptime(date_str, '%Y-%m-%d')
-                
-                if file_date < cutoff_date:
-                    print(f"Removing old archive: {archive_file}")
-                    archive_file.unlink()
+                filename_parts = archive_file.stem.split('_')
+                if len(filename_parts) >= 3:
+                    date_str = filename_parts[2]  # Gets YYYY-MM-DD
+                    file_date = datetime.strptime(date_str, '%Y-%m-%d')
+                    
+                    if file_date < cutoff_date:
+                        print(f"Removing old archive: {archive_file}")
+                        archive_file.unlink()
+                else:
+                    print(f"Skipping malformed archive filename: {archive_file}")
             except (ValueError, IndexError) as e:
                 print(f"Error processing archive file {archive_file}: {e}")
                 continue
@@ -242,7 +246,13 @@ class LogManager(commands.Cog):
         # Also check current logs
         for log_file in self.log_dir.glob('*.txt'):
             try:
-                date_str = log_file.stem.split('_')[2]  # Gets YYYY-MM-DD
+                # Extract date from filename: discord_log_2025-02-12.txt -> 2025-02-12
+                filename_parts = log_file.stem.split('_')
+                if len(filename_parts) >= 3:
+                    date_str = '_'.join(filename_parts[2:])  # Handle cases with multiple underscores
+                else:
+                    continue  # Skip malformed filenames
+                    
                 file_date = datetime.strptime(date_str, '%Y-%m-%d')
                 
                 if file_date < cutoff_date:

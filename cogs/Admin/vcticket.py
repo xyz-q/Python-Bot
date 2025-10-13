@@ -94,6 +94,7 @@ class VCTicket(commands.Cog):
 
         @discord.ui.button(label="Accept", style=discord.ButtonStyle.success, custom_id="persistent:vc_accept")
         async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+            await interaction.response.defer()
             guild = interaction.guild
             member = guild.get_member(self.member_id)
             
@@ -109,7 +110,7 @@ class VCTicket(commands.Cog):
                         self.member_id = member_id
             
             if not member:
-                await interaction.response.send_message("User not found.", ephemeral=True)
+                await interaction.followup.send("User not found.", ephemeral=True)
                 return
                 
             waiting_room = discord.utils.get(guild.voice_channels, name=".waiting-room")
@@ -124,6 +125,7 @@ class VCTicket(commands.Cog):
 
         @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger, custom_id="persistent:vc_decline")
         async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+            await interaction.response.defer()
             guild = interaction.guild
             member = guild.get_member(self.member_id)
             
@@ -148,6 +150,7 @@ class VCTicket(commands.Cog):
 
         @discord.ui.button(label="Stay", style=discord.ButtonStyle.primary, custom_id="persistent:vc_stay")
         async def stay(self, interaction: discord.Interaction, button: discord.ui.Button):
+            await interaction.response.defer()
             # Extract member_id if needed
             if self.member_id == 0:
                 embed = interaction.message.embeds[0] if interaction.message.embeds else None
