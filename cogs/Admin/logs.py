@@ -197,7 +197,13 @@ class LogManager(commands.Cog):
     async def rotate_log(self, log_file: Path):
         """Compress and archive the log file"""
         try:
-            if not log_file.exists() or log_file.stat().st_size == 0:
+            if not log_file.exists():
+                return
+                
+            # If file is empty or very small, just delete it
+            if log_file.stat().st_size <= 10:
+                log_file.unlink()
+                print(f"Deleted empty log file: {log_file}")
                 return
                 
             timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -214,10 +220,18 @@ class LogManager(commands.Cog):
                 log_file.unlink()
                 print(f"Successfully archived {log_file} to {archive_name}")
             else:
-                print(f"Failed to create archive for {log_file}")
+                print(f"Failed to create archive for {log_file}, deleting original")
+                log_file.unlink()  # Delete the original even if archiving failed
                 
         except Exception as e:
             print(f"Error archiving log file {log_file}: {e}")
+            # Force delete the file if rotation fails
+            try:
+                if log_file.exists():
+                    log_file.unlink()
+                    print(f"Force deleted problematic log file: {log_file}")
+            except:
+                pass
 
 
     @tasks.loop(hours=24)
@@ -271,6 +285,10 @@ class LogManager(commands.Cog):
                         if file_date < cutoff_date:
                             print(f"Rotating old log: {log_file}")
                             await self.rotate_log(log_file)
+                            # Double check if file still exists after rotation
+                            if log_file.exists():
+                                print(f"Failed to rotate {log_file}, deleting it")
+                                log_file.unlink()
                     else:
                         continue  # Skip invalid date format
                 else:
