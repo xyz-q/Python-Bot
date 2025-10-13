@@ -172,6 +172,7 @@ class TicketButtons(discord.ui.View):
             content=f"Hello {ticket_user.mention}, support will be with you shortly.",
             embed=embed, view=close_view)
         await interaction.followup.send(f"Ticket created: {ticket_channel.mention}", ephemeral=True)
+        remove_pending_ticket(interaction.message.id)
         await interaction.message.delete()
         
         try:
@@ -183,12 +184,19 @@ class TicketButtons(discord.ui.View):
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         trusted_role = discord.utils.get(interaction.guild.roles, name=".trusted")
         if trusted_role in interaction.user.roles:
+            # Get pending ticket data if needed
+            if self.ticket_user_id == 0:
+                pending = get_pending_ticket(interaction.message.id)
+                if pending:
+                    self.ticket_user_id = pending["user_id"]
+            
             ticket_user = interaction.guild.get_member(self.ticket_user_id)
             if ticket_user:
                 try:
                     await ticket_user.send(f"Your ticket was rejected by {interaction.user.name}.")
                 except:
                     pass
+            remove_pending_ticket(interaction.message.id)
             await interaction.message.delete()
         else:
             await interaction.response.send_message("No permission.", ephemeral=True)
