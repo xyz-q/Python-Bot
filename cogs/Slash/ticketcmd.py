@@ -44,6 +44,28 @@ def has_active_ticket(user_id, guild_id):
                 return True
     return False
 
+def save_pending_ticket(message_id, user_id, subject, description):
+    tickets = load_tickets()
+    tickets[f"pending_{message_id}"] = {
+        "user_id": user_id,
+        "subject": subject,
+        "description": description,
+        "status": "pending"
+    }
+    with open(TICKETS_FILE, 'w') as f:
+        json.dump(tickets, f, indent=2)
+
+def get_pending_ticket(message_id):
+    tickets = load_tickets()
+    return tickets.get(f"pending_{message_id}")
+
+def remove_pending_ticket(message_id):
+    tickets = load_tickets()
+    if f"pending_{message_id}" in tickets:
+        del tickets[f"pending_{message_id}"]
+        with open(TICKETS_FILE, 'w') as f:
+            json.dump(tickets, f, indent=2)
+
 class TicketModal(discord.ui.Modal, title="Ticket Submission"):
     subject = discord.ui.TextInput(label="Subject", style=discord.TextStyle.short, required=True)
     description = discord.ui.TextInput(label="Description", style=discord.TextStyle.paragraph, required=True)
@@ -61,7 +83,8 @@ class TicketModal(discord.ui.Modal, title="Ticket Submission"):
                 embed.add_field(name="Description", value=description, inline=False)
                 embed.add_field(name="Submitted by", value=interaction.user.name, inline=False)
                 view = TicketButtons(interaction.user.id, subject, description)
-                await ticket_channel.send(embed=embed, view=view)
+                message = await ticket_channel.send(embed=embed, view=view)
+                save_pending_ticket(message.id, interaction.user.id, subject, description)
                 await interaction.response.send_message("Your ticket has been submitted!", ephemeral=True, delete_after=8)
                 print("Ticket submitted successfully")
             else:
@@ -84,6 +107,17 @@ class TicketButtons(discord.ui.View):
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.success, custom_id="persistent:ticket_accept")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
+        
+        # Get pending ticket data if view data is empty (after restart)
+        if self.ticket_user_id == 0:
+            pending = get_pending_ticket(interaction.message.id)
+            if pending:
+                self.ticket_user_id = pending["user_id"]
+                self.subject = pending["subject"]
+                self.description = pending["description"]
+            else:
+                await interaction.followup.send("Ticket data not found.", ephemeral=True)
+                return
         
         if has_active_ticket(self.ticket_user_id, interaction.guild.id):
             await interaction.followup.send("This user already has an active ticket.", ephemeral=True)
