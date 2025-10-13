@@ -34,11 +34,22 @@ def is_ticket_channel(channel_id):
     tickets = load_tickets()
     return str(channel_id) in tickets
 
+def has_active_ticket(user_id, guild_id):
+    tickets = load_tickets()
+    for ticket in tickets.values():
+        if ticket["user_id"] == user_id and ticket["guild_id"] == guild_id and ticket["status"] == "open":
+            return True
+    return False
+
 class TicketModal(discord.ui.Modal, title="Ticket Submission"):
     subject = discord.ui.TextInput(label="Subject", style=discord.TextStyle.short, required=True)
     description = discord.ui.TextInput(label="Description", style=discord.TextStyle.paragraph, required=True)
 
     async def on_submit(self, interaction: discord.Interaction):
+        if has_active_ticket(interaction.user.id, interaction.guild.id):
+            await interaction.response.send_message("You already have an active ticket. Please wait for it to be resolved.", ephemeral=True, delete_after=8)
+            return
+            
         subject = self.subject.value
         description = self.description.value
         if interaction.guild:
@@ -65,10 +76,17 @@ class TicketButtons(discord.ui.View):
 
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.success, custom_id="persistent:ticket_accept")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        
+        # Check if user already has active ticket
+        if has_active_ticket(self.ticket_user_id, interaction.guild.id):
+            await interaction.followup.send("This user already has an active ticket.", ephemeral=True)
+            return
+            
         guild = interaction.guild
         ticket_user = guild.get_member(self.ticket_user_id)
         if not ticket_user:
-            await interaction.response.send_message("User not found.", ephemeral=True)
+            await interaction.followup.send("User not found.", ephemeral=True)
             return
             
         overwrites = {
@@ -81,12 +99,12 @@ class TicketButtons(discord.ui.View):
             overwrites[support_role] = discord.PermissionOverwrite(read_messages=True)
         
         category = await guild.create_category(
-            name=f"Ticket-{ticket_user.name}",
+            name=f"{ticket_user.name}-ticket",
             overwrites=overwrites,
             reason="New ticket accepted"
         )
         ticket_channel = await category.create_text_channel(
-            name=f"ticket-{ticket_user.name}",
+            name=f"{ticket_user.name}-support",
             topic=f"Support ticket for {ticket_user.name}",
             reason="New ticket accepted"
         )
@@ -113,7 +131,7 @@ class TicketButtons(discord.ui.View):
         await ticket_channel.send(
             content=f"Hello {ticket_user.mention}, support will be with you shortly.",
             embed=embed, view=close_view)
-        await interaction.response.send_message(f"Ticket created: {ticket_channel.mention}", ephemeral=True)
+        await interaction.followup.send(f"Ticket created: {ticket_channel.mention}", ephemeral=True)
         await interaction.message.delete()
         
         try:
@@ -196,6 +214,65 @@ class ticketcmd(commands.Cog):
         guild_tickets = [t for t in tickets.values() if t["guild_id"] == ctx.guild.id]
         
         if user:
+            guild_tickets = [t for t in guild_tickets if t["user_id"] == user.id]
+            title = f"Tickets for {user.display_name}"
+        else:
+            title = f"All Tickets for {ctx.guild.name}"
+        
+        if not guild_tickets:
+            await ctx.send("No tickets found.")
+            return
+        
+        embed = discord.Embed(title=title, color=discord.Color.blue())
+        for ticket in guild_tickets[-10:]:
+            user_obj = ctx.guild.get_member(ticket["user_id"])
+            username = user_obj.display_name if user_obj else f"User {ticket['user_id']}"
+            status = ticket.get("status", "unknown")
+            created = ticket.get("created_at", "Unknown")[:10]
+            embed.add_field(
+                name=f"{ticket['subject']} - {status.title()}",
+                value=f"By: {username}\nCreated: {created}",
+                inline=True
+            )
+        
+        await ctx.send(embed=embed)
+
+async def setup(bot):
+    await bot.add_cog(ticketcmd(bot))urn
+        
+        overwrites = ctx.channel.overwrites
+        overwrites[member] = discord.PermissionOverwrite(read_messages=True)
+        await ctx.channel.edit(overwrites=overwrites)
+        await ctx.send(f"{member.mention} has been added to this ticket.")
+    
+    @commands.command(name="ticketlogs")
+    async def ticket_logs(self, ctx, user: discord.Member = None):
+        tickets = load_tickets()
+        guild_tickets = [t for t in tickets.values() if t["guild_id"] == ctx.guild.id]
+        
+        if user:
+            guild_tickets = [t for t in guild_tickets if t["user_id"] == user.id]
+            title = f"Tickets for {user.display_name}"
+        else:
+            title = f"All Tickets for {ctx.guild.name}"
+        
+        if not guild_tickets:
+            await ctx.send("No tickets found.")
+            return
+        
+        embed = discord.Embed(title=title, color=discord.Color.blue())
+        for ticket in guild_tickets[-10:]:
+            user_obj = ctx.guild.get_member(ticket["user_id"])
+            username = user_obj.display_name if user_obj else f"User {ticket['user_id']}"
+            status = ticket.get("status", "unknown")
+            created = ticket.get("created_at", "Unknown")[:10]
+            embed.add_field(
+                name=f"{ticket['subject']} - {status.title()}",
+                value=f"By: {username}\nCreated: {created}",
+                inline=True
+            )
+        
+        await ctx.send(embed=embed)r:
             guild_tickets = [t for t in guild_tickets if t["user_id"] == user.id]
             title = f"Tickets for {user.display_name}"
         else:
