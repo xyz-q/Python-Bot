@@ -70,6 +70,34 @@ class TicketModal(discord.ui.Modal, title="Ticket Submission"):
     subject = discord.ui.TextInput(label="Subject", style=discord.TextStyle.short, required=True)
     description = discord.ui.TextInput(label="Description", style=discord.TextStyle.paragraph, required=True)
 
+class AddUserModal(discord.ui.Modal, title="Add User to Ticket"):
+    username = discord.ui.TextInput(label="Username or User ID", style=discord.TextStyle.short, required=True, placeholder="Enter username or user ID")
+    
+    def __init__(self, channel):
+        super().__init__()
+        self.channel = channel
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        username = self.username.value
+        
+        # Try to find user by name or ID
+        member = None
+        if username.isdigit():
+            member = interaction.guild.get_member(int(username))
+        else:
+            member = discord.utils.get(interaction.guild.members, name=username)
+            if not member:
+                member = discord.utils.get(interaction.guild.members, display_name=username)
+        
+        if not member:
+            await interaction.response.send_message(f"User '{username}' not found.", ephemeral=True)
+            return
+        
+        overwrites = self.channel.overwrites
+        overwrites[member] = discord.PermissionOverwrite(read_messages=True)
+        await self.channel.edit(overwrites=overwrites)
+        await interaction.response.send_message(f"{member.mention} has been added to this ticket.")
+
     async def on_submit(self, interaction: discord.Interaction):
         try:
             print(f"Modal submitted by {interaction.user.name}")
@@ -267,40 +295,40 @@ class ticketcmd(commands.Cog):
             except:
                 await interaction.followup.send(f"Error: {e}", ephemeral=True)
     
-    @commands.command(name="ticketadd")
-    async def ticket_add(self, ctx, member: discord.Member):
-        if not is_ticket_channel(ctx.channel.id):
-            await ctx.send("This command only works in ticket channels.")
+    @app_commands.command(name="ticketadd", description="Add a user to this ticket")
+    async def ticket_add(self, interaction: discord.Interaction, user: discord.Member):
+        if not is_ticket_channel(interaction.channel.id):
+            await interaction.response.send_message("This command only works in ticket channels.", ephemeral=True)
             return
         
-        trusted_role = discord.utils.get(ctx.guild.roles, name=".trusted")
-        if trusted_role not in ctx.author.roles:
-            await ctx.send("You don't have permission to add users to tickets.")
+        trusted_role = discord.utils.get(interaction.guild.roles, name=".trusted")
+        if trusted_role not in interaction.user.roles:
+            await interaction.response.send_message("You don't have permission to add users to tickets.", ephemeral=True)
             return
         
-        overwrites = ctx.channel.overwrites
-        overwrites[member] = discord.PermissionOverwrite(read_messages=True)
-        await ctx.channel.edit(overwrites=overwrites)
-        await ctx.send(f"{member.mention} has been added to this ticket.")
+        overwrites = interaction.channel.overwrites
+        overwrites[user] = discord.PermissionOverwrite(read_messages=True)
+        await interaction.channel.edit(overwrites=overwrites)
+        await interaction.response.send_message(f"{user.mention} has been added to this ticket.")
     
-    @commands.command(name="ticketlogs")
-    async def ticket_logs(self, ctx, user: discord.Member = None):
+    @app_commands.command(name="ticketlogs", description="View ticket history")
+    async def ticket_logs(self, interaction: discord.Interaction, user: discord.Member = None):
         tickets = load_tickets()
-        guild_tickets = [t for t in tickets.values() if t.get("guild_id") == ctx.guild.id]
+        guild_tickets = [t for t in tickets.values() if t.get("guild_id") == interaction.guild.id]
         
         if user:
             guild_tickets = [t for t in guild_tickets if t.get("user_id") == user.id]
             title = f"Tickets for {user.display_name}"
         else:
-            title = f"All Tickets for {ctx.guild.name}"
+            title = f"All Tickets for {interaction.guild.name}"
         
         if not guild_tickets:
-            await ctx.send("No tickets found.")
+            await interaction.response.send_message("No tickets found.", ephemeral=True)
             return
         
         embed = discord.Embed(title=title, color=discord.Color.blue())
         for ticket in guild_tickets[-10:]:
-            user_obj = ctx.guild.get_member(ticket.get("user_id", 0))
+            user_obj = interaction.guild.get_member(ticket.get("user_id", 0))
             username = user_obj.display_name if user_obj else f"User {ticket.get('user_id', 'Unknown')}"
             status = ticket.get("status", "unknown")
             created = ticket.get("created_at", "Unknown")[:10]
@@ -310,7 +338,7 @@ class ticketcmd(commands.Cog):
                 inline=True
             )
         
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(ticketcmd(bot))
