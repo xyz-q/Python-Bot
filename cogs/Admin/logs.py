@@ -282,13 +282,19 @@ class LogManager(commands.Cog):
                     if len(date_str) == 10 and date_str.count('-') == 2:
                         file_date = datetime.strptime(date_str, '%Y-%m-%d')
                         
-                        if file_date < cutoff_date:
+                        # Only process files older than 7 days
+                        seven_days_ago = datetime.now() - timedelta(days=7)
+                        if file_date < seven_days_ago:
+                            print(f"Deleting old log (7+ days): {log_file}")
+                            log_file.unlink()
+                        elif file_date < cutoff_date:
+                            # Files between 1-7 days old, try to rotate
                             print(f"Rotating old log: {log_file}")
                             await self.rotate_log(log_file)
                             # Double check if file still exists after rotation
                             if log_file.exists():
-                                print(f"Failed to rotate {log_file}, deleting it")
-                                log_file.unlink()
+                                print(f"Failed to rotate {log_file}, will try again later")
+                                # Don't delete, let it try again later
                     else:
                         continue  # Skip invalid date format
                 else:
