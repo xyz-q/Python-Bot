@@ -76,6 +76,19 @@ class AcceptDeclineView(discord.ui.View):
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         guild = interaction.guild
         user = guild.get_member(self.user_id)
+        
+        # If user_id is 0 (after restart), extract from embed
+        if not user and self.user_id == 0:
+            embed = interaction.message.embeds[0] if interaction.message.embeds else None
+            if embed and embed.description:
+                # Extract user mention from description
+                import re
+                match = re.search(r'<@!?(\d+)>', embed.description)
+                if match:
+                    user_id = int(match.group(1))
+                    user = guild.get_member(user_id)
+                    self.user_id = user_id
+        
         if not user:
             await interaction.response.send_message("User not found.", ephemeral=True)
             return
@@ -100,6 +113,18 @@ class AcceptDeclineView(discord.ui.View):
     async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
         guild = interaction.guild
         user = guild.get_member(self.user_id)
+        
+        # If user_id is 0 (after restart), extract from embed
+        if not user and self.user_id == 0:
+            embed = interaction.message.embeds[0] if interaction.message.embeds else None
+            if embed and embed.description:
+                import re
+                match = re.search(r'<@!?(\d+)>', embed.description)
+                if match:
+                    user_id = int(match.group(1))
+                    user = guild.get_member(user_id)
+                    self.user_id = user_id
+        
         if user:
             try:
                 await user.send("Access to the server has been declined by an Admin.")
