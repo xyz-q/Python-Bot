@@ -6,7 +6,7 @@ import os
 import asyncio
 from datetime import datetime
 
-TICKETS_FILE = ".json/tickets.json"
+TICKETS_FILE = ".json/ticket_logs.json"
 
 def load_tickets():
     if os.path.exists(TICKETS_FILE):
@@ -37,10 +37,11 @@ def is_ticket_channel(channel_id):
 def has_active_ticket(user_id, guild_id):
     tickets = load_tickets()
     for ticket in tickets.values():
-        if (ticket.get("user_id") == user_id and 
-            ticket.get("guild_id") == guild_id and 
-            ticket.get("status") == "open"):
-            return True
+        if isinstance(ticket, dict):
+            if (ticket.get("user_id") == user_id and 
+                ticket.get("guild_id") == guild_id and 
+                ticket.get("status") == "open"):
+                return True
     return False
 
 class TicketModal(discord.ui.Modal, title="Ticket Submission"):
