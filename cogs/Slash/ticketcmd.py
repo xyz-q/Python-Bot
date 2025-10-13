@@ -30,6 +30,10 @@ def update_ticket_status(channel_id, status, closed_by=None):
         with open(TICKETS_FILE, 'w') as f:
             json.dump(tickets, f, indent=2)
 
+def is_ticket_channel(channel_id):
+    tickets = load_tickets()
+    return str(channel_id) in tickets
+
 class TicketModal(discord.ui.Modal, title="Ticket Submission"):
     subject = discord.ui.TextInput(label="Subject", style=discord.TextStyle.short, required=True)
     description = discord.ui.TextInput(label="Description", style=discord.TextStyle.paragraph, required=True)
@@ -38,12 +42,8 @@ class TicketModal(discord.ui.Modal, title="Ticket Submission"):
         subject = self.subject.value
         description = self.description.value
         if interaction.guild:
-            if isinstance(interaction.channel, discord.DMChannel):
-                await interaction.response.send_message("Slash commands are not available in DMs.", ephemeral=True, delete_after=8)
-                return
-
             ticket_channel = discord.utils.get(interaction.guild.text_channels, name="tickets")
-            if ticket_channel is not None:
+            if ticket_channel:
                 embed = discord.Embed(title="New Ticket", color=discord.Color.dark_grey())
                 embed.add_field(name="Subject", value=subject, inline=False)
                 embed.add_field(name="Description", value=description, inline=False)
@@ -52,25 +52,23 @@ class TicketModal(discord.ui.Modal, title="Ticket Submission"):
                 await ticket_channel.send(embed=embed, view=view)
                 await interaction.response.send_message("Your ticket has been submitted!", ephemeral=True, delete_after=8)
             else:
-                await interaction.response.send_message("Ticket channel not found. Please contact an administrator.",
-                                                        ephemeral=True, delete_after=8)
+                await interaction.response.send_message("Ticket channel not found.", ephemeral=True, delete_after=8)
         else:
-            await interaction.response.send_message("Tickets have to be sent in a guild, silly! :3 /setup for more info",
-                                                    ephemeral=True, delete_after=8)
+            await interaction.response.send_message("Tickets must be sent in a server.", ephemeral=True, delete_after=8)
 
 class TicketButtons(discord.ui.View):
-    def __init__(self, ticket_user_id: int, subject: str, description: str):
+    def __init__(self, ticket_user_id: int = 0, subject: str = "", description: str = ""):
         super().__init__(timeout=None)
         self.ticket_user_id = ticket_user_id
         self.subject = subject
         self.description = description
 
-    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success, custom_id="ticket_accept")
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success, custom_id="persistent:ticket_accept")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         guild = interaction.guild
         ticket_user = guild.get_member(self.ticket_user_id)
         if not ticket_user:
-            await interaction.response.send_message("User not found in server.", ephemeral=True)
+            await interaction.response.send_message("User not found.", ephemeral=True)
             return
             
         overwrites = {
@@ -81,19 +79,18 @@ class TicketButtons(discord.ui.View):
         support_role = discord.utils.get(guild.roles, name=".trusted")  
         if support_role:
             overwrites[support_role] = discord.PermissionOverwrite(read_messages=True)
+        
         category = await guild.create_category(
             name=f"Ticket-{ticket_user.name}",
             overwrites=overwrites,
             reason="New ticket accepted"
         )
-        await category.edit(position=len(guild.categories))  
         ticket_channel = await category.create_text_channel(
             name=f"ticket-{ticket_user.name}",
             topic=f"Support ticket for {ticket_user.name}",
             reason="New ticket accepted"
         )
         
-        # Save ticket data
         ticket_data = {
             "guild_id": guild.id,
             "user_id": self.ticket_user_id,
@@ -111,88 +108,106 @@ class TicketButtons(discord.ui.View):
         embed.add_field(name="Subject", value=self.subject, inline=False)
         embed.add_field(name="Description", value=self.description, inline=False)
         embed.add_field(name="Submitted by", value=ticket_user.name, inline=False)
-        close_view = CloseTicketButton(self.ticket_user_id, ticket_channel.id)  
+        
+        close_view = CloseTicketButton(self.ticket_user_id, ticket_channel.id)
         await ticket_channel.send(
-            content=f"Hello {ticket_user.mention}, a support member will be with you shortly.",
+            content=f"Hello {ticket_user.mention}, support will be with you shortly.",
             embed=embed, view=close_view)
-        await interaction.response.send_message(f"Ticket accepted and channel created: {ticket_channel.mention}",
-                                                ephemeral=True, delete_after=8)
+        await interaction.response.send_message(f"Ticket created: {ticket_channel.mention}", ephemeral=True)
         await interaction.message.delete()
+        
         try:
-            await ticket_user.send(f"Ticket accepted {ticket_channel.mention} by {interaction.user.name}.")
+            await ticket_user.send(f"Ticket accepted: {ticket_channel.mention}")
         except:
             pass
 
-    @discord.ui.button(label="Reject", style=discord.ButtonStyle.danger, custom_id="ticket_reject")
+    @discord.ui.button(label="Reject", style=discord.ButtonStyle.danger, custom_id="persistent:ticket_reject")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         trusted_role = discord.utils.get(interaction.guild.roles, name=".trusted")
         if trusted_role in interaction.user.roles:
             ticket_user = interaction.guild.get_member(self.ticket_user_id)
             if ticket_user:
                 try:
-                    await ticket_user.send(f"Your ticket has been rejected by {interaction.user.name}.")
+                    await ticket_user.send(f"Your ticket was rejected by {interaction.user.name}.")
                 except:
                     pass
             await interaction.message.delete()
         else:
-            await interaction.response.send_message("You do not have permission to reject this ticket.", ephemeral=True, delete_after=8)
+            await interaction.response.send_message("No permission.", ephemeral=True)
 
 class CloseTicketButton(discord.ui.View):
-    def __init__(self, ticket_user_id: int, channel_id: int):
+    def __init__(self, ticket_user_id: int = 0, channel_id: int = 0):
         super().__init__(timeout=None)
         self.ticket_user_id = ticket_user_id
         self.channel_id = channel_id
 
-    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.danger, custom_id="ticket_close")
+    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.danger, custom_id="persistent:ticket_close")
     async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
         trusted_role = discord.utils.get(interaction.guild.roles, name=".trusted")
         if trusted_role in interaction.user.roles:
-            # Update ticket status
             update_ticket_status(self.channel_id, "closed", interaction.user.id)
             
             ticket_user = interaction.guild.get_member(self.ticket_user_id)
             if ticket_user:
                 try:
-                    await ticket_user.send(f"Your ticket has been closed by {interaction.user.name}.")
+                    await ticket_user.send(f"Ticket closed by {interaction.user.name}.")
                 except:
                     pass
-            await interaction.response.send_message("Ticket will be deleted in 5 seconds...", ephemeral=True)
+            
+            await interaction.response.send_message("Closing in 5 seconds...", ephemeral=True)
             await asyncio.sleep(5)
-            await interaction.channel.delete(reason="Ticket closed by support staff")
+            await interaction.channel.delete(reason="Ticket closed")
+            
             category = interaction.channel.category
             if category and len(category.channels) == 0:
-                await category.delete(reason="Category empty after ticket closed")
+                await category.delete(reason="Empty category")
         else:
-            await interaction.response.send_message("You do not have permission to close this ticket.", ephemeral=True, delete_after=8)
+            await interaction.response.send_message("No permission.", ephemeral=True)
 
 class ticketcmd(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.bot.add_view(TicketButtons(0, "", ""))  # Persistent view
-        self.bot.add_view(CloseTicketButton(0, 0))  # Persistent view
+        self.bot.add_view(TicketButtons())
+        self.bot.add_view(CloseTicketButton())
 
     @app_commands.command(name="ticket", description="Submit a support ticket")
     async def ticket_command(self, interaction: discord.Interaction):
         await interaction.response.send_modal(TicketModal())
     
-    @app_commands.command(name="tickets", description="View ticket history")
-    async def view_tickets(self, interaction: discord.Interaction, user: discord.Member = None):
+    @commands.command(name="ticketadd")
+    async def ticket_add(self, ctx, member: discord.Member):
+        if not is_ticket_channel(ctx.channel.id):
+            await ctx.send("This command only works in ticket channels.")
+            return
+        
+        trusted_role = discord.utils.get(ctx.guild.roles, name=".trusted")
+        if trusted_role not in ctx.author.roles:
+            await ctx.send("You don't have permission to add users to tickets.")
+            return
+        
+        overwrites = ctx.channel.overwrites
+        overwrites[member] = discord.PermissionOverwrite(read_messages=True)
+        await ctx.channel.edit(overwrites=overwrites)
+        await ctx.send(f"{member.mention} has been added to this ticket.")
+    
+    @commands.command(name="ticketlogs")
+    async def ticket_logs(self, ctx, user: discord.Member = None):
         tickets = load_tickets()
-        guild_tickets = [t for t in tickets.values() if t["guild_id"] == interaction.guild.id]
+        guild_tickets = [t for t in tickets.values() if t["guild_id"] == ctx.guild.id]
         
         if user:
             guild_tickets = [t for t in guild_tickets if t["user_id"] == user.id]
             title = f"Tickets for {user.display_name}"
         else:
-            title = "All Server Tickets"
+            title = f"All Tickets for {ctx.guild.name}"
         
         if not guild_tickets:
-            await interaction.response.send_message("No tickets found.", ephemeral=True)
+            await ctx.send("No tickets found.")
             return
         
         embed = discord.Embed(title=title, color=discord.Color.blue())
-        for ticket in guild_tickets[-10:]:  # Last 10 tickets
-            user_obj = interaction.guild.get_member(ticket["user_id"])
+        for ticket in guild_tickets[-10:]:
+            user_obj = ctx.guild.get_member(ticket["user_id"])
             username = user_obj.display_name if user_obj else f"User {ticket['user_id']}"
             status = ticket.get("status", "unknown")
             created = ticket.get("created_at", "Unknown")[:10]
@@ -202,8 +217,7 @@ class ticketcmd(commands.Cog):
                 inline=True
             )
         
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(ticketcmd(bot))
-    print("✓ Ticket command loaded successfully")
