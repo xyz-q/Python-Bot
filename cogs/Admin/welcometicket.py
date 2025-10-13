@@ -10,6 +10,8 @@ active_tickets = {}
 class WelcomeTicket(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.bot.add_view(AcceptDeclineView())
+        self.bot.add_view(OkayView())
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -37,7 +39,7 @@ class WelcomeTicket(commands.Cog):
                         color=discord.Color.red()
                     )
                     cancel_message = await ticket_channel.send(embed=embed)
-                    okay_view = OkayView(cancel_message)
+                    okay_view = OkayView()
                     await cancel_message.edit(view=okay_view)
             else:
                 print("Error: Could not find the specified channel for ticket messages.")
@@ -54,7 +56,7 @@ class WelcomeTicket(commands.Cog):
                 color=discord.Color.gold()
             )
             message = await ticket_channel.send(embed=embed)
-            view = AcceptDeclineView(member, guild, message)
+            view = AcceptDeclineView(member.id)
             await message.edit(view=view)
 
             active_tickets[member.id] = message
@@ -66,50 +68,55 @@ class WelcomeTicket(commands.Cog):
 
 
 class AcceptDeclineView(discord.ui.View):
-    def __init__(self, user: discord.Member, guild: discord.Guild, message: discord.Message):
+    def __init__(self, user_id: int = 0):
         super().__init__(timeout=None)
-        self.user = user
-        self.guild = guild
-        self.message = message
+        self.user_id = user_id
 
-    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success)
-    async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
-        role = self.guild.get_role(ROLE_ID)
-        if role and self.user:
-            await self.user.add_roles(role)
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success, custom_id="persistent:welcome_accept")
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild
+        user = guild.get_member(self.user_id)
+        if not user:
+            await interaction.response.send_message("User not found.", ephemeral=True)
+            return
+            
+        role = guild.get_role(ROLE_ID)
+        if role:
+            await user.add_roles(role)
             embed = discord.Embed(
                 title="Welcome to the Server!",
                 description="Your request for the server `xyz` has been accepted, enjoy your stay!",
                 color=discord.Color.green()
             )
-            await self.user.send(embed=embed)
-        try:
-            await self.message.delete()
-        except discord.errors.NotFound:
-            pass
-        active_tickets.pop(self.user.id, None)
+            try:
+                await user.send(embed=embed)
+            except:
+                pass
+        
+        await interaction.message.delete()
+        active_tickets.pop(self.user_id, None)
 
-    @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
-    async def decline(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await self.user.kick(reason="Declined membership.")
-        await self.user.send("Access to the server has been declined by an Admin.")
-        try:
-            await self.message.delete()
-        except discord.errors.NotFound:
-            pass
-        active_tickets.pop(self.user.id, None)
+    @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger, custom_id="persistent:welcome_decline")
+    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild
+        user = guild.get_member(self.user_id)
+        if user:
+            try:
+                await user.send("Access to the server has been declined by an Admin.")
+            except:
+                pass
+            await user.kick(reason="Declined membership.")
+        
+        await interaction.message.delete()
+        active_tickets.pop(self.user_id, None)
 
 class OkayView(discord.ui.View):
-    def __init__(self, message: discord.Message):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.message = message
 
-    @discord.ui.button(label="Okay", style=discord.ButtonStyle.primary)
-    async def okay(self, button: discord.ui.Button, interaction: discord.Interaction):
-        try:
-            await self.message.delete()
-        except discord.errors.NotFound:
-            pass
+    @discord.ui.button(label="Okay", style=discord.ButtonStyle.primary, custom_id="persistent:welcome_okay")
+    async def okay(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.message.delete()
 
 
 async def setup(bot):

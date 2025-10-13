@@ -312,7 +312,7 @@ class ticketcmd(commands.Cog):
         await interaction.response.send_message(f"{user.mention} has been added to this ticket.")
     
     @app_commands.command(name="ticketlogs", description="View ticket history")
-    async def ticket_logs(self, interaction: discord.Interaction, user: discord.Member = None):
+    async def ticket_logs(self, interaction: discord.Interaction, user: discord.Member = None, page: int = 1):
         tickets = load_tickets()
         guild_tickets = [t for t in tickets.values() if t.get("guild_id") == interaction.guild.id]
         
@@ -326,8 +326,16 @@ class ticketcmd(commands.Cog):
             await interaction.response.send_message("No tickets found.", ephemeral=True)
             return
         
-        embed = discord.Embed(title=title, color=discord.Color.blue())
-        for ticket in guild_tickets[-10:]:
+        # Pagination
+        per_page = 10
+        total_pages = (len(guild_tickets) + per_page - 1) // per_page
+        page = max(1, min(page, total_pages))
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        
+        embed = discord.Embed(title=f"{title} (Page {page}/{total_pages})", color=discord.Color.gold())
+        
+        for ticket in guild_tickets[start_idx:end_idx]:
             user_obj = interaction.guild.get_member(ticket.get("user_id", 0))
             username = user_obj.display_name if user_obj else f"User {ticket.get('user_id', 'Unknown')}"
             status = ticket.get("status", "unknown")
@@ -338,6 +346,7 @@ class ticketcmd(commands.Cog):
                 inline=True
             )
         
+        embed.set_footer(text=f"Total tickets: {len(guild_tickets)} | Use page parameter to navigate")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def setup(bot):

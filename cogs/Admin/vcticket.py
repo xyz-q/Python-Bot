@@ -10,6 +10,8 @@ active_tickets = {}
 class VCTicket(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.bot.add_view(self.AcceptDeclineView2())
+        self.bot.add_view(self.OkayView2())
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -59,7 +61,7 @@ class VCTicket(commands.Cog):
                 color=discord.Color.gold()
             )
             message = await ticket_channel.send(embed=embed)
-            view = self.AcceptDeclineView2(member, guild, message)
+            view = self.AcceptDeclineView2(member.id)
             await message.edit(view=view)
             active_tickets[member.id] = message
             await me.send(f"A user has joined the waiting room {ticket_channel.mention}.")
@@ -82,66 +84,56 @@ class VCTicket(commands.Cog):
                     color=discord.Color.red()
                 )
                 cancel_message = await ticket_channel.send(embed=embed)
-                view = self.OkayView2(cancel_message)
+                view = self.OkayView2()
                 await cancel_message.edit(view=view)
 
     class AcceptDeclineView2(discord.ui.View):
-        def __init__(self, member: discord.Member, guild: discord.Guild, message: discord.Message):
+        def __init__(self, member_id: int = 0):
             super().__init__(timeout=None)
-            self.member = member
-            self.guild = guild
-            self.message = message
+            self.member_id = member_id
 
-        @discord.ui.button(label="Accept", style=discord.ButtonStyle.success)
-        async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
-            waiting_room = discord.utils.get(self.guild.voice_channels, name=".waiting-room")
-            main_channel = discord.utils.get(self.guild.voice_channels, name=",main")
+        @discord.ui.button(label="Accept", style=discord.ButtonStyle.success, custom_id="persistent:vc_accept")
+        async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+            guild = interaction.guild
+            member = guild.get_member(self.member_id)
+            if not member:
+                await interaction.response.send_message("User not found.", ephemeral=True)
+                return
+                
+            waiting_room = discord.utils.get(guild.voice_channels, name=".waiting-room")
+            main_channel = discord.utils.get(guild.voice_channels, name=",main")
 
             if waiting_room and main_channel:
-                if self.member.voice and self.member.voice.channel == waiting_room:
-                    await self.member.move_to(main_channel)
+                if member.voice and member.voice.channel == waiting_room:
+                    await member.move_to(main_channel)
 
-            try:
-                await self.message.delete()
-            except discord.errors.NotFound:
-                pass
+            await interaction.message.delete()
+            active_tickets.pop(self.member_id, None)
 
-            active_tickets.pop(self.member.id, None)
+        @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger, custom_id="persistent:vc_decline")
+        async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+            guild = interaction.guild
+            member = guild.get_member(self.member_id)
+            if member:
+                waiting_room = discord.utils.get(guild.voice_channels, name=".waiting-room")
+                if waiting_room and member.voice and member.voice.channel == waiting_room:
+                    await member.move_to(None)
 
-        @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
-        async def decline(self, button: discord.ui.Button, interaction: discord.Interaction):
-            waiting_room = discord.utils.get(self.guild.voice_channels, name=".waiting-room")
-            if waiting_room:
-                if self.member.voice and self.member.voice.channel == waiting_room:
-                    await self.member.move_to(None)
+            await interaction.message.delete()
+            active_tickets.pop(self.member_id, None)
 
-            try:
-                await self.message.delete()
-            except discord.errors.NotFound:
-                pass
-
-        @discord.ui.button(label="Stay", style=discord.ButtonStyle.primary)
-        async def stay(self, button: discord.ui.Button, interaction: discord.Interaction):
-            waiting_room = discord.utils.get(self.guild.voice_channels, name=".waiting-room")
-            if waiting_room:
-                if self.member.voice and self.member.voice.channel == waiting_room:
-                    await self.message.delete()
-
-            try:
-                await self.message.delete()
-            except discord.errors.NotFound:
-                pass
-
-            active_tickets.pop(self.member.id, None)
+        @discord.ui.button(label="Stay", style=discord.ButtonStyle.primary, custom_id="persistent:vc_stay")
+        async def stay(self, interaction: discord.Interaction, button: discord.ui.Button):
+            await interaction.message.delete()
+            active_tickets.pop(self.member_id, None)
 
     class OkayView2(discord.ui.View):
-        def __init__(self, message: discord.Message):
+        def __init__(self):
             super().__init__(timeout=None)
-            self.message = message
 
-        @discord.ui.button(label="Okay", style=discord.ButtonStyle.primary)
-        async def okay(self, button: discord.ui.Button, interaction: discord.Interaction):
-            await self.message.delete()
+        @discord.ui.button(label="Okay", style=discord.ButtonStyle.primary, custom_id="persistent:vc_okay")
+        async def okay(self, interaction: discord.Interaction, button: discord.ui.Button):
+            await interaction.message.delete()
 
 async def setup(bot):
     await bot.add_cog(VCTicket(bot))
