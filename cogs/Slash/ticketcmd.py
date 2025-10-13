@@ -102,9 +102,10 @@ class ticketcmd(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="ticket", description="Open a ticket")
-    async def slash_ticket(self, interaction: discord.Interaction):
+    @app_commands.command(name="ticket", description="Submit a support ticket")
+    async def ticket_command(self, interaction: discord.Interaction):
         await interaction.response.send_modal(TicketModal())
 
 async def setup(bot):
     await bot.add_cog(ticketcmd(bot))
+    print("✓ Ticket command loaded successfully")

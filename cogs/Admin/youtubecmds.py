@@ -265,7 +265,7 @@ class YouTubeCommands(commands.Cog):
                             voice_client.play(
                                 discord.FFmpegPCMAudio(
                                     current_playing_url,
-                                    before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                                    before_options="-nostdin"
                                 ),
                                 after=lambda _: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
                             )
