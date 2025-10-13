@@ -96,6 +96,18 @@ class VCTicket(commands.Cog):
         async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
             guild = interaction.guild
             member = guild.get_member(self.member_id)
+            
+            # If member_id is 0 (after restart), extract from embed
+            if not member and self.member_id == 0:
+                embed = interaction.message.embeds[0] if interaction.message.embeds else None
+                if embed and embed.description:
+                    import re
+                    match = re.search(r'<@!?(\d+)>', embed.description)
+                    if match:
+                        member_id = int(match.group(1))
+                        member = guild.get_member(member_id)
+                        self.member_id = member_id
+            
             if not member:
                 await interaction.response.send_message("User not found.", ephemeral=True)
                 return
@@ -114,6 +126,18 @@ class VCTicket(commands.Cog):
         async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
             guild = interaction.guild
             member = guild.get_member(self.member_id)
+            
+            # If member_id is 0 (after restart), extract from embed
+            if not member and self.member_id == 0:
+                embed = interaction.message.embeds[0] if interaction.message.embeds else None
+                if embed and embed.description:
+                    import re
+                    match = re.search(r'<@!?(\d+)>', embed.description)
+                    if match:
+                        member_id = int(match.group(1))
+                        member = guild.get_member(member_id)
+                        self.member_id = member_id
+            
             if member:
                 waiting_room = discord.utils.get(guild.voice_channels, name=".waiting-room")
                 if waiting_room and member.voice and member.voice.channel == waiting_room:
@@ -124,6 +148,15 @@ class VCTicket(commands.Cog):
 
         @discord.ui.button(label="Stay", style=discord.ButtonStyle.primary, custom_id="persistent:vc_stay")
         async def stay(self, interaction: discord.Interaction, button: discord.ui.Button):
+            # Extract member_id if needed
+            if self.member_id == 0:
+                embed = interaction.message.embeds[0] if interaction.message.embeds else None
+                if embed and embed.description:
+                    import re
+                    match = re.search(r'<@!?(\d+)>', embed.description)
+                    if match:
+                        self.member_id = int(match.group(1))
+            
             await interaction.message.delete()
             active_tickets.pop(self.member_id, None)
 

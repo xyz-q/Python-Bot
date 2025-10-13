@@ -80,14 +80,20 @@ class AcceptDeclineView(discord.ui.View):
         # If user_id is 0 (after restart), extract from embed
         if not user and self.user_id == 0:
             embed = interaction.message.embeds[0] if interaction.message.embeds else None
-            if embed and embed.description:
+            print(f"Debug: embed exists: {embed is not None}")
+            if embed:
+                print(f"Debug: embed description: {embed.description}")
                 # Extract user mention from description
                 import re
                 match = re.search(r'<@!?(\d+)>', embed.description)
                 if match:
                     user_id = int(match.group(1))
+                    print(f"Debug: extracted user_id: {user_id}")
                     user = guild.get_member(user_id)
+                    print(f"Debug: found user: {user}")
                     self.user_id = user_id
+                else:
+                    print("Debug: no user mention found in description")
         
         if not user:
             await interaction.response.send_message("User not found.", ephemeral=True)
