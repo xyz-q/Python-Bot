@@ -37,7 +37,9 @@ def is_ticket_channel(channel_id):
 def has_active_ticket(user_id, guild_id):
     tickets = load_tickets()
     for ticket in tickets.values():
-        if ticket["user_id"] == user_id and ticket["guild_id"] == guild_id and ticket["status"] == "open":
+        if (ticket.get("user_id") == user_id and 
+            ticket.get("guild_id") == guild_id and 
+            ticket.get("status") == "open"):
             return True
     return False
 
@@ -228,10 +230,10 @@ class ticketcmd(commands.Cog):
     @commands.command(name="ticketlogs")
     async def ticket_logs(self, ctx, user: discord.Member = None):
         tickets = load_tickets()
-        guild_tickets = [t for t in tickets.values() if t["guild_id"] == ctx.guild.id]
+        guild_tickets = [t for t in tickets.values() if t.get("guild_id") == ctx.guild.id]
         
         if user:
-            guild_tickets = [t for t in guild_tickets if t["user_id"] == user.id]
+            guild_tickets = [t for t in guild_tickets if t.get("user_id") == user.id]
             title = f"Tickets for {user.display_name}"
         else:
             title = f"All Tickets for {ctx.guild.name}"
@@ -242,12 +244,12 @@ class ticketcmd(commands.Cog):
         
         embed = discord.Embed(title=title, color=discord.Color.blue())
         for ticket in guild_tickets[-10:]:
-            user_obj = ctx.guild.get_member(ticket["user_id"])
-            username = user_obj.display_name if user_obj else f"User {ticket['user_id']}"
+            user_obj = ctx.guild.get_member(ticket.get("user_id", 0))
+            username = user_obj.display_name if user_obj else f"User {ticket.get('user_id', 'Unknown')}"
             status = ticket.get("status", "unknown")
             created = ticket.get("created_at", "Unknown")[:10]
             embed.add_field(
-                name=f"{ticket['subject']} - {status.title()}",
+                name=f"{ticket.get('subject', 'No Subject')} - {status.title()}",
                 value=f"By: {username}\nCreated: {created}",
                 inline=True
             )
