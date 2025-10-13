@@ -116,8 +116,21 @@ class TicketButtons(discord.ui.View):
                 self.subject = pending["subject"]
                 self.description = pending["description"]
             else:
-                await interaction.followup.send("Ticket data not found.", ephemeral=True)
-                return
+                # Fallback: extract from embed
+                embed = interaction.message.embeds[0] if interaction.message.embeds else None
+                if embed:
+                    submitted_by = embed.fields[2].value if len(embed.fields) > 2 else None
+                    if submitted_by:
+                        # Find user by name
+                        for member in interaction.guild.members:
+                            if member.name == submitted_by:
+                                self.ticket_user_id = member.id
+                                self.subject = embed.fields[0].value if len(embed.fields) > 0 else "No Subject"
+                                self.description = embed.fields[1].value if len(embed.fields) > 1 else "No Description"
+                                break
+                if self.ticket_user_id == 0:
+                    await interaction.followup.send("Could not identify ticket user.", ephemeral=True)
+                    return
         
         if has_active_ticket(self.ticket_user_id, interaction.guild.id):
             await interaction.followup.send("This user already has an active ticket.", ephemeral=True)
