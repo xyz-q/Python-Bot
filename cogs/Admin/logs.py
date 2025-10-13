@@ -228,39 +228,55 @@ class LogManager(commands.Cog):
         # Check archived logs
         for archive_file in self.archive_dir.glob('*.gz'):
             try:
+                # Delete malformed temp files
+                if archive_file.name.startswith('temp_'):
+                    print(f"Deleting malformed temp file: {archive_file}")
+                    archive_file.unlink()
+                    continue
+                    
                 # Extract date from filename (discord_log_2024-01-20_15-30-45.gz)
                 filename_parts = archive_file.stem.split('_')
-                if len(filename_parts) >= 3:
+                if len(filename_parts) >= 3 and filename_parts[0] == 'discord' and filename_parts[1] == 'log':
                     date_str = filename_parts[2]  # Gets YYYY-MM-DD
-                    file_date = datetime.strptime(date_str, '%Y-%m-%d')
-                    
-                    if file_date < cutoff_date:
-                        print(f"Removing old archive: {archive_file}")
-                        archive_file.unlink()
+                    # Validate date format
+                    if len(date_str) == 10 and date_str.count('-') == 2:
+                        file_date = datetime.strptime(date_str, '%Y-%m-%d')
+                        
+                        if file_date < cutoff_date:
+                            print(f"Removing old archive: {archive_file}")
+                            archive_file.unlink()
+                    else:
+                        continue  # Skip invalid date format
                 else:
-                    print(f"Skipping malformed archive filename: {archive_file}")
-            except (ValueError, IndexError) as e:
-                print(f"Error processing archive file {archive_file}: {e}")
-                continue
+                    continue  # Skip malformed filenames
+            except (ValueError, IndexError):
+                continue  # Silently skip problematic files
                 
         # Also check current logs
         for log_file in self.log_dir.glob('*.txt'):
             try:
+                # Only process discord_log files
+                if not log_file.name.startswith('discord_log_'):
+                    continue
+                    
                 # Extract date from filename: discord_log_2025-02-12.txt -> 2025-02-12
                 filename_parts = log_file.stem.split('_')
-                if len(filename_parts) >= 3:
+                if len(filename_parts) >= 3 and filename_parts[0] == 'discord' and filename_parts[1] == 'log':
                     date_str = '_'.join(filename_parts[2:])  # Handle cases with multiple underscores
+                    
+                    # Validate date format
+                    if len(date_str) == 10 and date_str.count('-') == 2:
+                        file_date = datetime.strptime(date_str, '%Y-%m-%d')
+                        
+                        if file_date < cutoff_date:
+                            print(f"Rotating old log: {log_file}")
+                            await self.rotate_log(log_file)
+                    else:
+                        continue  # Skip invalid date format
                 else:
                     continue  # Skip malformed filenames
-                    
-                file_date = datetime.strptime(date_str, '%Y-%m-%d')
-                
-                if file_date < cutoff_date:
-                    print(f"Rotating old log: {log_file}")
-                    await self.rotate_log(log_file)
-            except (ValueError, IndexError) as e:
-                print(f"Error processing log file {log_file}: {e}")
-                continue
+            except (ValueError, IndexError):
+                continue  # Silently skip problematic files
 
 
     @cleanup_old_logs.before_loop
