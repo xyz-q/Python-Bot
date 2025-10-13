@@ -46,20 +46,30 @@ class TicketModal(discord.ui.Modal, title="Ticket Submission"):
     description = discord.ui.TextInput(label="Description", style=discord.TextStyle.paragraph, required=True)
 
     async def on_submit(self, interaction: discord.Interaction):
-        subject = self.subject.value
-        description = self.description.value
-        
-        ticket_channel = discord.utils.get(interaction.guild.text_channels, name="tickets")
-        if ticket_channel:
-            embed = discord.Embed(title="New Ticket", color=discord.Color.dark_grey())
-            embed.add_field(name="Subject", value=subject, inline=False)
-            embed.add_field(name="Description", value=description, inline=False)
-            embed.add_field(name="Submitted by", value=interaction.user.name, inline=False)
-            view = TicketButtons(interaction.user.id, subject, description)
-            await ticket_channel.send(embed=embed, view=view)
-            await interaction.response.send_message("Your ticket has been submitted!", ephemeral=True, delete_after=8)
-        else:
-            await interaction.response.send_message("Ticket channel not found.", ephemeral=True, delete_after=8)
+        try:
+            print(f"Modal submitted by {interaction.user.name}")
+            subject = self.subject.value
+            description = self.description.value
+            
+            ticket_channel = discord.utils.get(interaction.guild.text_channels, name="tickets")
+            if ticket_channel:
+                embed = discord.Embed(title="New Ticket", color=discord.Color.dark_grey())
+                embed.add_field(name="Subject", value=subject, inline=False)
+                embed.add_field(name="Description", value=description, inline=False)
+                embed.add_field(name="Submitted by", value=interaction.user.name, inline=False)
+                view = TicketButtons(interaction.user.id, subject, description)
+                await ticket_channel.send(embed=embed, view=view)
+                await interaction.response.send_message("Your ticket has been submitted!", ephemeral=True, delete_after=8)
+                print("Ticket submitted successfully")
+            else:
+                await interaction.response.send_message("Ticket channel not found.", ephemeral=True, delete_after=8)
+                print("Ticket channel not found")
+        except Exception as e:
+            print(f"Error in modal submission: {e}")
+            try:
+                await interaction.response.send_message(f"Error submitting ticket: {e}", ephemeral=True)
+            except:
+                pass
 
 class TicketButtons(discord.ui.View):
     def __init__(self, ticket_user_id: int = 0, subject: str = "", description: str = ""):
@@ -183,11 +193,21 @@ class ticketcmd(commands.Cog):
 
     @app_commands.command(name="ticket", description="Submit a support ticket")
     async def ticket_command(self, interaction: discord.Interaction):
-        if has_active_ticket(interaction.user.id, interaction.guild.id):
-            await interaction.response.send_message("You already have an active ticket.", ephemeral=True)
-            return
-        
-        await interaction.response.send_modal(TicketModal())
+        try:
+            print(f"Ticket command used by {interaction.user.name}")
+            
+            if has_active_ticket(interaction.user.id, interaction.guild.id):
+                await interaction.response.send_message("You already have an active ticket.", ephemeral=True)
+                return
+            
+            await interaction.response.send_modal(TicketModal())
+            print("Modal sent successfully")
+        except Exception as e:
+            print(f"Error in ticket command: {e}")
+            try:
+                await interaction.response.send_message(f"Error: {e}", ephemeral=True)
+            except:
+                await interaction.followup.send(f"Error: {e}", ephemeral=True)
     
     @commands.command(name="ticketadd")
     async def ticket_add(self, ctx, member: discord.Member):
