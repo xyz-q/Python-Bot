@@ -190,12 +190,62 @@ class ticketcmd(commands.Cog):
 
     @app_commands.command(name="ticket", description="Submit a support ticket")
     async def ticket_command(self, interaction: discord.Interaction):
-        await interaction.response.send_modal(TicketModal())
+        if has_active_ticket(interaction.user.id, interaction.guild.id):
+            await interaction.response.send_message("You already have an active ticket.", ephemeral=True)
+            return
+        
+        try:
+            await interaction.response.send_modal(TicketModal())
+        except Exception as e:
+            await interaction.response.send_message(f"Error: {e}", ephemeral=True)
     
     @commands.command(name="ticketadd")
     async def ticket_add(self, ctx, member: discord.Member):
         if not is_ticket_channel(ctx.channel.id):
             await ctx.send("This command only works in ticket channels.")
+            return
+        
+        trusted_role = discord.utils.get(ctx.guild.roles, name=".trusted")
+        if trusted_role not in ctx.author.roles:
+            await ctx.send("You don't have permission to add users to tickets.")
+            return
+        
+        overwrites = ctx.channel.overwrites
+        overwrites[member] = discord.PermissionOverwrite(read_messages=True)
+        await ctx.channel.edit(overwrites=overwrites)
+        await ctx.send(f"{member.mention} has been added to this ticket.")
+    
+    @commands.command(name="ticketlogs")
+    async def ticket_logs(self, ctx, user: discord.Member = None):
+        tickets = load_tickets()
+        guild_tickets = [t for t in tickets.values() if t["guild_id"] == ctx.guild.id]
+        
+        if user:
+            guild_tickets = [t for t in guild_tickets if t["user_id"] == user.id]
+            title = f"Tickets for {user.display_name}"
+        else:
+            title = f"All Tickets for {ctx.guild.name}"
+        
+        if not guild_tickets:
+            await ctx.send("No tickets found.")
+            return
+        
+        embed = discord.Embed(title=title, color=discord.Color.blue())
+        for ticket in guild_tickets[-10:]:
+            user_obj = ctx.guild.get_member(ticket["user_id"])
+            username = user_obj.display_name if user_obj else f"User {ticket['user_id']}"
+            status = ticket.get("status", "unknown")
+            created = ticket.get("created_at", "Unknown")[:10]
+            embed.add_field(
+                name=f"{ticket['subject']} - {status.title()}",
+                value=f"By: {username}\nCreated: {created}",
+                inline=True
+            )
+        
+        await ctx.send(embed=embed)
+
+async def setup(bot):
+    await bot.add_cog(ticketcmd(bot))ait ctx.send("This command only works in ticket channels.")
             return
         
         trusted_role = discord.utils.get(ctx.guild.roles, name=".trusted")
