@@ -45,18 +45,31 @@ class HeartbeatCog(commands.Cog):
         else:
             uptime = None
             
+        # Get bot application info
+        try:
+            application = await self.bot.application_info()
+            description = application.description or "A Discord bot for server management and utilities"
+        except:
+            description = "A Discord bot for server management and utilities"
+        
         # Get activities
         activities = None
+        current_activity = None
         if hasattr(self.bot, 'activity') and self.bot.activity:
             activities = [{'name': self.bot.activity.name, 'type': self.bot.activity.type.value}]
+            current_activity = {'name': self.bot.activity.name, 'type': self.bot.activity.type.value}
         elif hasattr(self.bot, 'activities') and self.bot.activities:
             activities = [{'name': act.name, 'type': act.type.value} for act in self.bot.activities]
+            if self.bot.activities:
+                current_activity = {'name': self.bot.activities[0].name, 'type': self.bot.activities[0].type.value}
         
         payload = {
             'ping': ping,
             'guildCount': guild_count,
             'uptime': uptime,
-            'activities': activities
+            'description': description,
+            'activities': activities,
+            'currentActivity': current_activity
         }
         
         success = False
