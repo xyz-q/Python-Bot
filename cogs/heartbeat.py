@@ -42,6 +42,7 @@ class HeartbeatCog(commands.Cog):
             uptime = None
             
         # Get activities
+        activities = None
         if hasattr(self.bot, 'activity') and self.bot.activity:
             activities = [{'name': self.bot.activity.name, 'type': self.bot.activity.type.value}]
         elif hasattr(self.bot, 'activities') and self.bot.activities:
