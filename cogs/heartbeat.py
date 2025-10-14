@@ -16,10 +16,23 @@ class HeartbeatCog(commands.Cog):
     @tasks.loop(seconds=30)  # Send heartbeat every 30 seconds
     async def heartbeat_task(self):
         try:
+            # Gather bot stats
+            ping = round(self.bot.latency * 1000) if self.bot.latency else None
+            guild_count = len(self.bot.guilds)
+            uptime = str(self.bot.uptime) if hasattr(self.bot, 'uptime') else None
+            activities = [{'name': activity.name, 'type': activity.type.value} for activity in self.bot.activity] if self.bot.activity else None
+            
+            payload = {
+                'ping': ping,
+                'guildCount': guild_count,
+                'uptime': uptime,
+                'activities': activities
+            }
+            
             async with aiohttp.ClientSession() as session:
-                async with session.post(self.heartbeat_url) as response:
+                async with session.post(self.heartbeat_url, json=payload) as response:
                     if response.status == 200:
-                        print(f"{Fore.GREEN}✓ Heartbeat sent successfully{Style.RESET_ALL}")
+                        print(f"{Fore.GREEN}✓ Heartbeat sent successfully (Ping: {ping}ms, Guilds: {guild_count}){Style.RESET_ALL}")
                     else:
                         print(f"{Fore.YELLOW}⚠ Heartbeat failed: {response.status}{Style.RESET_ALL}")
         except Exception as e:
