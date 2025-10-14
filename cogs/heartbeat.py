@@ -8,10 +8,8 @@ from colorama import Fore, Style
 class HeartbeatCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # Get server URL from environment variable, fallback to localhost
-        server_host = os.getenv('HEARTBEAT_SERVER', 'localhost')
-        server_port = os.getenv('HEARTBEAT_PORT', '3001')
-        self.heartbeat_url = f"http://{server_host}:{server_port}/api/heartbeat"
+        # Gaming PC IP address
+        self.heartbeat_url = "http://192.168.0.115:3001/api/heartbeat"
         print(f"{Fore.CYAN}🔗 Heartbeat URL: {self.heartbeat_url}{Style.RESET_ALL}")
         self.heartbeat_task.start()
     
