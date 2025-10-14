@@ -46,6 +46,9 @@ class Client(commands.Bot):
 
 
     async def on_ready(self):
+        if not hasattr(self, 'start_time'):
+            self.start_time = discord.utils.utcnow()
+            
         prfx = (Back.BLACK + Fore.GREEN + time.strftime("%H:%M:%S UTC", time.gmtime()) + Back.RESET + Fore.WHITE + Style.BRIGHT)
         print(prfx + " Bot ID " + Fore.YELLOW + str(self.user.id))
         print(prfx + " Discord Version " + Fore.YELLOW + discord.__version__)

@@ -25,8 +25,27 @@ class HeartbeatCog(commands.Cog):
         # Gather bot stats
         ping = round(self.bot.latency * 1000) if self.bot.latency else None
         guild_count = len(self.bot.guilds)
-        uptime = str(self.bot.uptime) if hasattr(self.bot, 'uptime') else None
-        activities = [{'name': activity.name, 'type': activity.type.value} for activity in self.bot.activity] if self.bot.activity else None
+        
+        # Calculate uptime
+        if hasattr(self.bot, 'start_time'):
+            uptime_seconds = (discord.utils.utcnow() - self.bot.start_time).total_seconds()
+            days = int(uptime_seconds // 86400)
+            hours = int((uptime_seconds % 86400) // 3600)
+            minutes = int((uptime_seconds % 3600) // 60)
+            if days > 0:
+                uptime = f"{days}d {hours}h {minutes}m"
+            elif hours > 0:
+                uptime = f"{hours}h {minutes}m"
+            else:
+                uptime = f"{minutes}m"
+        else:
+            uptime = None
+            
+        # Get activities
+        if hasattr(self.bot, 'activity') and self.bot.activity:
+            activities = [{'name': self.bot.activity.name, 'type': self.bot.activity.type.value}]
+        elif hasattr(self.bot, 'activities') and self.bot.activities:
+            activities = [{'name': act.name, 'type': act.type.value} for act in self.bot.activities]
         
         payload = {
             'ping': ping,
