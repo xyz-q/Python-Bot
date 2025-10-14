@@ -54,6 +54,10 @@ class HeartbeatCog(commands.Cog):
             description = "A Discord bot for server management and utilities"
             print(f"[HEARTBEAT] Failed to get application info: {e}")
         
+        # Get bot status (online, idle, dnd, offline)
+        bot_status = str(self.bot.status) if hasattr(self.bot, 'status') else 'unknown'
+        print(f"[HEARTBEAT] Bot status: {bot_status}")
+        
         # Get activities
         activities = None
         current_activity = None
@@ -78,7 +82,8 @@ class HeartbeatCog(commands.Cog):
             'uptime': uptime,
             'description': description,
             'activities': activities,
-            'currentActivity': current_activity
+            'currentActivity': current_activity,
+            'status': bot_status
         }
         
         print(f"[HEARTBEAT] Sending payload: {payload}")
