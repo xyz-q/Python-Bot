@@ -4,6 +4,7 @@ import aiohttp
 import asyncio
 import os
 from colorama import Fore, Style
+import time
 
 class HeartbeatCog(commands.Cog):
     def __init__(self, bot):
@@ -58,23 +59,30 @@ class HeartbeatCog(commands.Cog):
         bot_status = str(self.bot.status) if hasattr(self.bot, 'status') else 'unknown'
         print(f"[HEARTBEAT] Bot status: {bot_status}")
         
-        # Get activities
+        # Get activities - check both activity and user presence
         activities = None
         current_activity = None
-        print(f"[HEARTBEAT] Bot activity: {self.bot.activity}")
-        print(f"[HEARTBEAT] Bot activities: {getattr(self.bot, 'activities', 'No activities attribute')}")
         
-        if hasattr(self.bot, 'activity') and self.bot.activity:
+        # Check bot.activity first
+        if hasattr(self.bot, 'activity') and self.bot.activity is not None:
             activities = [{'name': self.bot.activity.name, 'type': self.bot.activity.type.value}]
             current_activity = {'name': self.bot.activity.name, 'type': self.bot.activity.type.value}
-            print(f"[HEARTBEAT] Found activity: {current_activity}")
+            print(f"[HEARTBEAT] Found bot.activity: {current_activity}")
+        # Check user activities if bot.activity is None
+        elif hasattr(self.bot, 'user') and self.bot.user and hasattr(self.bot.user, 'activities') and self.bot.user.activities:
+            user_activities = [{'name': act.name, 'type': act.type.value} for act in self.bot.user.activities if act.name]
+            if user_activities:
+                activities = user_activities
+                current_activity = user_activities[0]
+                print(f"[HEARTBEAT] Found user.activities: {current_activity}")
+        # Check if bot has activities attribute
         elif hasattr(self.bot, 'activities') and self.bot.activities:
-            activities = [{'name': act.name, 'type': act.type.value} for act in self.bot.activities]
-            if self.bot.activities:
-                current_activity = {'name': self.bot.activities[0].name, 'type': self.bot.activities[0].type.value}
-            print(f"[HEARTBEAT] Found activities: {activities}")
+            activities = [{'name': act.name, 'type': act.type.value} for act in self.bot.activities if act.name]
+            if activities:
+                current_activity = activities[0]
+                print(f"[HEARTBEAT] Found bot.activities: {current_activity}")
         else:
-            print(f"[HEARTBEAT] No activity found")
+            print(f"[HEARTBEAT] No activity found - bot.activity: {getattr(self.bot, 'activity', 'None')}, user: {getattr(self.bot, 'user', 'None')}")
         
         payload = {
             'ping': ping,
@@ -86,7 +94,8 @@ class HeartbeatCog(commands.Cog):
             'status': bot_status
         }
         
-        print(f"[HEARTBEAT] Sending payload: {payload}")
+        print(f"[HEARTBEAT] Sending payload with activity: {current_activity} and status: {bot_status}")
+        print(f"[HEARTBEAT] Full payload: {payload}")
         
         success = False
         for url in urls:
@@ -108,6 +117,8 @@ class HeartbeatCog(commands.Cog):
     @heartbeat_task.before_loop
     async def before_heartbeat(self):
         await self.bot.wait_until_ready()
+        # Wait a bit more to ensure status is set
+        await asyncio.sleep(2)
     
     def cog_unload(self):
         self.heartbeat_task.cancel()
