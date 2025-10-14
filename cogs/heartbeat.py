@@ -49,19 +49,28 @@ class HeartbeatCog(commands.Cog):
         try:
             application = await self.bot.application_info()
             description = application.description or "A Discord bot for server management and utilities"
-        except:
+            print(f"[HEARTBEAT] Application description: {description}")
+        except Exception as e:
             description = "A Discord bot for server management and utilities"
+            print(f"[HEARTBEAT] Failed to get application info: {e}")
         
         # Get activities
         activities = None
         current_activity = None
+        print(f"[HEARTBEAT] Bot activity: {self.bot.activity}")
+        print(f"[HEARTBEAT] Bot activities: {getattr(self.bot, 'activities', 'No activities attribute')}")
+        
         if hasattr(self.bot, 'activity') and self.bot.activity:
             activities = [{'name': self.bot.activity.name, 'type': self.bot.activity.type.value}]
             current_activity = {'name': self.bot.activity.name, 'type': self.bot.activity.type.value}
+            print(f"[HEARTBEAT] Found activity: {current_activity}")
         elif hasattr(self.bot, 'activities') and self.bot.activities:
             activities = [{'name': act.name, 'type': act.type.value} for act in self.bot.activities]
             if self.bot.activities:
                 current_activity = {'name': self.bot.activities[0].name, 'type': self.bot.activities[0].type.value}
+            print(f"[HEARTBEAT] Found activities: {activities}")
+        else:
+            print(f"[HEARTBEAT] No activity found")
         
         payload = {
             'ping': ping,
@@ -72,6 +81,8 @@ class HeartbeatCog(commands.Cog):
             'currentActivity': current_activity
         }
         
+        print(f"[HEARTBEAT] Sending payload: {payload}")
+        
         success = False
         for url in urls:
             try:
@@ -79,8 +90,12 @@ class HeartbeatCog(commands.Cog):
                     async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as response:
                         if response.status == 200:
                             success = True
+                            print(f"[HEARTBEAT] Successfully sent to {url}")
                             break
-            except Exception:
+                        else:
+                            print(f"[HEARTBEAT] Failed to send to {url}, status: {response.status}")
+            except Exception as e:
+                print(f"[HEARTBEAT] Error sending to {url}: {e}")
                 continue
         
 
