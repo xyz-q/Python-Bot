@@ -7,6 +7,7 @@ import aiohttp
 import json
 import asyncio
 import time
+import subprocess
 
 class WebStatsReporter(commands.Cog):
     def __init__(self, bot):
@@ -96,11 +97,16 @@ class WebStatsReporter(commands.Cog):
     async def ping_vps(self):
         """Ping VPS to measure network latency"""
         try:
-            start_time = time.time()
-            async with aiohttp.ClientSession() as session:
-                async with session.head('https://zxpq.ca', timeout=3) as response:
-                    latency = round((time.time() - start_time) * 1000)
-                    return latency
+            result = subprocess.run(['ping', '-n', '1', 'zxpq.ca'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                # Parse ping output for latency
+                lines = result.stdout.split('\n')
+                for line in lines:
+                    if 'time=' in line:
+                        latency_str = line.split('time=')[1].split('ms')[0]
+                        return round(float(latency_str))
+            return 999
         except:
             return 999  # Return high latency if ping fails
     
