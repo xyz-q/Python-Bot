@@ -11,11 +11,14 @@ class HeartbeatCog(commands.Cog):
         self.bot = bot
         # Gaming PC IP address
         self.heartbeat_url = "http://108.175.8.144:3005/api/heartbeat"
+        self.heartbeat_enabled = True
 
         self.heartbeat_task.start()
     
     @tasks.loop(seconds=30)  # Send heartbeat every 30 seconds
     async def heartbeat_task(self):
+        if not self.heartbeat_enabled:
+            return
         # VPS server only
         urls = [
             "http://108.175.8.144:3005/api/heartbeat"   # VPS server (Bot status server)
@@ -101,6 +104,20 @@ class HeartbeatCog(commands.Cog):
         await self.bot.wait_until_ready()
         # Wait a bit more to ensure status is set
         await asyncio.sleep(2)
+    
+    @commands.command()
+    @commands.is_owner()
+    async def stophb(self, ctx):
+        """Stop heartbeat to simulate bot offline"""
+        self.heartbeat_enabled = False
+        await ctx.send("❌ Heartbeat stopped - bot will appear offline on website")
+    
+    @commands.command()
+    @commands.is_owner()
+    async def starthb(self, ctx):
+        """Start heartbeat again"""
+        self.heartbeat_enabled = True
+        await ctx.send("✅ Heartbeat started - bot will appear online on website")
     
     def cog_unload(self):
         self.heartbeat_task.cancel()
