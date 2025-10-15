@@ -16,10 +16,9 @@ class HeartbeatCog(commands.Cog):
     
     @tasks.loop(seconds=30)  # Send heartbeat every 30 seconds
     async def heartbeat_task(self):
-        # Try both possible server locations
+        # VPS server only
         urls = [
-            "http://108.175.8.144:3005/api/heartbeat",   # VPS server
-            "http://localhost:3005/api/heartbeat"        # VPS localhost
+            "http://108.175.8.144:3005/api/heartbeat"   # VPS server
         ]
         
         # Gather bot stats
