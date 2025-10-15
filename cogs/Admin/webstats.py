@@ -5,6 +5,8 @@ import platform
 from datetime import datetime
 import aiohttp
 import json
+import asyncio
+import time
 
 class WebStatsReporter(commands.Cog):
     def __init__(self, bot):
@@ -54,6 +56,9 @@ class WebStatsReporter(commands.Cog):
         uptime_seconds = psutil.boot_time()
         current_uptime = datetime.now().timestamp() - uptime_seconds
         
+        # Ping VPS for network latency
+        vps_latency = await self.ping_vps()
+        
         return {
             "timestamp": datetime.now().isoformat(),
             "hostname": platform.node(),
@@ -81,12 +86,24 @@ class WebStatsReporter(commands.Cog):
                 "total_recv_mb": round(current_net_io.bytes_recv / (1024**2), 2)
             },
             "bot": {
-                "latency_ms": round(self.bot.latency * 1000),
+                "discord_latency_ms": round(self.bot.latency * 1000),
+                "vps_latency_ms": vps_latency,
                 "guilds": len(self.bot.guilds),
                 "users": len(self.bot.users)
             }
         }
 
+    async def ping_vps(self):
+        """Ping VPS to measure network latency"""
+        try:
+            start_time = time.time()
+            async with aiohttp.ClientSession() as session:
+                async with session.get('https://zxpq.ca', timeout=5) as response:
+                    latency = round((time.time() - start_time) * 1000)
+                    return latency
+        except:
+            return 999  # Return high latency if ping fails
+    
     async def send_to_vps(self, stats):
         try:
             async with aiohttp.ClientSession() as session:
