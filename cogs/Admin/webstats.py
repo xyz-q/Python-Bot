@@ -51,10 +51,13 @@ class WebStatsReporter(commands.Cog):
         cpu_percent = psutil.cpu_percent(interval=1)
         memory = psutil.virtual_memory()
         disk = psutil.disk_usage('/')
+        uptime_seconds = psutil.boot_time()
+        current_uptime = datetime.now().timestamp() - uptime_seconds
         
         return {
             "timestamp": datetime.now().isoformat(),
             "hostname": platform.node(),
+            "uptime_seconds": int(current_uptime),
             "cpu": {
                 "usage_percent": cpu_percent,
                 "frequency": psutil.cpu_freq().current if psutil.cpu_freq() else 0
@@ -62,7 +65,7 @@ class WebStatsReporter(commands.Cog):
             "memory": {
                 "usage_percent": memory.percent,
                 "used_gb": round(memory.used / (1024 ** 3), 2),
-                "total_gb": round(memory.total / (1024 ** 3), 2)
+                "total_gb": round(memory.total / (1024 ** 3))
             },
             "disk": {
                 "usage_percent": disk.percent,
