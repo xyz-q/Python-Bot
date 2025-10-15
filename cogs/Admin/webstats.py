@@ -109,7 +109,7 @@ class WebStatsReporter(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 async with session.post(self.vps_url, json=stats, timeout=10) as response:
                     if response.status == 200:
-                        print(f"Stats sent successfully at {datetime.now()} - CPU: {stats['cpu']['usage_percent']}%, Memory: {stats['memory']['used_gb']}/{stats['memory']['total_gb']}GB, Latency: {stats['bot']['latency_ms']}ms")
+                        print(f"Stats sent successfully at {datetime.now()} - CPU: {stats['cpu']['usage_percent']}%, Memory: {stats['memory']['used_gb']}/{stats['memory']['total_gb']}GB, VPS Latency: {stats['bot']['vps_latency_ms']}ms")
                     else:
                         print(f"Failed to send stats: {response.status}")
         except Exception as e:
@@ -125,7 +125,7 @@ class WebStatsReporter(commands.Cog):
         embed.add_field(name="🖥️ CPU", value=f"{stats['cpu']['usage_percent']}%", inline=True)
         embed.add_field(name="💾 Memory", value=f"{stats['memory']['used_gb']}/{stats['memory']['total_gb']} GB\n({stats['memory']['usage_percent']}%)", inline=True)
         embed.add_field(name="💿 Disk", value=f"{stats['disk']['used_gb']}/{stats['disk']['total_gb']} GB\n({stats['disk']['usage_percent']}%)", inline=True)
-        embed.add_field(name="🤖 Bot Latency", value=f"{stats['bot']['latency_ms']}ms", inline=True)
+        embed.add_field(name="🤖 VPS Latency", value=f"{stats['bot']['vps_latency_ms']}ms", inline=True)
         embed.add_field(name="🏠 Hostname", value=stats['hostname'], inline=True)
         embed.add_field(name="⏰ Timestamp", value=stats['timestamp'], inline=True)
         
