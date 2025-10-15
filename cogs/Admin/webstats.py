@@ -29,7 +29,7 @@ class WebStatsReporter(commands.Cog):
     @report_stats.before_loop
     async def before_report_stats(self):
         await self.bot.wait_until_ready()
-#
+
     async def collect_stats(self):
         # Calculate network and disk speeds
         current_net_io = psutil.net_io_counters()
@@ -89,21 +89,34 @@ class WebStatsReporter(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 async with session.post(self.vps_url, json=stats, timeout=10) as response:
                     if response.status == 200:
-                        print(f"Stats sent successfully at {datetime.now()}")
+                        print(f"Stats sent successfully at {datetime.now()} - CPU: {stats['cpu']['usage_percent']}%, Memory: {stats['memory']['used_gb']}/{stats['memory']['total_gb']}GB, Latency: {stats['bot']['latency_ms']}ms")
                     else:
                         print(f"Failed to send stats: {response.status}")
         except Exception as e:
-            print(f"Error sending stats to VPS: {e}")
+            print(f"Error sending stats to VPS: {e} - Last collected: CPU: {stats['cpu']['usage_percent']}%, Memory: {stats['memory']['used_gb']}/{stats['memory']['total_gb']}GB")
 
     @commands.command()
     async def teststats(self, ctx):
         """Test stats collection and display"""
         stats = await self.collect_stats()
-        embed = discord.Embed(title="Server Stats Test", color=0x00ff00)
-        embed.add_field(name="CPU", value=f"{stats['cpu']['usage_percent']}%", inline=True)
-        embed.add_field(name="Memory", value=f"{stats['memory']['usage_percent']}%", inline=True)
-        embed.add_field(name="Disk", value=f"{stats['disk']['usage_percent']}%", inline=True)
+        
+        # Send detailed stats to Discord
+        embed = discord.Embed(title="📊 Detailed Server Stats Debug", color=0x00ff00)
+        embed.add_field(name="🖥️ CPU", value=f"{stats['cpu']['usage_percent']}%", inline=True)
+        embed.add_field(name="💾 Memory", value=f"{stats['memory']['used_gb']}/{stats['memory']['total_gb']} GB\n({stats['memory']['usage_percent']}%)", inline=True)
+        embed.add_field(name="💿 Disk", value=f"{stats['disk']['used_gb']}/{stats['disk']['total_gb']} GB\n({stats['disk']['usage_percent']}%)", inline=True)
+        embed.add_field(name="🤖 Bot Latency", value=f"{stats['bot']['latency_ms']}ms", inline=True)
+        embed.add_field(name="🏠 Hostname", value=stats['hostname'], inline=True)
+        embed.add_field(name="⏰ Timestamp", value=stats['timestamp'], inline=True)
+        
         await ctx.send(embed=embed)
+        
+        # Also send to VPS for testing
+        try:
+            await self.send_to_vps(stats)
+            await ctx.send("✅ Stats also sent to VPS successfully!")
+        except Exception as e:
+            await ctx.send(f"❌ Failed to send to VPS: {e}")
 
 async def setup(bot):
     await bot.add_cog(WebStatsReporter(bot))
