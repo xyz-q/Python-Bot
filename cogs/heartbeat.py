@@ -10,7 +10,7 @@ class HeartbeatCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         # Gaming PC IP address
-        self.heartbeat_url = "http://192.168.0.115:3001/api/heartbeat"
+        self.heartbeat_url = "http://108.175.8.144:3005/api/heartbeat"
 
         self.heartbeat_task.start()
     
@@ -18,7 +18,7 @@ class HeartbeatCog(commands.Cog):
     async def heartbeat_task(self):
         # Try both possible server locations
         urls = [
-            "http://192.168.0.115:3001/api/heartbeat",  # Gaming PC
+            "http://108.175.8.144:3005/api/heartbeat",  # VPS
             "http://192.168.0.158:3001/api/heartbeat",  # Server PC
             "http://localhost:3001/api/heartbeat"        # Same machine
         ]
