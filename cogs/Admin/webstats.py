@@ -114,12 +114,10 @@ class WebStatsReporter(commands.Cog):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(self.vps_url, json=stats, timeout=10) as response:
-                    if response.status == 200:
-                        print(f"Stats sent successfully at {datetime.now()} - CPU: {stats['cpu']['usage_percent']}%, Memory: {stats['memory']['used_gb']}/{stats['memory']['total_gb']}GB, VPS Latency: {stats['bot']['vps_latency_ms']}ms")
-                    else:
+                    if response.status != 200:
                         print(f"Failed to send stats: {response.status}")
         except Exception as e:
-            print(f"Error sending stats to VPS: {e} - Last collected: CPU: {stats['cpu']['usage_percent']}%, Memory: {stats['memory']['used_gb']}/{stats['memory']['total_gb']}GB")
+            print(f"Error sending stats to VPS: {e}")
 
     @commands.command()
     async def teststats(self, ctx):
