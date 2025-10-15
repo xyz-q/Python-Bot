@@ -98,7 +98,7 @@ class WebStatsReporter(commands.Cog):
         try:
             start_time = time.time()
             async with aiohttp.ClientSession() as session:
-                async with session.get('https://zxpq.ca', timeout=5) as response:
+                async with session.head('https://zxpq.ca', timeout=3) as response:
                     latency = round((time.time() - start_time) * 1000)
                     return latency
         except:
