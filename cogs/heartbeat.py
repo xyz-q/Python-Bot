@@ -18,7 +18,7 @@ class HeartbeatCog(commands.Cog):
     async def heartbeat_task(self):
         # VPS server only
         urls = [
-            "http://108.175.8.144:8080/api/heartbeat"   # VPS server
+            "http://108.175.8.144:3005/api/heartbeat"   # VPS server (Bot status server)
         ]
         
         # Gather bot stats
