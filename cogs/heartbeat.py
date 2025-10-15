@@ -18,9 +18,8 @@ class HeartbeatCog(commands.Cog):
     async def heartbeat_task(self):
         # Try both possible server locations
         urls = [
-            "http://192.168.0.158:3005/api/heartbeat",  # Server PC (try first)
-            "http://localhost:3005/api/heartbeat",       # Same machine
-            "http://108.175.8.144:3005/api/heartbeat"   # VPS (try last)
+            "http://108.175.8.144:3005/api/heartbeat",   # VPS server
+            "http://localhost:3005/api/heartbeat"        # VPS localhost
         ]
         
         # Gather bot stats
