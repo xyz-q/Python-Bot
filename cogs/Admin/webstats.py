@@ -29,7 +29,7 @@ class WebStatsReporter(commands.Cog):
     @report_stats.before_loop
     async def before_report_stats(self):
         await self.bot.wait_until_ready()
-
+#
     async def collect_stats(self):
         # Calculate network and disk speeds
         current_net_io = psutil.net_io_counters()
