@@ -95,10 +95,10 @@ class WebStatsReporter(commands.Cog):
         }
 
     async def ping_vps(self):
-        """Ping VPS to measure network latency"""
+        """Ping Google DNS to measure network latency"""
         try:
-            result = subprocess.run(['ping', '-c', '1', 'zxpq.ca'], 
-                                  capture_output=True, text=True, timeout=5)
+            result = subprocess.run(['ping', '-c', '1', '8.8.8.8'], 
+                                  capture_output=True, text=True, timeout=3)
             if result.returncode == 0:
                 # Parse ping output for latency
                 lines = result.stdout.split('\n')
