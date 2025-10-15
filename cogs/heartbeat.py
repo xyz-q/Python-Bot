@@ -19,8 +19,8 @@ class HeartbeatCog(commands.Cog):
         # Try both possible server locations
         urls = [
             "http://108.175.8.144:3005/api/heartbeat",  # VPS
-            "http://192.168.0.158:3001/api/heartbeat",  # Server PC
-            "http://localhost:3001/api/heartbeat"        # Same machine
+            "http://192.168.0.158:3005/api/heartbeat",  # Server PC
+            "http://localhost:3005/api/heartbeat"        # Same machine
         ]
         
         # Gather bot stats
