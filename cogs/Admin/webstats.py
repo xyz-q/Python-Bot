@@ -1,0 +1,109 @@
+import discord
+from discord.ext import commands, tasks
+import psutil
+import platform
+from datetime import datetime
+import aiohttp
+import json
+
+class WebStatsReporter(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.vps_url = "https://zxpq.ca/api/server-stats"  # Your VPS endpoint
+        self.last_net_io = psutil.net_io_counters()
+        self.last_disk_io = psutil.disk_io_counters()
+        self.last_check_time = datetime.now()
+        self.report_stats.start()
+
+    def cog_unload(self):
+        self.report_stats.cancel()
+
+    @tasks.loop(minutes=2)  # Send stats every 2 minutes
+    async def report_stats(self):
+        try:
+            stats = await self.collect_stats()
+            await self.send_to_vps(stats)
+        except Exception as e:
+            print(f"Error reporting stats: {e}")
+
+    @report_stats.before_loop
+    async def before_report_stats(self):
+        await self.bot.wait_until_ready()
+
+    async def collect_stats(self):
+        # Calculate network and disk speeds
+        current_net_io = psutil.net_io_counters()
+        current_disk_io = psutil.disk_io_counters()
+        current_time = datetime.now()
+        time_delta = (current_time - self.last_check_time).total_seconds()
+        
+        upload_speed = (current_net_io.bytes_sent - self.last_net_io.bytes_sent) / time_delta / 1024  # KB/s
+        download_speed = (current_net_io.bytes_recv - self.last_net_io.bytes_recv) / time_delta / 1024  # KB/s
+        
+        read_speed = (current_disk_io.read_bytes - self.last_disk_io.read_bytes) / time_delta / (1024 * 1024)  # MB/s
+        write_speed = (current_disk_io.write_bytes - self.last_disk_io.write_bytes) / time_delta / (1024 * 1024)  # MB/s
+        
+        self.last_net_io = current_net_io
+        self.last_disk_io = current_disk_io
+        self.last_check_time = current_time
+
+        # Collect system stats
+        cpu_percent = psutil.cpu_percent(interval=1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "hostname": platform.node(),
+            "cpu": {
+                "usage_percent": cpu_percent,
+                "frequency": psutil.cpu_freq().current if psutil.cpu_freq() else 0
+            },
+            "memory": {
+                "usage_percent": memory.percent,
+                "used_gb": round(memory.used / (1024 ** 3), 2),
+                "total_gb": round(memory.total / (1024 ** 3), 2)
+            },
+            "disk": {
+                "usage_percent": disk.percent,
+                "used_gb": round(disk.used / (1024 ** 3), 0),
+                "total_gb": round(disk.total / (1024 ** 3), 0),
+                "read_speed_mb": round(read_speed, 2),
+                "write_speed_mb": round(write_speed, 2)
+            },
+            "network": {
+                "upload_speed_kb": round(upload_speed, 2),
+                "download_speed_kb": round(download_speed, 2),
+                "total_sent_mb": round(current_net_io.bytes_sent / (1024**2), 2),
+                "total_recv_mb": round(current_net_io.bytes_recv / (1024**2), 2)
+            },
+            "bot": {
+                "latency_ms": round(self.bot.latency * 1000),
+                "guilds": len(self.bot.guilds),
+                "users": len(self.bot.users)
+            }
+        }
+
+    async def send_to_vps(self, stats):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(self.vps_url, json=stats, timeout=10) as response:
+                    if response.status == 200:
+                        print(f"Stats sent successfully at {datetime.now()}")
+                    else:
+                        print(f"Failed to send stats: {response.status}")
+        except Exception as e:
+            print(f"Error sending stats to VPS: {e}")
+
+    @commands.command()
+    async def teststats(self, ctx):
+        """Test stats collection and display"""
+        stats = await self.collect_stats()
+        embed = discord.Embed(title="Server Stats Test", color=0x00ff00)
+        embed.add_field(name="CPU", value=f"{stats['cpu']['usage_percent']}%", inline=True)
+        embed.add_field(name="Memory", value=f"{stats['memory']['usage_percent']}%", inline=True)
+        embed.add_field(name="Disk", value=f"{stats['disk']['usage_percent']}%", inline=True)
+        await ctx.send(embed=embed)
+
+async def setup(bot):
+    await bot.add_cog(WebStatsReporter(bot))
