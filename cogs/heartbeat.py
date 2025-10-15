@@ -97,6 +97,14 @@ class HeartbeatCog(commands.Cog):
         print(f"[HEARTBEAT] Sending payload with activity: {current_activity} and status: {bot_status}")
         print(f"[HEARTBEAT] Full payload: {payload}")
         
+        # Test basic connectivity first
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get("http://108.175.8.144:3005/api/bot-status", timeout=aiohttp.ClientTimeout(total=3)) as response:
+                    print(f"[HEARTBEAT] VPS connectivity test: {response.status}")
+        except Exception as e:
+            print(f"[HEARTBEAT] VPS connectivity test failed: {type(e).__name__}: {str(e)}")
+        
         success = False
         for url in urls:
             try:
@@ -109,7 +117,7 @@ class HeartbeatCog(commands.Cog):
                         else:
                             print(f"[HEARTBEAT] Failed to send to {url}, status: {response.status}")
             except Exception as e:
-                print(f"[HEARTBEAT] Error sending to {url}: {e}")
+                print(f"[HEARTBEAT] Error sending to {url}: {type(e).__name__}: {str(e)}")
                 continue
         
 
