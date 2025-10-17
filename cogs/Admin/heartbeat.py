@@ -7,6 +7,7 @@ from colorama import Fore, Style
 import time
 import json
 from datetime import datetime
+import pytz
 
 class HeartbeatCog(commands.Cog):
     def __init__(self, bot):
@@ -112,7 +113,10 @@ class HeartbeatCog(commands.Cog):
             try:
                 channel = self.bot.get_channel(1428618460946104351)
                 if channel:
-                    current_time = discord.utils.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+                    utc_time = discord.utils.utcnow()
+                    local_tz = pytz.timezone('America/New_York')  # Change to your timezone
+                    local_time = utc_time.replace(tzinfo=pytz.UTC).astimezone(local_tz)
+                    current_time = local_time.strftime("%Y-%m-%d %H:%M:%S %Z")
                     embed = discord.Embed(
                         title="💓 Heartbeat Status",
                         description=f"**Time:** {current_time}",
