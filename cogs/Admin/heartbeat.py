@@ -23,7 +23,7 @@ class HeartbeatCog(commands.Cog):
             if not self.heartbeat_enabled:
                 return
             
-            print(f"Sending heartbeat at {datetime.now()}...")
+
             
             urls = ["http://108.175.8.144:3005/api/heartbeat"]
             
