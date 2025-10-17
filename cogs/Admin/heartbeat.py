@@ -19,11 +19,10 @@ class HeartbeatCog(commands.Cog):
     
     @tasks.loop(seconds=30)  # Send heartbeat every 30 seconds
     async def heartbeat_task(self):
-        try:
-            if not self.heartbeat_enabled:
-                return
-            
-            print(f"Sending heartbeat at {datetime.now()}...")
+        if not self.heartbeat_enabled:
+            return
+        
+        print(f"Sending heartbeat at {datetime.now()}...")
         # VPS server only
         urls = [
             "http://108.175.8.144:3005/api/heartbeat"   # VPS server (Bot status server)
@@ -100,23 +99,15 @@ class HeartbeatCog(commands.Cog):
                 async with aiohttp.ClientSession() as session:
                     async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as response:
                         if response.status == 200:
-                            print(f"✅ Heartbeat sent successfully to {url}")
                             success = True
                             break
                         else:
                             error_msg = f"HTTP {response.status}"
-                            print(f"❌ Heartbeat failed: {error_msg}")
             except Exception as e:
                 error_msg = str(e)
-                print(f"❌ Heartbeat error: {error_msg}")
                 continue
         
         # Log heartbeat result
-        if success:
-            print(f"💚 Heartbeat successful - Ping: {ping}ms, Guilds: {guild_count}")
-        else:
-            print(f"💔 Heartbeat failed - Error: {error_msg}")
-            
         log_entry = {
             'timestamp': datetime.now().isoformat(),
             'success': success,
@@ -128,25 +119,12 @@ class HeartbeatCog(commands.Cog):
         if not success:
             log_entry['error'] = error_msg
         
-            # Write to log file
-            try:
-                with open('logs/heartbeat.log', 'a') as f:
-                    f.write(json.dumps(log_entry) + '\n')
-            except Exception as e:
-                print(f"Failed to write heartbeat log: {e}")
-        except Exception as e:
-            print(f"Heartbeat task error: {e}")
-            # Log the error
-            try:
-                with open('logs/heartbeat.log', 'a') as f:
-                    error_log = {
-                        'timestamp': datetime.now().isoformat(),
-                        'success': False,
-                        'error': f"Task error: {str(e)}"
-                    }
-                    f.write(json.dumps(error_log) + '\n')
-            except:
-                pass
+        # Write to log file
+        try:
+            with open('logs/heartbeat.log', 'a') as f:
+                f.write(json.dumps(log_entry) + '\n')
+        except:
+            pass  # Don't crash if logging fails
         
 
     
