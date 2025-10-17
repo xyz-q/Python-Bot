@@ -14,7 +14,8 @@ class HeartbeatCog(commands.Cog):
         # Gaming PC IP address
         self.heartbeat_url = "http://108.175.8.144:3005/api/heartbeat"
         self.heartbeat_enabled = True
-
+        
+        print("🚀 HeartbeatCog initialized, starting task...")
         self.heartbeat_task.start()
     
     @tasks.loop(seconds=30)  # Send heartbeat every 30 seconds
@@ -163,9 +164,11 @@ class HeartbeatCog(commands.Cog):
     
     @heartbeat_task.before_loop
     async def before_heartbeat(self):
+        print("⏳ Waiting for bot to be ready...")
         await self.bot.wait_until_ready()
         # Wait a bit more to ensure status is set
         await asyncio.sleep(2)
+        print("✅ Bot ready, heartbeat task starting!")
     
     @commands.command()
     @commands.is_owner()
