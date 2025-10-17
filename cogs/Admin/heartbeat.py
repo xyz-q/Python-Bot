@@ -165,10 +165,10 @@ class HeartbeatCog(commands.Cog):
     
     @heartbeat_task.before_loop
     async def before_heartbeat(self):
-        print("⏳ Waiting for bot to be ready...")
+
         await self.bot.wait_until_ready()
         await asyncio.sleep(2)
-        print("✅ Bot ready, heartbeat task starting!")
+
     
     @commands.command()
     @commands.is_owner()
