@@ -19,10 +19,11 @@ class HeartbeatCog(commands.Cog):
     
     @tasks.loop(seconds=30)  # Send heartbeat every 30 seconds
     async def heartbeat_task(self):
-        if not self.heartbeat_enabled:
-            return
-        
-        print(f"Sending heartbeat at {datetime.now()}...")
+        try:
+            if not self.heartbeat_enabled:
+                return
+            
+            print(f"Sending heartbeat at {datetime.now()}...")
         # VPS server only
         urls = [
             "http://108.175.8.144:3005/api/heartbeat"   # VPS server (Bot status server)
@@ -119,12 +120,25 @@ class HeartbeatCog(commands.Cog):
         if not success:
             log_entry['error'] = error_msg
         
-        # Write to log file
-        try:
-            with open('logs/heartbeat.log', 'a') as f:
-                f.write(json.dumps(log_entry) + '\n')
-        except:
-            pass  # Don't crash if logging fails
+            # Write to log file
+            try:
+                with open('logs/heartbeat.log', 'a') as f:
+                    f.write(json.dumps(log_entry) + '\n')
+            except Exception as e:
+                print(f"Failed to write heartbeat log: {e}")
+        except Exception as e:
+            print(f"Heartbeat task error: {e}")
+            # Log the error
+            try:
+                with open('logs/heartbeat.log', 'a') as f:
+                    error_log = {
+                        'timestamp': datetime.now().isoformat(),
+                        'success': False,
+                        'error': f"Task error: {str(e)}"
+                    }
+                    f.write(json.dumps(error_log) + '\n')
+            except:
+                pass
         
 
     
