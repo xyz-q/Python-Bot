@@ -19,10 +19,11 @@ class HeartbeatCog(commands.Cog):
     
     @tasks.loop(seconds=30)  # Send heartbeat every 30 seconds
     async def heartbeat_task(self):
-        if not self.heartbeat_enabled:
-            return
-        
-        print(f"Sending heartbeat at {datetime.now()}...")
+        try:
+            if not self.heartbeat_enabled:
+                return
+            
+            print(f"Sending heartbeat at {datetime.now()}...")
         # VPS server only
         urls = [
             "http://108.175.8.144:3005/api/heartbeat"   # VPS server (Bot status server)
@@ -119,12 +120,44 @@ class HeartbeatCog(commands.Cog):
         if not success:
             log_entry['error'] = error_msg
         
-        # Write to log file
-        try:
-            with open('logs/heartbeat.log', 'a') as f:
-                f.write(json.dumps(log_entry) + '\n')
-        except:
-            pass  # Don't crash if logging fails
+            # Send Discord embed
+            try:
+                channel = self.bot.get_channel(1428618460946104351)
+                if channel:
+                    embed = discord.Embed(
+                        title="💓 Heartbeat Status",
+                        color=0x00ff00 if success else 0xff0000,
+                        timestamp=discord.utils.utcnow()
+                    )
+                    embed.add_field(name="Status", value="✅ Success" if success else "❌ Failed", inline=True)
+                    embed.add_field(name="Ping", value=f"{ping}ms" if ping else "N/A", inline=True)
+                    embed.add_field(name="Uptime", value=uptime or "N/A", inline=True)
+                    embed.add_field(name="Bot Status", value=bot_status, inline=True)
+                    if not success and error_msg:
+                        embed.add_field(name="Error", value=error_msg, inline=False)
+                    await channel.send(embed=embed)
+            except Exception as e:
+                print(f"Failed to send Discord heartbeat: {e}")
+            
+            # Write to log file
+            try:
+                with open('logs/heartbeat.log', 'a') as f:
+                    f.write(json.dumps(log_entry) + '\n')
+            except:
+                pass  # Don't crash if logging fails
+                
+        except Exception as e:
+            print(f"💥 Heartbeat task error: {e}")
+            try:
+                with open('logs/heartbeat.log', 'a') as f:
+                    error_log = {
+                        'timestamp': datetime.now().isoformat(),
+                        'success': False,
+                        'error': f"Task error: {str(e)}"
+                    }
+                    f.write(json.dumps(error_log) + '\n')
+            except:
+                pass
         
 
     
