@@ -112,8 +112,10 @@ class HeartbeatCog(commands.Cog):
             try:
                 channel = self.bot.get_channel(1428618460946104351)
                 if channel:
+                    current_time = discord.utils.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
                     embed = discord.Embed(
                         title="💓 Heartbeat Status",
+                        description=f"**Time:** {current_time}",
                         color=0x00ff00 if success else 0xff0000,
                         timestamp=discord.utils.utcnow()
                     )
