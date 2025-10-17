@@ -114,7 +114,7 @@ class HeartbeatCog(commands.Cog):
                 channel = self.bot.get_channel(1428618460946104351)
                 if channel:
                     utc_time = discord.utils.utcnow()
-                    local_tz = pytz.timezone('America/New_York')  # Change to your timezone
+                    local_tz = pytz.timezone('America/Denver')  # Mountain Time
                     local_time = utc_time.replace(tzinfo=pytz.UTC).astimezone(local_tz)
                     current_time = local_time.strftime("%Y-%m-%d %H:%M:%S %Z")
                     embed = discord.Embed(
