@@ -5,6 +5,8 @@ import asyncio
 import os
 from colorama import Fore, Style
 import time
+import json
+from datetime import datetime
 
 class HeartbeatCog(commands.Cog):
     def __init__(self, bot):
@@ -19,6 +21,8 @@ class HeartbeatCog(commands.Cog):
     async def heartbeat_task(self):
         if not self.heartbeat_enabled:
             return
+        
+        print(f"Sending heartbeat at {datetime.now()}...")
         # VPS server only
         urls = [
             "http://108.175.8.144:3005/api/heartbeat"   # VPS server (Bot status server)
@@ -88,14 +92,39 @@ class HeartbeatCog(commands.Cog):
         }
         
         # Send heartbeat to servers
+        success = False
+        error_msg = None
         for url in urls:
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as response:
                         if response.status == 200:
+                            success = True
                             break
-            except Exception:
+                        else:
+                            error_msg = f"HTTP {response.status}"
+            except Exception as e:
+                error_msg = str(e)
                 continue
+        
+        # Log heartbeat result
+        log_entry = {
+            'timestamp': datetime.now().isoformat(),
+            'success': success,
+            'ping': ping,
+            'guilds': guild_count,
+            'uptime': uptime,
+            'status': bot_status
+        }
+        if not success:
+            log_entry['error'] = error_msg
+        
+        # Write to log file
+        try:
+            with open('logs/heartbeat.log', 'a') as f:
+                f.write(json.dumps(log_entry) + '\n')
+        except:
+            pass  # Don't crash if logging fails
         
 
     
