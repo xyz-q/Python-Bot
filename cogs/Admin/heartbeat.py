@@ -136,6 +136,22 @@ class HeartbeatCog(commands.Cog):
                 
         except Exception as e:
             print(f"💥 Heartbeat task error: {e}")
+            
+            # Send Discord notification about task failure
+            try:
+                channel = self.bot.get_channel(1428618460946104351)
+                if channel:
+                    embed = discord.Embed(
+                        title="💥 Heartbeat Task Crashed",
+                        color=0xff0000,
+                        timestamp=discord.utils.utcnow()
+                    )
+                    embed.add_field(name="Error", value=str(e), inline=False)
+                    embed.add_field(name="Status", value="Task will retry in 30 seconds", inline=False)
+                    await channel.send(embed=embed)
+            except Exception as discord_error:
+                print(f"Failed to send Discord crash notification: {discord_error}")
+            
             try:
                 with open('logs/heartbeat.log', 'a') as f:
                     error_log = {
