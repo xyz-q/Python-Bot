@@ -163,11 +163,12 @@ class VoSCog(commands.Cog):
     async def get_vos_data(self):
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get('https://api.weirdgloop.org/runescape/vos/history') as response:
+                async with session.get('https://api.weirdgloop.org/runescape/vos') as response:
+                    print(f"API Response Status: {response.status}")
                     if response.status == 200:
-                        data = await response.json()
-                        if data and 'data' in data and len(data['data']) > 0:
-                            current_vos = data['data'][0]
+                        current_vos = await response.json()
+                        print(f"API Response Data: {current_vos}")
+                        if current_vos and 'timestamp' in current_vos:
                             timestamp = datetime.fromisoformat(current_vos['timestamp'].replace('Z', '+00:00'))
                             timestamp = timestamp.astimezone(timezone.utc)
                             
@@ -195,7 +196,11 @@ class VoSCog(commands.Cog):
                                     vos_data['is_stale'] = False
 
                             return vos_data
-
+                        else:
+                            print("No valid data found in API response")
+                            return None
+                    else:
+                        print(f"API returned status {response.status}")
                         return None
         except Exception as e:
             print(f"Error fetching VoS data: {e}")
@@ -391,11 +396,10 @@ class VoSCog(commands.Cog):
         """Force send VoS update to all channels"""
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get('https://api.weirdgloop.org/runescape/vos/history') as response:
+                async with session.get('https://api.weirdgloop.org/runescape/vos') as response:
                     if response.status == 200:
-                        data = await response.json()
-                        if data and 'data' in data and len(data['data']) > 0:
-                            current_vos = data['data'][0]
+                        current_vos = await response.json()
+                        if current_vos and 'timestamp' in current_vos:
                             
                             vos_data = {
                                 'timestamp': datetime.fromisoformat(current_vos['timestamp'].replace('Z', '+00:00')),
