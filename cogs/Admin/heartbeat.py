@@ -18,7 +18,7 @@ class HeartbeatCog(commands.Cog):
         print("🚀 HeartbeatCog initialized, starting task...")
         self.heartbeat_task.start()
     
-    @tasks.loop(seconds=30)
+    @tasks.loop(seconds=20)
     async def heartbeat_task(self):
         try:
             if not self.heartbeat_enabled:

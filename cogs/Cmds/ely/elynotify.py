@@ -228,7 +228,7 @@ class ElyNotify(commands.Cog):
             item_name = ' '.join(item_parts)
             
             if direction.lower() not in ['h', 'l']:
-                await ctx.send("Direction must be 'h' for higher or 'l' for lower")
+                await ctx.send("Incorrect format. (,alert <item> <price> <h/l>)")
                 return
                 
         except ValueError:
