@@ -87,7 +87,7 @@ class WebStatsReporter(commands.Cog):
                 "total_recv_mb": round(current_net_io.bytes_recv / (1024**2), 2)
             },
             "bot": {
-                "discord_latency_ms": round(self.bot.latency * 1000),
+                "discord_latency_ms": round(self.bot.latency * 1000) if self.bot.latency and self.bot.latency != float('inf') else 999,
                 "vps_latency_ms": vps_latency,
                 "guilds": len(self.bot.guilds),
                 "users": len(self.bot.users)
