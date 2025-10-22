@@ -28,7 +28,7 @@ class HeartbeatCog(commands.Cog):
             
             urls = ["http://108.175.8.144:3005/api/heartbeat"]
             
-            ping = round(self.bot.latency * 1000) if self.bot.latency else None
+            ping = round(self.bot.latency * 1000) if self.bot.latency and self.bot.latency != float('inf') else None
             guild_count = len(self.bot.guilds)
             
             if hasattr(self.bot, 'start_time'):
