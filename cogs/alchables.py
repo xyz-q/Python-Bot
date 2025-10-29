@@ -43,7 +43,7 @@ class Alchables(commands.Cog):
         rows = table.find_all('tr')[1:50]  # Get more items
         item_data = []
         
-        for row in rows:
+        for i, row in enumerate(rows[:5]):  # Debug first 5 rows
             cells = row.find_all('td')
             if len(cells) >= 7:
                 # Extract item name
@@ -55,15 +55,39 @@ class Alchables(commands.Cog):
                 profit = re.search(r'(\d+)', profit_text)
                 profit = int(profit.group(1)) if profit else 0
                 
-                # Extract volume (daily trades) - column 7
-                volume_text = cells[7].text.strip().replace(',', '') if len(cells) > 7 else '0'
+                # Check all columns for volume
+                for j, cell in enumerate(cells):
+                    cell_text = cell.text.strip().replace(',', '')
+                    if re.search(r'\d{6,}', cell_text):  # Look for large numbers (volume)
+                        volume = int(re.search(r'(\d+)', cell_text).group(1))
+                        item_data.append((item_name, profit, volume))
+                        break
+                else:
+                    # Fallback to column 6 if no large number found
+                    volume_text = cells[6].text.strip().replace(',', '') if len(cells) > 6 else '0'
+                    volume = re.search(r'(\d+)', volume_text)
+                    volume = int(volume.group(1)) if volume else 0
+                    item_data.append((item_name, profit, volume))
+        
+        # Add remaining rows normally
+        for row in rows[5:]:
+            cells = row.find_all('td')
+            if len(cells) >= 7:
+                item_link = cells[1].find('a')
+                item_name = item_link.text if item_link else "Unknown"
+                
+                profit_text = cells[4].text.strip().replace(',', '')
+                profit = re.search(r'(\d+)', profit_text)
+                profit = int(profit.group(1)) if profit else 0
+                
+                volume_text = cells[6].text.strip().replace(',', '') if len(cells) > 6 else '0'
                 volume = re.search(r'(\d+)', volume_text)
                 volume = int(volume.group(1)) if volume else 0
                 
                 item_data.append((item_name, profit, volume))
         
-        # Sort by volume first (descending), then by profit (descending)
-        item_data.sort(key=lambda x: x[2], reverse=True)  # Sort by volume only
+        # Sort by volume first (descending)
+        item_data.sort(key=lambda x: x[2], reverse=True)
         
         # Take top 10
         items = []
