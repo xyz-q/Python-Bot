@@ -39,13 +39,10 @@ class Alchables(commands.Cog):
             await ctx.send("Could not find alchemy table")
             return
         
-        # Filter for practical alchables only
-        excluded_keywords = ['uncut', 'primal', 'corrupt', 'ancient', 'salvage', 'royal', 'dormant', 'huge', 'large', 'medium', 'small', 'tiny']
+        # Only exclude the most problematic items
+        excluded_keywords = ['uncut onyx', 'primal', 'corrupt', 'ancient ceremonial', 'salvage']
         
-        # Include common alchables
-        include_keywords = ['bolts', 'battlestaff', 'bracelet', 'dust', 'amulet', 'necklace', 'ring']
-        
-        rows = table.find_all('tr')[1:50]  # Get more items to filter from
+        rows = table.find_all('tr')[1:30]  # Get more items to filter from
         items = []
         
         for row in rows:
@@ -64,14 +61,12 @@ class Alchables(commands.Cog):
                 price = re.search(r'(\d+)', price_text)
                 price = int(price.group(1)) if price else 0
                 
-                # Filter for practical items
+                # Simple filter - exclude very expensive or problematic items
                 is_excluded = any(keyword in item_name.lower() for keyword in excluded_keywords)
-                is_included = any(keyword in item_name.lower() for keyword in include_keywords)
                 
-                if (profit > 100 and  # Higher minimum profit
-                    price < 50000 and  # Lower max price
-                    not is_excluded and
-                    (is_included or 'staff' in item_name.lower())):
+                if (profit > 300 and  # Reasonable minimum profit
+                    price < 200000 and  # Higher max price
+                    not is_excluded):
                     items.append(f"**{item_name}** - {profit:,} gp")
                     
                 if len(items) >= 10:  # Stop at 10 items
