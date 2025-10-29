@@ -54,7 +54,7 @@ class Alchables(commands.Cog):
                 # Extract profit
                 profit_text = cells[4].text.strip().replace(',', '')
                 profit = re.search(r'(\d+)', profit_text)
-                profit = profit.group(1) if profit else "0"
+                profit = int(profit.group(1)) if profit else 0
                 
                 items.append(f"**{item_name}** - {profit:,} gp")
         
