@@ -19,7 +19,7 @@ class Alchables(commands.Cog):
                 else:
                     return None
 
-    @commands.command(name='alchtest')
+    @commands.command(name='alchables')
     async def test_alch_data(self, ctx):
         """Test command to see what data we get"""
         async with ctx.typing():
