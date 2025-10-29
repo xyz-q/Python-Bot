@@ -22,8 +22,8 @@ class Alchables(commands.Cog):
     @commands.command(name='alchtest')
     async def test_alch_data(self, ctx):
         """Test command to see what data we get"""
-        await ctx.send("Fetching alchemy data...")
-        html = await self.fetch_alch_data()
+        async with ctx.typing():
+            html = await self.fetch_alch_data()
         if not html:
             await ctx.send("Failed to fetch data from wiki")
             return
@@ -62,8 +62,8 @@ class Alchables(commands.Cog):
                 
                 item_data.append((item_name, profit, volume))
         
-        # Sort by volume (descending) then by profit (descending)
-        item_data.sort(key=lambda x: (x[2], x[1]), reverse=True)
+        # Sort by volume first (descending), then by profit (descending)
+        item_data.sort(key=lambda x: x[2], reverse=True)  # Sort by volume only
         
         # Take top 10
         items = []
