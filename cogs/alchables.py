@@ -43,20 +43,9 @@ class Alchables(commands.Cog):
         rows = table.find_all('tr')[1:200]  # Get many more items
         item_data = []
         
-        # Debug first row to see column structure
-        if rows:
-            first_row = rows[0]
-            cells = first_row.find_all('td')
-            debug_info = []
-            for i, cell in enumerate(cells):
-                debug_info.append(f"Col {i}: {cell.text.strip()[:50]}")
-            
-            await ctx.send(f"Debug - First row columns:\n" + "\n".join(debug_info[:10]))
-            return
-        
         for row in rows:
             cells = row.find_all('td')
-            if len(cells) >= 8:
+            if len(cells) >= 9:
                 # Extract item name (column 1)
                 item_link = cells[1].find('a')
                 item_name = item_link.text if item_link else "Unknown"
@@ -66,8 +55,8 @@ class Alchables(commands.Cog):
                 profit = re.search(r'(\d+)', profit_text)
                 profit = int(profit.group(1)) if profit else 0
                 
-                # Extract trade volume (column 7)
-                volume_text = cells[7].text.strip().replace(',', '')
+                # Extract trade volume - try column 8 (max profit column might contain volume)
+                volume_text = cells[8].text.strip().replace(',', '')
                 volume = re.search(r'(\d+)', volume_text)
                 volume = int(volume.group(1)) if volume else 0
                 
