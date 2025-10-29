@@ -32,12 +32,8 @@ class Alchables(commands.Cog):
         soup = BeautifulSoup(html, 'html.parser')
         
         # Find nature rune price
-        nature_rune_text = soup.find(text=re.compile(r"nature rune, currently"))
-        nature_price = "Not found"
-        if nature_rune_text:
-            price_match = re.search(r'(\d{1,3}(?:,\d{3})*)\s*coins', nature_rune_text)
-            if price_match:
-                nature_price = price_match.group(1)
+        nature_span = soup.find('span', class_='nocoins coins-pos')
+        nature_price = nature_span.text.strip() if nature_span else "Not found"
         
         # Find the table with alchemy data
         table = soup.find('table', class_='wikitable')
