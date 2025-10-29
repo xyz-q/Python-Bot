@@ -56,12 +56,13 @@ class Alchables(commands.Cog):
                 profit = re.search(r'(\d+)', profit_text)
                 profit = profit.group(1) if profit else "0"
                 
-                items.append(f"{item_name}: {profit} gp profit")
+                items.append(f"**{item_name}** - {profit:,} gp")
         
         # Send results
-        embed = discord.Embed(title="Alchemy Data Test", color=0x00ff00)
-        embed.add_field(name="Nature Rune Price", value=f"{nature_price} gp", inline=False)
-        embed.add_field(name="Top 5 Items", value="\n".join(items) if items else "No items found", inline=False)
+        embed = discord.Embed(title="🪙 High Alchemy Profits", color=0xFFD700, description="Most profitable items for high alchemy")
+        embed.add_field(name="🌿 Nature Rune Price", value=f"**{nature_price}** gp", inline=True)
+        embed.add_field(name="📈 Top 5 Items", value="\n".join(items) if items else "No items found", inline=False)
+        embed.set_footer(text="Data from RuneScape Wiki")
         
         await ctx.send(embed=embed)
 
