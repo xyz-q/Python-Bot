@@ -40,8 +40,19 @@ class Alchables(commands.Cog):
             await ctx.send("Could not find alchemy table")
             return
         
-        rows = table.find_all('tr')[1:50]  # Get more items
+        rows = table.find_all('tr')[1:200]  # Get many more items
         item_data = []
+        
+        # Debug first row to see column structure
+        if rows:
+            first_row = rows[0]
+            cells = first_row.find_all('td')
+            debug_info = []
+            for i, cell in enumerate(cells):
+                debug_info.append(f"Col {i}: {cell.text.strip()[:50]}")
+            
+            await ctx.send(f"Debug - First row columns:\n" + "\n".join(debug_info[:10]))
+            return
         
         for row in rows:
             cells = row.find_all('td')
@@ -62,7 +73,10 @@ class Alchables(commands.Cog):
                 
                 item_data.append((item_name, profit, volume))
         
-        # Take first 10 items (no sorting to see raw data)
+        # Sort by volume (descending)
+        item_data.sort(key=lambda x: x[2], reverse=True)
+        
+        # Take top 10 by volume
         items = []
         for item_name, profit, volume in item_data[:10]:
             items.append(f"**{item_name}** - {profit:,} gp ({volume:,} trades)")
@@ -70,7 +84,7 @@ class Alchables(commands.Cog):
         # Send results
         embed = discord.Embed(title="High Alchemy Profits", color=0xFFD700, description="Most profitable items for high alchemy")
         embed.add_field(name="Nature Rune Price", value=f"**{nature_price}** gp", inline=True)
-        embed.add_field(name="First 10 Items (Raw Data)", value="\n".join(items) if items else "No items found", inline=False)
+        embed.add_field(name="Top 10 by Volume", value="\n".join(items) if items else "No items found", inline=False)
         embed.set_footer(text="Data from RuneScape Wiki")
         
         await ctx.send(embed=embed)
