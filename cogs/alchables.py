@@ -62,10 +62,7 @@ class Alchables(commands.Cog):
                 
                 item_data.append((item_name, profit, volume))
         
-        # Sort by volume first (descending), then by profit (descending)
-        item_data.sort(key=lambda x: (x[2], x[1]), reverse=True)
-        
-        # Take top 10
+        # Take first 10 items (no sorting to see raw data)
         items = []
         for item_name, profit, volume in item_data[:10]:
             items.append(f"**{item_name}** - {profit:,} gp ({volume:,} trades)")
@@ -73,7 +70,7 @@ class Alchables(commands.Cog):
         # Send results
         embed = discord.Embed(title="High Alchemy Profits", color=0xFFD700, description="Most profitable items for high alchemy")
         embed.add_field(name="Nature Rune Price", value=f"**{nature_price}** gp", inline=True)
-        embed.add_field(name="Top 10 by Volume & Profit", value="\n".join(items) if items else "No items found", inline=False)
+        embed.add_field(name="First 10 Items (Raw Data)", value="\n".join(items) if items else "No items found", inline=False)
         embed.set_footer(text="Data from RuneScape Wiki")
         
         await ctx.send(embed=embed)
