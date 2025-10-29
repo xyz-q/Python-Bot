@@ -45,25 +45,25 @@ class Alchables(commands.Cog):
         
         for row in rows:
             cells = row.find_all('td')
-            if len(cells) >= 7:
-                # Extract item name (column 0)
-                item_link = cells[0].find('a')
+            if len(cells) >= 8:
+                # Extract item name (column 1)
+                item_link = cells[1].find('a')
                 item_name = item_link.text if item_link else "Unknown"
                 
-                # Extract profit (column 3)
-                profit_text = cells[3].text.strip().replace(',', '')
+                # Extract profit (column 4)
+                profit_text = cells[4].text.strip().replace(',', '')
                 profit = re.search(r'(\d+)', profit_text)
                 profit = int(profit.group(1)) if profit else 0
                 
-                # Extract trade volume (column 6)
-                volume_text = cells[6].text.strip().replace(',', '')
+                # Extract trade volume (column 7)
+                volume_text = cells[7].text.strip().replace(',', '')
                 volume = re.search(r'(\d+)', volume_text)
                 volume = int(volume.group(1)) if volume else 0
                 
                 item_data.append((item_name, profit, volume))
         
-        # Sort by volume first (descending)
-        item_data.sort(key=lambda x: x[2], reverse=True)
+        # Sort by volume first (descending), then by profit (descending)
+        item_data.sort(key=lambda x: (x[2], x[1]), reverse=True)
         
         # Take top 10
         items = []
