@@ -43,44 +43,20 @@ class Alchables(commands.Cog):
         rows = table.find_all('tr')[1:50]  # Get more items
         item_data = []
         
-        for i, row in enumerate(rows[:5]):  # Debug first 5 rows
+        for row in rows:
             cells = row.find_all('td')
             if len(cells) >= 7:
-                # Extract item name
-                item_link = cells[1].find('a')
+                # Extract item name (column 0)
+                item_link = cells[0].find('a')
                 item_name = item_link.text if item_link else "Unknown"
                 
-                # Extract profit
-                profit_text = cells[4].text.strip().replace(',', '')
+                # Extract profit (column 3)
+                profit_text = cells[3].text.strip().replace(',', '')
                 profit = re.search(r'(\d+)', profit_text)
                 profit = int(profit.group(1)) if profit else 0
                 
-                # Check all columns for volume
-                for j, cell in enumerate(cells):
-                    cell_text = cell.text.strip().replace(',', '')
-                    if re.search(r'\d{6,}', cell_text):  # Look for large numbers (volume)
-                        volume = int(re.search(r'(\d+)', cell_text).group(1))
-                        item_data.append((item_name, profit, volume))
-                        break
-                else:
-                    # Fallback to column 6 if no large number found
-                    volume_text = cells[6].text.strip().replace(',', '') if len(cells) > 6 else '0'
-                    volume = re.search(r'(\d+)', volume_text)
-                    volume = int(volume.group(1)) if volume else 0
-                    item_data.append((item_name, profit, volume))
-        
-        # Add remaining rows normally
-        for row in rows[5:]:
-            cells = row.find_all('td')
-            if len(cells) >= 7:
-                item_link = cells[1].find('a')
-                item_name = item_link.text if item_link else "Unknown"
-                
-                profit_text = cells[4].text.strip().replace(',', '')
-                profit = re.search(r'(\d+)', profit_text)
-                profit = int(profit.group(1)) if profit else 0
-                
-                volume_text = cells[6].text.strip().replace(',', '') if len(cells) > 6 else '0'
+                # Extract trade volume (column 6)
+                volume_text = cells[6].text.strip().replace(',', '')
                 volume = re.search(r'(\d+)', volume_text)
                 volume = int(volume.group(1)) if volume else 0
                 
