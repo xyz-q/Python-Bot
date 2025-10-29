@@ -22,6 +22,7 @@ class Alchables(commands.Cog):
     @commands.command(name='alchtest')
     async def test_alch_data(self, ctx):
         """Test command to see what data we get"""
+        await ctx.send("Fetching alchemy data...")
         html = await self.fetch_alch_data()
         if not html:
             await ctx.send("Failed to fetch data from wiki")
@@ -54,8 +55,8 @@ class Alchables(commands.Cog):
                 profit = re.search(r'(\d+)', profit_text)
                 profit = int(profit.group(1)) if profit else 0
                 
-                # Extract volume (daily trades)
-                volume_text = cells[6].text.strip().replace(',', '')
+                # Extract volume (daily trades) - column 7
+                volume_text = cells[7].text.strip().replace(',', '') if len(cells) > 7 else '0'
                 volume = re.search(r'(\d+)', volume_text)
                 volume = int(volume.group(1)) if volume else 0
                 
