@@ -22,8 +22,6 @@ class Alchables(commands.Cog):
     @commands.command(name='alchtest')
     async def test_alch_data(self, ctx):
         """Test command to see what data we get"""
-        await ctx.send("Fetching alchemy data...")
-        
         html = await self.fetch_alch_data()
         if not html:
             await ctx.send("Failed to fetch data from wiki")
