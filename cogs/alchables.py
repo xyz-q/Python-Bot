@@ -39,27 +39,41 @@ class Alchables(commands.Cog):
             await ctx.send("Could not find alchemy table")
             return
         
-        rows = table.find_all('tr')[1:6]  # Get first 5 items (skip header)
+        # Filter out impractical items
+        excluded_keywords = ['noted', 'unfinished', 'barbarian', 'quest', 'damaged', 'broken', 'incomplete']
+        
+        rows = table.find_all('tr')[1:21]  # Get more items to filter from
         items = []
         
         for row in rows:
             cells = row.find_all('td')
-            if len(cells) >= 5:
+            if len(cells) >= 6:
                 # Extract item name
                 item_link = cells[1].find('a')
                 item_name = item_link.text if item_link else "Unknown"
                 
-                # Extract profit
+                # Extract profit and price
                 profit_text = cells[4].text.strip().replace(',', '')
                 profit = re.search(r'(\d+)', profit_text)
                 profit = int(profit.group(1)) if profit else 0
                 
-                items.append(f"**{item_name}** - {profit:,} gp")
+                price_text = cells[2].text.strip().replace(',', '')
+                price = re.search(r'(\d+)', price_text)
+                price = int(price.group(1)) if price else 0
+                
+                # Filter criteria
+                if (profit > 50 and  # Minimum profit
+                    price < 100000 and  # Max price for accessibility
+                    not any(keyword in item_name.lower() for keyword in excluded_keywords)):
+                    items.append(f"**{item_name}** - {profit:,} gp")
+                    
+                if len(items) >= 10:  # Stop at 10 items
+                    break
         
         # Send results
-        embed = discord.Embed(title="🪙 High Alchemy Profits", color=0xFFD700, description="Most profitable items for high alchemy")
-        embed.add_field(name="🌿 Nature Rune Price", value=f"**{nature_price}** gp", inline=True)
-        embed.add_field(name="📈 Top 5 Items", value="\n".join(items) if items else "No items found", inline=False)
+        embed = discord.Embed(title="High Alchemy Profits", color=0xFFD700, description="Most profitable items for high alchemy")
+        embed.add_field(name="Nature Rune Price", value=f"**{nature_price}** gp", inline=True)
+        embed.add_field(name="Top 10 Practical Items", value="\n".join(items) if items else "No items found", inline=False)
         embed.set_footer(text="Data from RuneScape Wiki")
         
         await ctx.send(embed=embed)
