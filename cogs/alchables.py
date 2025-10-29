@@ -55,20 +55,33 @@ class Alchables(commands.Cog):
                 profit = re.search(r'(\d+)', profit_text)
                 profit = int(profit.group(1)) if profit else 0
                 
+                # Extract ROI (column 5)
+                roi_text = cells[5].text.strip()
+                
+                # Extract limit (column 6)
+                limit_text = cells[6].text.strip().replace(',', '')
+                limit = re.search(r'(\d+)', limit_text)
+                limit = int(limit.group(1)) if limit else 0
+                
                 # Extract trade volume (column 7)
                 volume_text = cells[7].text.strip().replace(',', '')
                 volume = re.search(r'(\d+)', volume_text)
                 volume = int(volume.group(1)) if volume else 0
                 
-                item_data.append((item_name, profit, volume))
+                # Extract max profit (column 8)
+                max_profit_text = cells[8].text.strip().replace(',', '')
+                max_profit = re.search(r'(\d+)', max_profit_text)
+                max_profit = int(max_profit.group(1)) if max_profit else 0
+                
+                item_data.append((item_name, profit, volume, roi_text, limit, max_profit))
         
         # Sort by volume (descending)
         item_data.sort(key=lambda x: x[2], reverse=True)
         
         # Take top 10 by volume
         items = []
-        for item_name, profit, volume in item_data[:10]:
-            items.append(f"**{item_name}** - {profit:,} gp ({volume:,} trades)")
+        for item_name, profit, volume, roi, limit, max_profit in item_data[:10]:
+            items.append(f"**{item_name}** - {profit:,} gp | {roi} ROI | Limit: {limit:,} | Max: {max_profit:,} gp")
         
         # Send results
         embed = discord.Embed(title="High Alchemy Profits", color=0xFFD700, description="Most profitable items for high alchemy")
