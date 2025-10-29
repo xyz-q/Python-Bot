@@ -40,7 +40,7 @@ class Alchables(commands.Cog):
             await ctx.send("Could not find alchemy table")
             return
         
-        rows = table.find_all('tr')[1:200]  # Get many more items
+        rows = table.find_all('tr')[1:]  # Get ALL items
         item_data = []
         
         for row in rows:
@@ -55,8 +55,8 @@ class Alchables(commands.Cog):
                 profit = re.search(r'(\d+)', profit_text)
                 profit = int(profit.group(1)) if profit else 0
                 
-                # Extract trade volume - try column 8 (max profit column might contain volume)
-                volume_text = cells[8].text.strip().replace(',', '')
+                # Extract trade volume (column 7)
+                volume_text = cells[7].text.strip().replace(',', '')
                 volume = re.search(r'(\d+)', volume_text)
                 volume = int(volume.group(1)) if volume else 0
                 
