@@ -39,43 +39,40 @@ class Alchables(commands.Cog):
             await ctx.send("Could not find alchemy table")
             return
         
-        # Only exclude the most problematic items
-        excluded_keywords = ['uncut onyx', 'primal', 'corrupt', 'ancient ceremonial', 'salvage']
-        
-        rows = table.find_all('tr')[1:30]  # Get more items to filter from
-        items = []
+        rows = table.find_all('tr')[1:50]  # Get more items
+        item_data = []
         
         for row in rows:
             cells = row.find_all('td')
-            if len(cells) >= 6:
+            if len(cells) >= 7:
                 # Extract item name
                 item_link = cells[1].find('a')
                 item_name = item_link.text if item_link else "Unknown"
                 
-                # Extract profit and price
+                # Extract profit
                 profit_text = cells[4].text.strip().replace(',', '')
                 profit = re.search(r'(\d+)', profit_text)
                 profit = int(profit.group(1)) if profit else 0
                 
-                price_text = cells[2].text.strip().replace(',', '')
-                price = re.search(r'(\d+)', price_text)
-                price = int(price.group(1)) if price else 0
+                # Extract volume (daily trades)
+                volume_text = cells[6].text.strip().replace(',', '')
+                volume = re.search(r'(\d+)', volume_text)
+                volume = int(volume.group(1)) if volume else 0
                 
-                # Simple filter - exclude very expensive or problematic items
-                is_excluded = any(keyword in item_name.lower() for keyword in excluded_keywords)
-                
-                if (profit > 300 and  # Reasonable minimum profit
-                    price < 200000 and  # Higher max price
-                    not is_excluded):
-                    items.append(f"**{item_name}** - {profit:,} gp")
-                    
-                if len(items) >= 10:  # Stop at 10 items
-                    break
+                item_data.append((item_name, profit, volume))
+        
+        # Sort by volume (descending) then by profit (descending)
+        item_data.sort(key=lambda x: (x[2], x[1]), reverse=True)
+        
+        # Take top 10
+        items = []
+        for item_name, profit, volume in item_data[:10]:
+            items.append(f"**{item_name}** - {profit:,} gp ({volume:,} trades)")
         
         # Send results
         embed = discord.Embed(title="High Alchemy Profits", color=0xFFD700, description="Most profitable items for high alchemy")
         embed.add_field(name="Nature Rune Price", value=f"**{nature_price}** gp", inline=True)
-        embed.add_field(name="Top 10 Practical Items", value="\n".join(items) if items else "No items found", inline=False)
+        embed.add_field(name="Top 10 by Volume & Profit", value="\n".join(items) if items else "No items found", inline=False)
         embed.set_footer(text="Data from RuneScape Wiki")
         
         await ctx.send(embed=embed)
