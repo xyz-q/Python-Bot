@@ -84,7 +84,7 @@ class Alchables(commands.Cog):
             items.append(f"**{item_name}** - {profit:,} gp | {roi} ROI | Limit: {limit:,} | Max: {max_profit:,} gp")
         
         # Send results
-        embed = discord.Embed(title="High Alchemy Profits", color=0xFFD700, description="Most profitable items for high alchemy")
+        embed = discord.Embed(title="High Alchemy Profits", color=0xFFD700, description="*Written by* <@110927272210354176>")
         embed.add_field(name="Nature Rune Price", value=f"**{nature_price}** gp", inline=True)
         embed.add_field(name="Top 10 by Volume", value="\n".join(items) if items else "No items found", inline=False)
         embed.set_footer(text="Data from RuneScape Wiki")
