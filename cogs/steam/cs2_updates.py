@@ -134,6 +134,21 @@ class CS2Updates(commands.Cog):
             self.save_notifications(notifications)
             await ctx.send("🔔 CS2 update notifications enabled! You'll receive DMs when new updates drop.")
     
+    @commands.command()
+    @commands.is_owner()
+    async def testcs2dm(self, ctx):
+        """Test CS2 update DM notification"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.steam_news_url) as response:
+                    data = await response.json()
+            
+            patch_item = data['appnews']['newsitems'][0]
+            await self.send_notifications(patch_item)
+            await ctx.send("✅ Test notification sent to all subscribed users!")
+        except Exception as e:
+            await ctx.send(f"❌ Error: {e}")
+    
     @tasks.loop(minutes=30)
     async def check_updates(self):
         """Check for new CS2 updates every 30 minutes"""
@@ -187,12 +202,14 @@ class CS2Updates(commands.Cog):
         
         import re
         clean_content = re.sub('<[^<]+?>', '', contents)
-        if len(clean_content) > 400:
-            clean_content = clean_content[:400] + "..."
+        formatted_content = self.format_changelog(clean_content)
+        
+        if len(formatted_content) > 4000:
+            formatted_content = formatted_content[:4000] + "..."
         
         embed = discord.Embed(
             title=f"🚨 New CS2 Update: {title}",
-            description=clean_content,
+            description=formatted_content,
             color=0xF7931E,
             url=url
         )
