@@ -96,8 +96,8 @@ class CS2Updates(commands.Cog):
             clean_content = re.sub('<[^<]+?>', '', contents)
             formatted_content = self.format_changelog(clean_content)
             
-            if len(formatted_content) > 2000:
-                formatted_content = formatted_content[:2000] + "..."
+            if len(formatted_content) > 4000:
+                formatted_content = formatted_content[:4000] + "..."
 
             embed = discord.Embed(
                 title=f"🔧 {title}",
