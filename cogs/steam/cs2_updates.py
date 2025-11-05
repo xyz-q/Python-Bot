@@ -10,7 +10,7 @@ class CS2Updates(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.cs2_app_id = "730"  # CS2's Steam app ID
-        self.steam_news_url = f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={self.cs2_app_id}&count=5&maxlength=300&format=json"
+        self.steam_news_url = f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={self.cs2_app_id}&count=5&maxlength=8000&format=json"
         self.notifications_file = ".json/cs2_notifications.json"
         self.last_update_file = ".json/cs2_last_update.json"
         self.check_updates.start()
