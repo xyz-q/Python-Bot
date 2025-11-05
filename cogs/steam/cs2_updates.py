@@ -39,6 +39,23 @@ class CS2Updates(commands.Cog):
         os.makedirs(os.path.dirname(self.last_update_file), exist_ok=True)
         with open(self.last_update_file, 'w') as f:
             json.dump(data, f)
+    
+    def format_changelog(self, raw_text: str) -> str:
+        """Format raw changelog text into readable sections"""
+        import re
+        # Clean HTML entities
+        text = raw_text.replace('&quot;', '"').replace('&#39;', "'").replace('\\', '')
+        
+        # Split by periods and clean
+        items = [item.strip() for item in text.split('.') if item.strip() and len(item.strip()) > 5]
+        
+        formatted = "**Counter-Strike 2 Update**\n\n**[ GAMEPLAY ]**\n\n"
+        
+        for item in items:
+            if item:
+                formatted += f"• {item}\n\n"
+        
+        return formatted.strip()
 
     @commands.command(aliases=['cs2patch', 'cs2update'])
     async def cs2updates(self, ctx):
@@ -77,12 +94,14 @@ class CS2Updates(commands.Cog):
             # Clean up content
             import re
             clean_content = re.sub('<[^<]+?>', '', contents)
-            if len(clean_content) > 800:
-                clean_content = clean_content[:800] + "..."
+            formatted_content = self.format_changelog(clean_content)
+            
+            if len(formatted_content) > 2000:
+                formatted_content = formatted_content[:2000] + "..."
 
             embed = discord.Embed(
                 title=f"🔧 {title}",
-                description=clean_content,
+                description=formatted_content,
                 color=0xF7931E,
                 url=url
             )
