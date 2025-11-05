@@ -149,7 +149,7 @@ class CS2Updates(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
     
-    @tasks.loop(minutes=1)
+    @tasks.loop(minutes=0.5)
     async def check_updates(self):
         """Check for new CS2 updates every 30 minutes"""
         try:
