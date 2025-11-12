@@ -162,6 +162,14 @@ class CS2Updates(commands.Cog):
         
         await ctx.send(embed=embed)
     
+    @commands.command()
+    @commands.is_owner()
+    async def cs2clear(self, ctx):
+        """Clear last update ID to reset tracking"""
+        if os.path.exists(self.last_update_file):
+            os.remove(self.last_update_file)
+        await ctx.send("✅ CS2 update tracking cleared. Next check will treat current update as new.")
+    
     @tasks.loop(minutes=1)
     async def check_updates(self):
         """Check for new CS2 updates every 30 minutes"""
