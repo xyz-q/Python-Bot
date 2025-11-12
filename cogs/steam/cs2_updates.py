@@ -149,7 +149,20 @@ class CS2Updates(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
     
-    @tasks.loop(minutes=0.5)
+    @commands.command()
+    @commands.is_owner()
+    async def cs2status(self, ctx):
+        """Check CS2 update tracking status"""
+        last_update = self.load_last_update()
+        notifications = self.load_notifications()
+        
+        embed = discord.Embed(title="CS2 Update Status", color=0xF7931E)
+        embed.add_field(name="Last Update ID", value=last_update.get('gid', 'None'), inline=False)
+        embed.add_field(name="Subscribers", value=len(notifications), inline=False)
+        
+        await ctx.send(embed=embed)
+    
+    @tasks.loop(minutes=1)
     async def check_updates(self):
         """Check for new CS2 updates every 30 minutes"""
         try:
@@ -180,12 +193,21 @@ class CS2Updates(commands.Cog):
             current_update_id = patch_item.get('gid', '')
             
             if last_update.get('gid') != current_update_id:
-                # New update found, send notifications
-                await self.send_notifications(patch_item)
+                # Check if this update is actually new (within last 24 hours)
+                update_time = datetime.fromtimestamp(patch_item.get('date', 0))
+                time_diff = datetime.now() - update_time
+                
+                if time_diff.total_seconds() < 86400:  # 24 hours
+                    # New update found, send notifications
+                    await self.send_notifications(patch_item)
+                
+                # Always save the current update ID to prevent duplicates
                 self.save_last_update({'gid': current_update_id})
                 
         except Exception as e:
             print(f"Error checking CS2 updates: {e}")
+            # Skip this check if network is down - will retry next cycle
+            return
     
     @check_updates.before_loop
     async def before_check_updates(self):
@@ -227,6 +249,7 @@ class CS2Updates(commands.Cog):
                     await user.send(embed=embed)
             except Exception as e:
                 print(f"Failed to send notification to {user_id}: {e}")
+                continue
 
 async def setup(bot):
     await bot.add_cog(CS2Updates(bot))
