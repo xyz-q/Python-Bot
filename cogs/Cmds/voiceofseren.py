@@ -16,7 +16,9 @@ class VoSCog(commands.Cog):
         self.check_vos.start()
         self.COMBINED_IMAGES = {}  # Initialize the dictionary
         self.load_combined_images()
-        self.last_districts = None 
+        self.last_districts = None
+        self.last_announcement_time = {}
+        self.stale_message_sent = {} 
         self.district_emojis = {
             'Amlodd': '<:Amlodd_Clan:1336983757210517555>',  # Replace with your emoji ID
             'Cadarn': '<:Cadarn_Clan:1336983790320488479>',
@@ -322,11 +324,21 @@ class VoSCog(commands.Cog):
                             await channel.send(embed=setup_embed)
 
                         # Check if we need to update VoS message
+                        # Check announcement cooldown (10 minutes)
+                        guild_id = channel.guild.id
+                        now = datetime.now()
+                        last_announce = self.last_announcement_time.get(guild_id, datetime.min)
+                        can_announce = (now - last_announce).total_seconds() > 600  # 10 minutes
+                        
+                        # Check if we already sent stale message for this hour
+                        stale_key = f"{guild_id}_{vos_data['current_hour']}"
+                        already_sent_stale = self.stale_message_sent.get(stale_key, False)
+                        
                         should_update = (
                             not vos_message or
                             self.last_districts is None or 
-                            current_districts != self.last_districts or 
-                            is_stale
+                            (current_districts != self.last_districts and can_announce) or 
+                            (is_stale and not already_sent_stale)
                         )
 
 
@@ -343,6 +355,14 @@ class VoSCog(commands.Cog):
                             
                             # Send new VoS message
                             await channel.send(file=new_file, embed=new_embed)
+                            
+                            # Update announcement time if districts changed
+                            if current_districts != self.last_districts:
+                                self.last_announcement_time[guild_id] = now
+                            
+                            # Mark stale message as sent for this hour
+                            if is_stale:
+                                self.stale_message_sent[stale_key] = True
 
 
                     except Exception as e:
