@@ -272,7 +272,10 @@ class PriceChecker(commands.Cog):
                 await ctx.send(f"Could not find item: **{item_name.title()}**\nTry a different search term.")
             return
     
-        if len(matches) > 1:
+        # Check if this was an acronym search to force multiple display
+        is_acronym_search = len(item_name) <= 4 and item_name.isalpha() and not any(alias == item_name.lower() for alias in compound_aliases.keys())
+        
+        if len(matches) > 1 or (len(matches) == 1 and is_acronym_search):
             embed = discord.Embed(
                 title=f"{item_name.title()}",
                 description=f"Prices matching item name - {item_name.title()}",
