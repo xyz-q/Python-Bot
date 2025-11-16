@@ -225,24 +225,23 @@ class PriceChecker(commands.Cog):
                 if set_items:
                     matches = set_items
             
-            if not matches:
-                # Try acronym search if input is short (likely an acronym)
-                if len(item_name) <= 4 and item_name.isalpha():
-                    acronym_matches = []
-                    print(f"Looking for acronym matches for: {item_name.lower()}")
-                    for item in self.item_dictionary:
-                        # Remove apostrophes and split into words
-                        clean_name = item['value'].lower().replace("'", "")
-                        item_words = clean_name.split()
-                        if len(item_words) >= len(item_name):
-                            acronym = ''.join([word[0] for word in item_words[:len(item_name)]])
-                            if acronym == item_name.lower():
-                                print(f"Found acronym match: {item['value']} -> {acronym}")
-                                acronym_matches.append(item)
-                    
-                    print(f"Total acronym matches found: {len(acronym_matches)}")
-                    if acronym_matches:
-                        matches = acronym_matches
+        # Always try acronym search for short inputs
+        if len(item_name) <= 4 and item_name.isalpha():
+            acronym_matches = []
+            for item in self.item_dictionary:
+                clean_name = item['value'].lower().replace("'", "")
+                item_words = clean_name.split()
+                if len(item_words) >= len(item_name):
+                    acronym = ''.join([word[0] for word in item_words[:len(item_name)]])
+                    if acronym == item_name.lower():
+                        acronym_matches.append(item)
+            
+            # Combine acronym matches with existing matches
+            for match in acronym_matches:
+                if match not in matches:
+                    matches.append(match)
+        
+        if not matches:
                 
                 if not matches:
                     # Find similar items to suggest
