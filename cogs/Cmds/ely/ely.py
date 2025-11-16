@@ -273,7 +273,7 @@ class PriceChecker(commands.Cog):
             return
     
         # Check if this was an acronym search to force multiple display
-        is_acronym_search = len(item_name) <= 4 and item_name.isalpha() and not any(alias == item_name.lower() for alias in compound_aliases.keys())
+        is_acronym_search = len(item_name) <= 4 and item_name.isalpha()
         
         if len(matches) > 1 or (len(matches) == 1 and is_acronym_search):
             embed = discord.Embed(
