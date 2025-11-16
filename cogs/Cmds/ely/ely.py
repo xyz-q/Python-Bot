@@ -213,9 +213,37 @@ class PriceChecker(commands.Cog):
             matches = exact_matches
     
         if not matches:
-            # Find similar items to suggest
-            all_item_names = [item['value'].lower() for item in self.item_dictionary]
-            suggestions = get_close_matches(processed_name, all_item_names, n=5, cutoff=0.4)
+            # Check if searching for a set
+            if item_name.lower().endswith(' set'):
+                base_name = item_name.lower().replace(' set', '')
+                
+                # Find all items containing the base name
+                set_items = []
+                for item in self.item_dictionary:
+                    if base_name in item['value'].lower():
+                        set_items.append(item)
+                
+                if set_items:
+                    matches = set_items
+            
+            if not matches:
+                # Try acronym search if input is short (likely an acronym)
+                if len(item_name) <= 4 and item_name.isalpha():
+                    acronym_matches = []
+                    for item in self.item_dictionary:
+                        item_words = item['value'].lower().split()
+                        if len(item_words) >= len(item_name):
+                            acronym = ''.join([word[0] for word in item_words[:len(item_name)]])
+                            if acronym == item_name.lower():
+                                acronym_matches.append(item)
+                    
+                    if acronym_matches:
+                        matches = acronym_matches
+                
+                if not matches:
+                    # Find similar items to suggest
+                    all_item_names = [item['value'].lower() for item in self.item_dictionary]
+                    suggestions = get_close_matches(processed_name, all_item_names, n=5, cutoff=0.4)
             
             if suggestions:
                 suggestion_items = []
