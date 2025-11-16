@@ -184,8 +184,18 @@ class PriceChecker(commands.Cog):
     
         original_name = item_name
         
-        # Skip processing for potential acronyms to allow acronym search
-        if len(item_name) <= 4 and item_name.isalpha():
+        # Check aliases first before any processing
+        compound_aliases = {
+            "ash": "aurora santa hat",
+            "bph": "black partyhat",
+            "bsh": "black santa hat",
+            "rsh": "red santa hat",
+            "gsh": "green santa hat"
+        }
+        
+        if item_name.lower() in compound_aliases:
+            processed_name = compound_aliases[item_name.lower()]
+        elif len(item_name) <= 4 and item_name.isalpha():
             processed_name = item_name.lower()
         else:
             processed_name = self.process_item_name(item_name)
