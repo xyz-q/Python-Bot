@@ -623,6 +623,71 @@ class TravellingMerchant(commands.Cog):
         else:
             await ctx.send(f"This channel is not subscribed!")
 
+    @commands.command(name="sendmerch")
+    @commands.is_owner()
+    async def send_merchant_manual(self, ctx, *, message=None):
+        """Manually send merchant notification to all subscribed users with optional message"""
+        if not self.user_preferences:
+            await ctx.send("No users subscribed to merchant notifications!")
+            return
+        
+        # Get current merchant stock
+        static_items = self.get_current_stock()
+        if static_items:
+            items = [(item, "Price from wiki") for item in static_items]
+        else:
+            items = await self.get_merchant_stock()
+        
+        if not items:
+            await ctx.send("No merchant stock data available!")
+            return
+        
+        # Create embed
+        embed = discord.Embed(
+            title="Travelling Merchant's Stock",
+            description="*Written by* <@110927272210354176>",
+            color=discord.Color.gold(),
+            timestamp=datetime.now(pytz.UTC)
+        )
+        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
+        
+        # Remove duplicates
+        seen = set()
+        unique_items = []
+        for item_name, price in items:
+            if item_name not in seen:
+                unique_items.append((item_name, price))
+                seen.add(item_name)
+        
+        for item_name, price in unique_items:
+            emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
+            embed.add_field(
+                name=f"{emoji} {item_name}", 
+                value=f"{price} <:goldpoints:1319902464115343473>", 
+                inline=False
+            )
+        
+        # Add custom message if provided
+        if message:
+            embed.add_field(name="📢 Message", value=message, inline=False)
+        
+        embed.set_footer(text="Manual notification")
+        
+        # Send to all subscribed users
+        success = 0
+        failed = 0
+        for user_id in self.user_preferences:
+            try:
+                user = await self.bot.fetch_user(int(user_id))
+                if user:
+                    await user.send(embed=embed)
+                    success += 1
+            except Exception as e:
+                failed += 1
+                print(f"Failed to send to user {user_id}: {e}")
+        
+        await ctx.send(f"Sent merchant notification to {success} users (Failed: {failed})")
+
     @commands.command(name="listsubscribed")
     @commands.is_owner()
     async def list_subscribed(self, ctx):
