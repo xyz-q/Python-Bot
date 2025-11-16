@@ -133,7 +133,13 @@ class PriceChecker(commands.Cog):
             return item_lower
             
      
-        complete_matches = get_close_matches(item_lower, all_item_names, n=1, cutoff=0.7)
+        # Try different cutoff levels for better matching
+        complete_matches = get_close_matches(item_lower, all_item_names, n=1, cutoff=0.8)
+        if complete_matches:
+            return complete_matches[0]
+            
+        # Lower cutoff for partial matches
+        complete_matches = get_close_matches(item_lower, all_item_names, n=1, cutoff=0.6)
         if complete_matches:
             return complete_matches[0]
             
@@ -148,11 +154,20 @@ class PriceChecker(commands.Cog):
                 continue
                 
     
-            word_matches = get_close_matches(word, all_item_names, n=1, cutoff=0.7)
-            if word_matches:
-                final_words.append(word_matches[0])
-            else:
-                final_words.append(word)
+            # Try partial word matching in item names
+            word_found = False
+            for item_name in all_item_names:
+                if word in item_name:
+                    final_words.append(item_name)
+                    word_found = True
+                    break
+            
+            if not word_found:
+                word_matches = get_close_matches(word, all_item_names, n=1, cutoff=0.6)
+                if word_matches:
+                    final_words.append(word_matches[0])
+                else:
+                    final_words.append(word)
         
         result = " ".join(final_words)
         print(f"Corrected search term: {result}")
@@ -198,7 +213,35 @@ class PriceChecker(commands.Cog):
             matches = exact_matches
     
         if not matches:
-            await ctx.send(f"Could not find item: {item_name.title()}")
+            # Find similar items to suggest
+            all_item_names = [item['value'].lower() for item in self.item_dictionary]
+            suggestions = get_close_matches(processed_name, all_item_names, n=5, cutoff=0.4)
+            
+            if suggestions:
+                suggestion_items = []
+                for suggestion in suggestions:
+                    for item in self.item_dictionary:
+                        if item['value'].lower() == suggestion:
+                            suggestion_items.append(item['value'])
+                            break
+                
+                embed = discord.Embed(
+                    title="❌ Item Not Found",
+                    description=f"Could not find: **{item_name.title()}**\n\n**Did you mean:**",
+                    color=discord.Color.red()
+                )
+                
+                for i, suggestion in enumerate(suggestion_items[:5], 1):
+                    embed.add_field(
+                        name=f"{i}. {suggestion}",
+                        value="",
+                        inline=False
+                    )
+                
+                embed.set_footer(text="Try searching with one of these item names")
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send(f"Could not find item: **{item_name.title()}**\nTry a different search term.")
             return
     
         if len(matches) > 1:
