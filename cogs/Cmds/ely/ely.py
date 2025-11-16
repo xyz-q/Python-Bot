@@ -30,6 +30,15 @@ class PriceChecker(commands.Cog):
         """Process item name and check for aliases including compound names"""
         print(f"Processing item name: {item_name}")
         
+        # Create acronyms automatically
+        acronym_map = {}
+        for item in self.item_dictionary:
+            name = item['value'].lower()
+            words = name.split()
+            if len(words) > 1:
+                acronym = ''.join(word[0] for word in words)
+                if acronym not in acronym_map:
+                    acronym_map[acronym] = name
 
         compound_aliases = {
             "black xmas": "black christmas scythe",
@@ -103,20 +112,10 @@ class PriceChecker(commands.Cog):
             "scripts": "scriptu",
             "scriptures": "scriptu",
             "pink": "pink santa hat"
-
-            
-
-            
-            
-
-
-            
-
-            
-
-            
-
         }
+        
+        # Merge acronyms with manual aliases
+        compound_aliases.update(acronym_map)
         
         item_lower = item_name.lower()
         
@@ -133,13 +132,7 @@ class PriceChecker(commands.Cog):
             return item_lower
             
      
-        # Try different cutoff levels for better matching
-        complete_matches = get_close_matches(item_lower, all_item_names, n=1, cutoff=0.8)
-        if complete_matches:
-            return complete_matches[0]
-            
-        # Lower cutoff for partial matches
-        complete_matches = get_close_matches(item_lower, all_item_names, n=1, cutoff=0.6)
+        complete_matches = get_close_matches(item_lower, all_item_names, n=1, cutoff=0.7)
         if complete_matches:
             return complete_matches[0]
             
@@ -154,20 +147,11 @@ class PriceChecker(commands.Cog):
                 continue
                 
     
-            # Try partial word matching in item names
-            word_found = False
-            for item_name in all_item_names:
-                if word in item_name:
-                    final_words.append(item_name)
-                    word_found = True
-                    break
-            
-            if not word_found:
-                word_matches = get_close_matches(word, all_item_names, n=1, cutoff=0.6)
-                if word_matches:
-                    final_words.append(word_matches[0])
-                else:
-                    final_words.append(word)
+            word_matches = get_close_matches(word, all_item_names, n=1, cutoff=0.7)
+            if word_matches:
+                final_words.append(word_matches[0])
+            else:
+                final_words.append(word)
         
         result = " ".join(final_words)
         print(f"Corrected search term: {result}")
@@ -183,15 +167,16 @@ class PriceChecker(commands.Cog):
             return
     
         original_name = item_name
+        processed_name = self.process_item_name(item_name)
         
-        # Skip processing for potential acronyms to allow acronym search
-        if len(item_name) <= 4 and item_name.isalpha():
-            processed_name = item_name.lower()
-        else:
-            processed_name = self.process_item_name(item_name)
-            if processed_name != item_name.lower():
-                print(f"Corrected '{original_name}' to '{processed_name}'")
+        if processed_name != item_name.lower():
+            print(f"Corrected '{original_name}' to '{processed_name}'")
         
+    
+    
+    
+
+        processed_name = self.process_item_name(item_name)
         print(f"Searching for item: {processed_name}")
     
         matches = []
@@ -212,73 +197,10 @@ class PriceChecker(commands.Cog):
             matches = exact_matches
     
         if not matches:
-            # Check if searching for a set
-            if item_name.lower().endswith(' set'):
-                base_name = item_name.lower().replace(' set', '')
-                
-                # Find all items containing the base name
-                set_items = []
-                for item in self.item_dictionary:
-                    if base_name in item['value'].lower():
-                        set_items.append(item)
-                
-                if set_items:
-                    matches = set_items
-            
-        # Always try acronym search for short inputs
-        if len(item_name) <= 4 and item_name.isalpha():
-            acronym_matches = []
-            for item in self.item_dictionary:
-                clean_name = item['value'].lower().replace("'", "")
-                item_words = clean_name.split()
-                if len(item_words) >= len(item_name):
-                    acronym = ''.join([word[0] for word in item_words[:len(item_name)]])
-                    if acronym == item_name.lower():
-                        acronym_matches.append(item)
-            
-            # Combine acronym matches with existing matches
-            for match in acronym_matches:
-                if match not in matches:
-                    matches.append(match)
-        
-        if not matches:
-                
-                if not matches:
-                    # Find similar items to suggest
-                    all_item_names = [item['value'].lower() for item in self.item_dictionary]
-                    suggestions = get_close_matches(processed_name, all_item_names, n=5, cutoff=0.4)
-            
-            if suggestions:
-                suggestion_items = []
-                for suggestion in suggestions:
-                    for item in self.item_dictionary:
-                        if item['value'].lower() == suggestion:
-                            suggestion_items.append(item['value'])
-                            break
-                
-                embed = discord.Embed(
-                    title="❌ Item Not Found",
-                    description=f"Could not find: **{item_name.title()}**\n\n**Did you mean:**",
-                    color=discord.Color.red()
-                )
-                
-                for i, suggestion in enumerate(suggestion_items[:5], 1):
-                    embed.add_field(
-                        name=f"{i}. {suggestion}",
-                        value="",
-                        inline=False
-                    )
-                
-                embed.set_footer(text="Try searching with one of these item names")
-                await ctx.send(embed=embed)
-            else:
-                await ctx.send(f"Could not find item: **{item_name.title()}**\nTry a different search term.")
+            await ctx.send(f"Could not find item: {item_name.title()}")
             return
     
-        # Check if this was an acronym search to force multiple display
-        is_acronym_search = len(item_name) <= 4 and item_name.isalpha()
-        
-        if len(matches) > 1 or (len(matches) == 1 and is_acronym_search):
+        if len(matches) > 1:
             embed = discord.Embed(
                 title=f"{item_name.title()}",
                 description=f"Prices matching item name - {item_name.title()}",
