@@ -119,7 +119,11 @@ class PriceChecker(commands.Cog):
         
         item_lower = item_name.lower()
         
-  
+        # Auto-handle "set" searches - remove "set" and search for the base name
+        if item_lower.endswith(' set'):
+            base_name = item_lower[:-4]  # Remove " set"
+            return base_name
+        
         for alias, full_name in compound_aliases.items():
             if alias == item_lower:
                 return full_name
