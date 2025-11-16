@@ -102,38 +102,56 @@ class TravellingMerchant(commands.Cog):
 
 
     async def get_merchant_stock(self):
-        """Helper function to get the merchant stock"""
-        async with aiohttp.ClientSession() as session:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
-            async with session.get('https://runescape.wiki/w/Travelling_Merchant%27s_Shop', headers=headers) as response:
-                if response.status == 200:
-                    html = await response.text()
-                    soup = BeautifulSoup(html, 'html.parser')
-                    
-
-                    inventory_items = soup.find_all('td', class_="inventory-image")[:4]
-                    print(f"Found {len(inventory_items)} inventory items")
-                    
-                    if inventory_items:
-                        items = []
-             
-                        coin_spans = soup.find_all('span', class_="coins")[:4]
+        """Helper function to get the merchant stock from wiki scraping"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+                async with session.get('https://runescape.wiki/w/Travelling_Merchant%27s_Shop', headers=headers, timeout=10) as response:
+                    if response.status == 200:
+                        html = await response.text()
+                        soup = BeautifulSoup(html, 'html.parser')
                         
-                        for item, coin_span in zip(inventory_items, coin_spans):
-                     
-                            anchor = item.find('a')
-                            if anchor and anchor.get('title'):
-                                item_name = anchor['title']
-                  
-                                price = coin_span.text.strip() if coin_span else "Price unknown"
-                                items.append((item_name, price))
-                                print(f"Added item: {item_name} - {price}")
+                        inventory_items = soup.find_all('td', class_="inventory-image")[:4]
+                        print(f"Found {len(inventory_items)} inventory items")
                         
-                        print(f"Final items list: {items}")
-                        return items if items else None
-                return None
+                        if inventory_items:
+                            items = []
+                            coin_spans = soup.find_all('span', class_="coins")[:4]
+                            
+                            for item, coin_span in zip(inventory_items, coin_spans):
+                                anchor = item.find('a')
+                                if anchor and anchor.get('title'):
+                                    item_name = anchor['title']
+                                    price = coin_span.text.strip() if coin_span else "Price unknown"
+                                    items.append((item_name, price))
+                                    print(f"Added item: {item_name} - {price}")
+                            
+                            print(f"Final items list: {items}")
+                            return items if items else None
+                    return None
+        except Exception as e:
+            print(f"Error scraping merchant stock: {e}")
+            return None
+    
+    async def get_reliable_merchant_stock(self):
+        """Get merchant stock with fallback to static data if scraping fails"""
+        # First try live scraping
+        items = await self.get_merchant_stock()
+        if items and len(items) >= 3:  # Ensure we got reasonable data
+            return items
+        
+        print("Live scraping failed or incomplete, falling back to static data")
+        
+        # Fallback to static data
+        static_items = self.get_current_stock()
+        if static_items:
+            # Convert static items to (name, price) format with placeholder prices
+            return [(item, "Price unknown") for item in static_items]
+        
+        print("Both live and static data failed")
+        return None
 
     def get_current_stock(self):
         try:
@@ -235,7 +253,13 @@ class TravellingMerchant(commands.Cog):
     @tasks.loop(time=time(hour=0, minute=5, second=5))
     async def daily_notification(self):
         """Send daily notifications to subscribed users"""
-        items = await self.get_merchant_stock()
+        # Use static data instead of live scraping
+        static_items = self.get_current_stock()
+        if static_items:
+            items = [(item, "Price from wiki") for item in static_items]
+        else:
+            # Fallback to live scraping if static data fails
+            items = await self.get_merchant_stock()
         
         if not items:
             return
@@ -249,7 +273,15 @@ class TravellingMerchant(commands.Cog):
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
         embed.set_footer(text=datetime.now(pytz.UTC).strftime('%a'))
         
+        # Remove duplicates
+        seen = set()
+        unique_items = []
         for item_name, price in items:
+            if item_name not in seen:
+                unique_items.append((item_name, price))
+                seen.add(item_name)
+        
+        for item_name, price in unique_items:
             emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
             
             if item_name == "Uncharted island map (Deep Sea Fishing)":
@@ -418,7 +450,13 @@ class TravellingMerchant(commands.Cog):
     @tasks.loop(time=time(hour=0, minute=5, second=5))
     async def daily_channel(self):
         """Send daily notifications to subscribed channels"""
-        items = await self.get_merchant_stock()
+        # Use static data instead of live scraping
+        static_items = self.get_current_stock()
+        if static_items:
+            items = [(item, "Price from wiki") for item in static_items]
+        else:
+            # Fallback to live scraping if static data fails
+            items = await self.get_merchant_stock()
         
         if not items:
             return
@@ -434,7 +472,15 @@ class TravellingMerchant(commands.Cog):
             text=f"Use ,merch to get daily notifications!"
         )
         
+        # Remove duplicates
+        seen = set()
+        unique_items = []
         for item_name, price in items:
+            if item_name not in seen:
+                unique_items.append((item_name, price))
+                seen.add(item_name)
+        
+        for item_name, price in unique_items:
             emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
             
             if item_name == "Uncharted island map (Deep Sea Fishing)":
