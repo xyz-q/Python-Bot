@@ -183,16 +183,15 @@ class PriceChecker(commands.Cog):
             return
     
         original_name = item_name
-        processed_name = self.process_item_name(item_name)
         
-        if processed_name != item_name.lower():
-            print(f"Corrected '{original_name}' to '{processed_name}'")
+        # Skip processing for potential acronyms to allow acronym search
+        if len(item_name) <= 4 and item_name.isalpha():
+            processed_name = item_name.lower()
+        else:
+            processed_name = self.process_item_name(item_name)
+            if processed_name != item_name.lower():
+                print(f"Corrected '{original_name}' to '{processed_name}'")
         
-    
-    
-    
-
-        processed_name = self.process_item_name(item_name)
         print(f"Searching for item: {processed_name}")
     
         matches = []
