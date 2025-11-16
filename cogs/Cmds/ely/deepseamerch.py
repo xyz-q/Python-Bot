@@ -250,7 +250,7 @@ class TravellingMerchant(commands.Cog):
     
 
 
-    @tasks.loop(time=time(hour=0, minute=5, second=5))
+    @tasks.loop(time=time(hour=0, minute=15, second=0))
     async def daily_notification(self):
         """Send daily notifications to subscribed users"""
         # Use static data instead of live scraping
@@ -695,10 +695,6 @@ class TravellingMerchant(commands.Cog):
                 inline=False
             )
         
-        # Add custom message if provided
-        if message:
-            embed.add_field(name="📢 Message", value=message, inline=False)
-        
         embed.set_footer(text="Manual notification")
         
         # Send to all subscribed users
@@ -709,6 +705,9 @@ class TravellingMerchant(commands.Cog):
                 user = await self.bot.fetch_user(int(user_id))
                 if user:
                     await user.send(embed=embed)
+                    # Send custom message as separate message if provided
+                    if message:
+                        await user.send(f"**Message From Dev:**\n{message}")
                     success += 1
             except Exception as e:
                 failed += 1
