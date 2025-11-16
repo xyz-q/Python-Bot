@@ -631,12 +631,8 @@ class TravellingMerchant(commands.Cog):
             await ctx.send("No users subscribed to merchant notifications!")
             return
         
-        # Get current merchant stock
-        static_items = self.get_current_stock()
-        if static_items:
-            items = [(item, "Price from wiki") for item in static_items]
-        else:
-            items = await self.get_merchant_stock()
+        # Get current merchant stock with live prices
+        items = await self.get_merchant_stock()
         
         if not items:
             await ctx.send("No merchant stock data available!")
@@ -661,9 +657,41 @@ class TravellingMerchant(commands.Cog):
         
         for item_name, price in unique_items:
             emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
+            
+            if item_name == "Uncharted island map (Deep Sea Fishing)":
+                embed.add_field(
+                    name=f"{emoji} {item_name}", 
+                    value=f"{price} <:goldpoints:1319902464115343473>", 
+                    inline=False
+                )
+                continue
+            
+            next_date = None
+            today = datetime.now(pytz.UTC).date()
+            
+            for date, daily_items in stock.items():
+                try:
+                    stock_date = datetime.strptime(date, '%d %B %Y').date()
+                    if stock_date > today and item_name in daily_items:
+                        if next_date is None or stock_date < next_date:
+                            next_date = stock_date
+                except ValueError as e:
+                    print(f"Error parsing date {date}: {e}")
+                    continue
+            
+            if next_date:
+                days_until = (next_date - today).days
+                next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
+                if days_until == 1:
+                    next_date_str += f" (Tomorrow)"
+                else:
+                    next_date_str += f" ({days_until} days)"
+            else:
+                next_date_str = "\nNo future appearances found"
+            
             embed.add_field(
                 name=f"{emoji} {item_name}", 
-                value=f"{price} <:goldpoints:1319902464115343473>", 
+                value=f"{price} <:goldpoints:1319902464115343473>{next_date_str}", 
                 inline=False
             )
         
