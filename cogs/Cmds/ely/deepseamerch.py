@@ -24,7 +24,9 @@ class TravellingMerchant(commands.Cog):
         self.daily_channel.start()
         self.subscribed_channels = []
         self.load_subscribed_channels()  
-        self.YOUR_USER_ID = 123456789012345678  
+        self.YOUR_USER_ID = 123456789012345678
+        self.last_sent_date = None
+        self.last_sent_items = None  
         self.item_emojis = {
     "Advanced pulse core": "<:pulsecore:1319913865231863848>",   
     "Anima crystal": "<:anima:1319914262918987827>",   
@@ -637,15 +639,8 @@ class TravellingMerchant(commands.Cog):
         )
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
         
-        # Remove duplicates
-        seen = set()
-        unique_items = []
+        # Don't remove duplicates - merchant can have same item multiple times
         for item_name, price in items:
-            if item_name not in seen:
-                unique_items.append((item_name, price))
-                seen.add(item_name)
-        
-        for item_name, price in unique_items:
             emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
             
             if item_name == "Uncharted island map (Deep Sea Fishing)":
