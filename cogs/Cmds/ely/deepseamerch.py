@@ -253,13 +253,8 @@ class TravellingMerchant(commands.Cog):
     @tasks.loop(time=time(hour=0, minute=15, second=0))
     async def daily_notification(self):
         """Send daily notifications to subscribed users"""
-        # Use static data instead of live scraping
-        static_items = self.get_current_stock()
-        if static_items:
-            items = [(item, "Price from wiki") for item in static_items]
-        else:
-            # Fallback to live scraping if static data fails
-            items = await self.get_merchant_stock()
+        # Use live scraping for accurate data
+        items = await self.get_merchant_stock()
         
         if not items:
             return
@@ -450,13 +445,8 @@ class TravellingMerchant(commands.Cog):
     @tasks.loop(time=time(hour=0, minute=5, second=5))
     async def daily_channel(self):
         """Send daily notifications to subscribed channels"""
-        # Use static data instead of live scraping
-        static_items = self.get_current_stock()
-        if static_items:
-            items = [(item, "Price from wiki") for item in static_items]
-        else:
-            # Fallback to live scraping if static data fails
-            items = await self.get_merchant_stock()
+        # Use live scraping for accurate data
+        items = await self.get_merchant_stock()
         
         if not items:
             return
