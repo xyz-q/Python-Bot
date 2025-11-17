@@ -270,15 +270,8 @@ class TravellingMerchant(commands.Cog):
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
         embed.set_footer(text=datetime.now(pytz.UTC).strftime('%a'))
         
-        # Remove duplicates
-        seen = set()
-        unique_items = []
+        # Don't remove duplicates - merchant can have same item multiple times
         for item_name, price in items:
-            if item_name not in seen:
-                unique_items.append((item_name, price))
-                seen.add(item_name)
-        
-        for item_name, price in unique_items:
             emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
             
             if item_name == "Uncharted island map (Deep Sea Fishing)":
@@ -464,15 +457,8 @@ class TravellingMerchant(commands.Cog):
             text=f"Use ,merch to get daily notifications!"
         )
         
-        # Remove duplicates
-        seen = set()
-        unique_items = []
+        # Don't remove duplicates - merchant can have same item multiple times
         for item_name, price in items:
-            if item_name not in seen:
-                unique_items.append((item_name, price))
-                seen.add(item_name)
-        
-        for item_name, price in unique_items:
             emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
             
             if item_name == "Uncharted island map (Deep Sea Fishing)":
