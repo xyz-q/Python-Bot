@@ -405,7 +405,7 @@ class SystemEvents(commands.Cog):
                     print(f"\033[91mError handling DM: {str(e)}\033[0m")
                     return
 
-            allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send', ',cf', ',pvpflip', ',ticket', ',vault', ',accept', ',profile', ',history', ',transactions', ',notification')
+            allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send', ',cf', ',pvpflip', ',ticket', ',vault', ',accept', ',profile', ',history', ',transactions', ',notification', 'alchables')
 
             if not message.content.startswith(','):
                 return
