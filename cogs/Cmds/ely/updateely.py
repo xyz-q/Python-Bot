@@ -181,6 +181,14 @@ class UpdateEly(commands.Cog):
             )
             await message.edit(embed=embed)
     
+    @commands.is_owner()
+    @commands.command(name='testdaily')
+    async def test_daily_update(self, ctx):
+        """Test the daily update task manually"""
+        await ctx.send("🧪 Running daily update test...")
+        await self.daily_update()
+        await ctx.send("✅ Daily update test completed! Check the update-ely channel.")
+    
     async def auto_merge_updates(self, new_items):
         """Automatically merge new items without user interaction"""
         try:
