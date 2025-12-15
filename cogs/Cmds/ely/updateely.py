@@ -1,11 +1,12 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import re
 import ast
 import aiohttp
 from bs4 import BeautifulSoup
 import json
 import os
+import datetime
 
 def load_ely_data():
     with open(os.path.join(os.path.dirname(__file__), 'elydata.json'), 'r') as f:
@@ -72,6 +73,7 @@ class UpdateView(discord.ui.View):
 class UpdateEly(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.daily_update.start()
     
     async def check_for_updates(self, html_content, current_data):
         """Extract new items from HTML script[4] and compare with existing data"""
@@ -178,6 +180,101 @@ class UpdateEly(commands.Cog):
                 color=0xff0000
             )
             await message.edit(embed=embed)
+    
+    async def auto_merge_updates(self, new_items):
+        """Automatically merge new items without user interaction"""
+        try:
+            # Replace elysian spirit shield images
+            custom_ely_url = 'https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png?ex=68a50d6d&is=68a3bbed&hm=befb1351fcc88f72f0ab50e2204f92b516a56c6be0d7ca4869e3c780e11c32c9&'
+            for item in new_items:
+                if item['icon'] == '/show-image/elysian-spirit-shield.png':
+                    item['icon'] = custom_ely_url
+            
+            # Load current data and merge
+            current_data = load_ely_data()
+            current_data.extend(new_items)
+            save_ely_data(current_data)
+            
+            # Reload the ely cog
+            try:
+                await self.bot.reload_extension('cogs.Cmds.ely.ely')
+            except:
+                pass
+                
+            return True
+        except:
+            return False
+    
+    @tasks.loop(time=datetime.time(hour=0, minute=0, tzinfo=datetime.timezone.utc))
+    async def daily_update(self):
+        """Daily automatic update check at 00:00 UTC"""
+        try:
+            channel = self.bot.get_channel(1449964057926041700)
+            if not channel:
+                return
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://www.ely.gg") as response:
+                    html_content = await response.text()
+            
+            current_data = load_ely_data()
+            new_items, error = await self.check_for_updates(html_content, current_data)
+            
+            if error or not new_items:
+                embed = discord.Embed(
+                    title="📊 Daily Ely Update",
+                    description="No new items found today.",
+                    color=0x00ff00
+                )
+                await channel.send(embed=embed)
+                return
+            
+            # Auto-merge the updates
+            success = await self.auto_merge_updates(new_items)
+            
+            if success:
+                embed = discord.Embed(
+                    title="✅ Daily Ely Update - Items Added!",
+                    description=f"Automatically added **{len(new_items)}** new items:",
+                    color=0x00ff00
+                )
+                
+                items_text = ""
+                for item in new_items[:10]:
+                    items_text += f"**{item['id']}** - {item['value']}\n"
+                
+                if len(new_items) > 10:
+                    items_text += f"\n... and **{len(new_items) - 10}** more items"
+                
+                embed.add_field(name="New Items", value=items_text, inline=False)
+            else:
+                embed = discord.Embed(
+                    title="❌ Daily Ely Update - Error",
+                    description="Failed to merge new items automatically.",
+                    color=0xff0000
+                )
+            
+            await channel.send(embed=embed)
+            
+        except Exception as e:
+            try:
+                channel = self.bot.get_channel(1449964057926041700)
+                if channel:
+                    embed = discord.Embed(
+                        title="❌ Daily Ely Update - Error",
+                        description=f"Update failed: {str(e)}",
+                        color=0xff0000
+                    )
+                    await channel.send(embed=embed)
+            except:
+                pass
+    
+    @daily_update.before_loop
+    async def before_daily_update(self):
+        await self.bot.wait_until_ready()
+    
+    def cog_unload(self):
+        self.daily_update.cancel()
 
 async def setup(bot):
     await bot.add_cog(UpdateEly(bot))
