@@ -57,7 +57,7 @@ class VCTicket(commands.Cog):
         if ticket_channel:
             embed = discord.Embed(
                 title=".waiting-room",
-                description=f"{member.mention} has joined the waiting room. Drag them to ,main?",
+                description=f"{member.mention} has joined the waiting room. Drag them to .main?",
                 color=discord.Color.gold()
             )
             message = await ticket_channel.send(embed=embed)
@@ -114,7 +114,7 @@ class VCTicket(commands.Cog):
                 return
                 
             waiting_room = discord.utils.get(guild.voice_channels, name=".waiting-room")
-            main_channel = discord.utils.get(guild.voice_channels, name=",main")
+            main_channel = discord.utils.get(guild.voice_channels, name=".main")
 
             if not waiting_room:
                 await interaction.followup.send("Waiting room channel not found.", ephemeral=True)
