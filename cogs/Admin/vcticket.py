@@ -116,9 +116,36 @@ class VCTicket(commands.Cog):
             waiting_room = discord.utils.get(guild.voice_channels, name=".waiting-room")
             main_channel = discord.utils.get(guild.voice_channels, name=",main")
 
-            if waiting_room and main_channel:
-                if member.voice and member.voice.channel == waiting_room:
-                    await member.move_to(main_channel)
+            if not waiting_room:
+                await interaction.followup.send("Waiting room channel not found.", ephemeral=True)
+                return
+            if not main_channel:
+                await interaction.followup.send("Main channel not found.", ephemeral=True)
+                return
+                
+            if not member.voice:
+                await interaction.followup.send(f"{member.mention} is not in a voice channel.", ephemeral=True)
+                return
+                
+            if member.voice.channel != waiting_room:
+                await interaction.followup.send(f"{member.mention} is not in the waiting room.", ephemeral=True)
+                return
+                
+            # Check bot permissions
+            bot_member = guild.get_member(interaction.client.user.id)
+            if not main_channel.permissions_for(bot_member).move_members:
+                await interaction.followup.send("Bot lacks 'Move Members' permission in the main channel.", ephemeral=True)
+                return
+                
+            try:
+                await member.move_to(main_channel)
+                await interaction.followup.send(f"Successfully moved {member.mention} to {main_channel.mention}.", ephemeral=True)
+            except discord.Forbidden:
+                await interaction.followup.send("Bot lacks permission to move members.", ephemeral=True)
+                return
+            except discord.HTTPException as e:
+                await interaction.followup.send(f"Failed to move member: {e}", ephemeral=True)
+                return
 
             await interaction.message.delete()
             active_tickets.pop(self.member_id, None)
