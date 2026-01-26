@@ -45,6 +45,7 @@ class PriceChecker(commands.Cog):
                     acronym_map[acronym] = name
 
         compound_aliases = {
+            "mask of tumeken": "mask of tumeken's resplendance",
             "black xmas": "black christmas scythe",
             "black xmas scythe": "black christmas scythe",         
             "2a": "second age",
@@ -207,11 +208,17 @@ class PriceChecker(commands.Cog):
             item_name_lower = item['value'].lower()
             item_name_normalized = normalize_name(item['value'])
             
+            # Exact matches get highest priority
             if item_name_lower == processed_name or item_name_normalized == processed_normalized:  
                 exact_matches.append(item)
-            elif processed_name in item_name_lower or processed_normalized in item_name_normalized:  
+            # For partial matches, prioritize items that start with the search term
+            elif (processed_name in item_name_lower or processed_normalized in item_name_normalized):
                 if item not in exact_matches:
-                    matches.append(item)
+                    # Prioritize items that start with search term
+                    if item_name_normalized.startswith(processed_normalized) or item_name_lower.startswith(processed_name):
+                        matches.insert(0, item)  # Add to front
+                    else:
+                        matches.append(item)  # Add to back
     
 
         if exact_matches:
