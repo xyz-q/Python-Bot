@@ -160,12 +160,16 @@ class PriceChecker(commands.Cog):
         final_words = []
         
         for word in words:
-      
             if word in all_item_names:
                 final_words.append(word)
                 continue
+            
+            # Check if adding 's would match an existing item word
+            word_with_apostrophe = word + "'s"
+            if word_with_apostrophe in [w for item_name in all_item_names for w in item_name.split()]:
+                final_words.append(word_with_apostrophe)
+                continue
                 
-    
             word_matches = get_close_matches(word, all_item_names, n=1, cutoff=0.7)
             if word_matches:
                 final_words.append(word_matches[0])
