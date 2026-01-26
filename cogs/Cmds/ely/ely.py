@@ -131,9 +131,10 @@ class PriceChecker(commands.Cog):
             return base_name
         
         # Check aliases first (including normalized versions)
+        print(f"DEBUG: Checking aliases for '{item_lower}' (normalized: '{item_normalized}')")
         for alias, full_name in compound_aliases.items():
             if alias == item_lower or normalize_name(alias) == item_normalized:
-                print(f"Found alias: {alias} -> {full_name}")
+                print(f"DEBUG: Found alias match: {alias} -> {full_name}")
                 return full_name
         
         all_item_names = [item['value'].lower() for item in self.item_dictionary]
