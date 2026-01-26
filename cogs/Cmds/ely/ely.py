@@ -148,13 +148,6 @@ class PriceChecker(commands.Cog):
             idx = all_item_names_normalized.index(item_normalized)
             return all_item_names[idx]
             
-        # Try fuzzy matching on normalized names
-        complete_matches = get_close_matches(item_normalized, all_item_names_normalized, n=1, cutoff=0.7)
-        if complete_matches:
-            idx = all_item_names_normalized.index(complete_matches[0])
-            return all_item_names[idx]
-            
- 
         # If no matches found, return original search term
         print(f"Corrected search term: {item_lower}")
         return item_lower
@@ -206,6 +199,13 @@ class PriceChecker(commands.Cog):
 
         if exact_matches:
             matches = exact_matches
+    
+        # If no matches found, try fuzzy matching as last resort
+        if not matches:
+            fuzzy_matches = get_close_matches(processed_normalized, all_item_names_normalized, n=3, cutoff=0.85)
+            for fuzzy_match in fuzzy_matches:
+                idx = all_item_names_normalized.index(fuzzy_match)
+                matches.append(self.item_dictionary[idx])
     
         if not matches:
             await ctx.send(f"Could not find item: {item_name.title()}")
