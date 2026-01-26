@@ -46,6 +46,7 @@ class PriceChecker(commands.Cog):
 
         compound_aliases = {
             "mask of tumeken": "mask of tumeken's resplendance",
+            "mask of tumekens": "mask of tumeken's resplendance",
             "black xmas": "black christmas scythe",
             "black xmas scythe": "black christmas scythe",         
             "2a": "second age",
@@ -130,8 +131,10 @@ class PriceChecker(commands.Cog):
             base_name = item_lower[:-4]  # Remove " set"
             return base_name
         
+        # Check aliases first (including normalized versions)
         for alias, full_name in compound_aliases.items():
-            if alias == item_lower:
+            if alias == item_lower or normalize_name(alias) == item_normalized:
+                print(f"Found alias: {alias} -> {full_name}")
                 return full_name
         
         all_item_names = [item['value'].lower() for item in self.item_dictionary]
