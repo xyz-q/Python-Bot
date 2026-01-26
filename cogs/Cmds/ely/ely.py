@@ -182,6 +182,7 @@ class PriceChecker(commands.Cog):
             return name.lower().replace("'", "").replace("'", "").replace("`", "")
         
         processed_normalized = normalize_name(processed_name)
+        print(f"DEBUG: Searching for '{processed_name}' (normalized: '{processed_normalized}')")
     
         for item in self.item_dictionary:
             item_name_lower = item['value'].lower()
@@ -189,22 +190,29 @@ class PriceChecker(commands.Cog):
             
             # Exact matches get highest priority
             if item_name_lower == processed_name or item_name_normalized == processed_normalized:  
+                print(f"DEBUG: Exact match found: {item['value']}")
                 exact_matches.append(item)
             # For partial matches, only match if the search term starts with the item name or vice versa
             elif (item_name_lower.startswith(processed_name) or processed_name.startswith(item_name_lower) or
                   item_name_normalized.startswith(processed_normalized) or processed_normalized.startswith(item_name_normalized)):
                 if item not in exact_matches:
+                    print(f"DEBUG: Partial match found: {item['value']}")
                     matches.append(item)
     
+        print(f"DEBUG: Found {len(exact_matches)} exact matches, {len(matches)} partial matches")
 
         if exact_matches:
             matches = exact_matches
     
         # If no matches found, try fuzzy matching as last resort
         if not matches:
+            print(f"DEBUG: No matches found, trying fuzzy matching...")
+            all_item_names_normalized = [normalize_name(item['value']) for item in self.item_dictionary]
             fuzzy_matches = get_close_matches(processed_normalized, all_item_names_normalized, n=3, cutoff=0.85)
+            print(f"DEBUG: Fuzzy matches found: {fuzzy_matches}")
             for fuzzy_match in fuzzy_matches:
                 idx = all_item_names_normalized.index(fuzzy_match)
+                print(f"DEBUG: Adding fuzzy match: {self.item_dictionary[idx]['value']}")
                 matches.append(self.item_dictionary[idx])
     
         if not matches:
