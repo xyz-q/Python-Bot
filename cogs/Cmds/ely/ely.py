@@ -30,6 +30,10 @@ class PriceChecker(commands.Cog):
         """Process item name and check for aliases including compound names"""
         print(f"Processing item name: {item_name}")
         
+        # Normalize apostrophes and special characters
+        def normalize_name(name):
+            return name.lower().replace("'", "").replace("'", "").replace("`", "")
+        
         # Create acronyms automatically
         acronym_map = {}
         for item in self.item_dictionary:
@@ -118,6 +122,7 @@ class PriceChecker(commands.Cog):
         compound_aliases.update(acronym_map)
         
         item_lower = item_name.lower()
+        item_normalized = normalize_name(item_name)
         
         # Auto-handle "set" searches - remove "set" and search for the base name
         if item_lower.endswith(' set'):
@@ -128,17 +133,23 @@ class PriceChecker(commands.Cog):
             if alias == item_lower:
                 return full_name
         
-    
         all_item_names = [item['value'].lower() for item in self.item_dictionary]
+        all_item_names_normalized = [normalize_name(item['value']) for item in self.item_dictionary]
         
-     
+        # Try exact match first
         if item_lower in all_item_names:
             return item_lower
             
-     
-        complete_matches = get_close_matches(item_lower, all_item_names, n=1, cutoff=0.7)
+        # Try normalized match (without apostrophes)
+        if item_normalized in all_item_names_normalized:
+            idx = all_item_names_normalized.index(item_normalized)
+            return all_item_names[idx]
+            
+        # Try fuzzy matching on normalized names
+        complete_matches = get_close_matches(item_normalized, all_item_names_normalized, n=1, cutoff=0.7)
         if complete_matches:
-            return complete_matches[0]
+            idx = all_item_names_normalized.index(complete_matches[0])
+            return all_item_names[idx]
             
  
         words = item_lower.split()
@@ -185,14 +196,20 @@ class PriceChecker(commands.Cog):
     
         matches = []
         exact_matches = []
+        
+        # Normalize function for consistent matching
+        def normalize_name(name):
+            return name.lower().replace("'", "").replace("'", "").replace("`", "")
+        
+        processed_normalized = normalize_name(processed_name)
     
-      
         for item in self.item_dictionary:
             item_name_lower = item['value'].lower()
-            if item_name_lower == processed_name:  
+            item_name_normalized = normalize_name(item['value'])
+            
+            if item_name_lower == processed_name or item_name_normalized == processed_normalized:  
                 exact_matches.append(item)
-            elif processed_name in item_name_lower:  
-
+            elif processed_name in item_name_lower or processed_normalized in item_name_normalized:  
                 if item not in exact_matches:
                     matches.append(item)
     
