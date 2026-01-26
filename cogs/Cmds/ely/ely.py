@@ -45,7 +45,7 @@ class PriceChecker(commands.Cog):
                     acronym_map[acronym] = name
 
         compound_aliases = {
-            "mask of tumeken": "mask of tumeken's resplendance",
+            "tumeken": "tumeken's",
             "tumekens": "tumeken's",
             "black xmas": "black christmas scythe",
             "black xmas scythe": "black christmas scythe",         
