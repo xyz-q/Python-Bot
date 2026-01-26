@@ -155,10 +155,16 @@ class PriceChecker(commands.Cog):
             return all_item_names[idx]
             
  
+        # Try word-by-word matching only if no complete matches found
         words = item_lower.split()
         final_words = []
         
         for word in words:
+            # Skip word-level fuzzy matching for specific words that cause issues
+            if word in ["tumeken", "tuemeken", "tuemekens"]:
+                final_words.append(word)
+                continue
+                
             if word in all_item_names:
                 final_words.append(word)
                 continue
@@ -169,7 +175,7 @@ class PriceChecker(commands.Cog):
                 final_words.append(word_with_apostrophe)
                 continue
                 
-            word_matches = get_close_matches(word, all_item_names, n=1, cutoff=0.7)
+            word_matches = get_close_matches(word, all_item_names, n=1, cutoff=0.8)
             if word_matches:
                 final_words.append(word_matches[0])
             else:
