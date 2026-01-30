@@ -14,6 +14,7 @@ class PriceChecker(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.item_dictionary = load_ely_data()
+        self.api_disabled = True  # Set to False when API is back online
         
 
         self.item_aliases = {
@@ -158,6 +159,16 @@ class PriceChecker(commands.Cog):
     
     @commands.command(name='recent', aliases=['price', 'pc'])
     async def check_recent(self, ctx, *, item_name: str = None):
+        if self.api_disabled:
+            embed = discord.Embed(
+                title="🚫 Price Bot Temporarily Out of Service",
+                description="The Ely.gg API is currently down. Price checking is temporarily unavailable.\n\nWe'll restore service as soon as the API is back online.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text="Thank you for your patience!")
+            await ctx.send(embed=embed)
+            return
+            
         if item_name is None:
             await ctx.send("Please provide an item name. Usage: ,recent <item name>")
             return
