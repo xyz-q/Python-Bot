@@ -23,7 +23,7 @@ class GzChannel(commands.Cog):
             json.dump(self.gz_channels, f)
     
     @commands.command(name='addgz')
-    @commands.has_permissions(manage_channels=True)
+    @commands.is_owner()
     async def add_gz_channel(self, ctx, channel: discord.TextChannel = None):
         """Add a channel to the gz list"""
         if channel is None:
@@ -37,7 +37,7 @@ class GzChannel(commands.Cog):
             await ctx.send(f"{channel.mention} is already a gz channel!")
     
     @commands.command(name='removegz')
-    @commands.has_permissions(manage_channels=True)
+    @commands.is_owner()
     async def remove_gz_channel(self, ctx, channel: discord.TextChannel = None):
         """Remove a channel from the gz list"""
         if channel is None:
