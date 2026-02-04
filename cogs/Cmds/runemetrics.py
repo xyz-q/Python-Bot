@@ -190,7 +190,7 @@ class RuneMetrics(commands.Cog):
         except Exception as e:
             await ctx.send(f"Error: {str(e)}")
 
-    @commands.command(name='setchannel')
+    @commands.command(name='dropschannel')
     async def set_drops_channel(self, ctx):
         """Set current channel as drops notification channel"""
         self.drops_channel_id = ctx.channel.id
@@ -208,15 +208,18 @@ class RuneMetrics(commands.Cog):
             await ctx.send("❌ Drops channel not found!")
             return
             
-        # Send a test drop notification
+        # Send a test drop notification using same format as testimg
+        image_url = await self.get_wiki_image_url("Shard of Genesis Essence")
+        
         embed = discord.Embed(
-            title="🎉 New Drop Alert!",
+            title="R0SA PERCS has received a drop!",
             description="I found a Shard of Genesis Essence",
-            color=discord.Color.green(),
-            timestamp=datetime.now()
+            color=discord.Color.gold()
         )
-        embed.add_field(name="Player", value="R0SA PERCS", inline=True)
-        embed.add_field(name="Time", value=f"<t:{int(datetime.now().timestamp())}:R>", inline=True)
+        embed.add_field(name="Time", value=f"<t:{int(datetime.now().timestamp())}:R>", inline=False)
+        
+        if image_url:
+            embed.set_thumbnail(url=image_url)
         
         await channel.send(embed=embed)
         await ctx.send(f"✅ Test notification sent to {channel.mention}!")
