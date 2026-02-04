@@ -91,15 +91,16 @@ class RuneMetrics(commands.Cog):
         for drop in test_drops:
             image_url = await self.get_wiki_image_url(drop['item'])
             
-            # Convert to datetime for Discord timestamp
+            # Convert to Unix timestamp for Discord format
             drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
+            unix_timestamp = int(drop_time.timestamp())
             
             embed = discord.Embed(
                 title="R0SA PERCS has received a drop!",
                 description=f"I found {drop['item']}",
-                color=discord.Color.gold(),
-                timestamp=drop_time
+                color=discord.Color.gold()
             )
+            embed.add_field(name="Time", value=f"<t:{unix_timestamp}:R>", inline=False)
             
             if image_url:
                 embed.set_thumbnail(url=image_url)
