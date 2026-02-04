@@ -185,7 +185,8 @@ class RuneMetrics(commands.Cog):
                             if image_url:
                                 embed.set_thumbnail(url=image_url)
                             
-                            await ctx.send(embed=embed)
+                            message = await ctx.send(embed=embed)
+                            await message.add_reaction("<:gz:1468531948061458463>")
                     else:
                         await ctx.send(f"Error fetching RuneMetrics data: Status {response.status}")
         except Exception as e:
@@ -217,7 +218,8 @@ class RuneMetrics(commands.Cog):
         if image_url:
             embed.set_thumbnail(url=image_url)
         
-        await channel.send(embed=embed)
+        message = await channel.send(embed=embed)
+        await message.add_reaction("<:gz:1468531948061458463>")
         await ctx.send(f"✅ Test notification sent to {channel.mention}!")
 
     @commands.command(name='rmdrop')
@@ -311,7 +313,8 @@ class RuneMetrics(commands.Cog):
                                     if image_url:
                                         embed.set_thumbnail(url=image_url)
                                     
-                                    await channel.send(embed=embed)
+                                    message = await channel.send(embed=embed)
+                                    await message.add_reaction("<:gz:1468531948061458463>")
                             
                             # Update stored drops
                             all_drops = existing_drops + new_drops
