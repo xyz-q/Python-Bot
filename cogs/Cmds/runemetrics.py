@@ -53,17 +53,56 @@ class RuneMetrics(commands.Cog):
             print(f"Error searching for item image: {e}")
             return None
 
+    def get_time_ago(self, date_str):
+        """Convert date string to time ago format"""
+        from datetime import datetime, timedelta
+        try:
+            # Parse the date format from RuneMetrics API
+            trade_date = datetime.strptime(date_str, '%d-%b-%Y %H:%M')
+            now = datetime.now()
+            delta = now - trade_date
+            
+            total_minutes = int(delta.total_seconds() / 60)
+            
+            if total_minutes < 1:
+                return "just now"
+            elif total_minutes == 1:
+                return "1 minute ago"
+            elif total_minutes < 60:
+                return f"{total_minutes} minutes ago"
+            elif total_minutes < 1440:
+                hours = total_minutes // 60
+                return f"{hours} hour{'s' if hours != 1 else ''} ago"
+            else:
+                days = total_minutes // 1440
+                return f"{days} day{'s' if days != 1 else ''} ago"
+        except:
+            return date_str
+
     @commands.command(name='testimg')
     async def test_images(self, ctx):
-        """Test the 3 specific images"""
-        test_items = ['Shard of Genesis Essence', 'Praesul Codex', 'Vestments of Havoc Robe Bottoms']
+        """Test the 3 specific images in drop format"""
+        test_drops = [
+            {'item': 'Shard of Genesis Essence', 'date': '07-Feb-2025 12:30'},
+            {'item': 'Praesul Codex', 'date': '06-Feb-2025 18:45'},
+            {'item': 'Vestments of Havoc Robe Bottoms', 'date': '05-Feb-2025 09:15'}
+        ]
         
-        for item in test_items:
-            image_url = await self.get_wiki_image_url(item)
+        for drop in test_drops:
+            image_url = await self.get_wiki_image_url(drop['item'])
+            time_ago = self.get_time_ago(drop['date'])
+            
+            embed = discord.Embed(
+                title="R0SA PERCS has received a drop!",
+                description=f"I found {drop['item']}",
+                color=discord.Color.gold()
+            )
+            embed.add_field(name="Time", value=time_ago, inline=False)
+            
             if image_url:
-                await ctx.send(f"{item}: {image_url}")
-            else:
-                await ctx.send(f"{item}: No image found")
+                embed.set_thumbnail(url=image_url)
+            
+            await ctx.send(embed=embed)
 
     def load_drops_data(self, username):
         """Load existing drops data from JSON"""
