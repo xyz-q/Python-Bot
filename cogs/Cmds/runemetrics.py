@@ -18,7 +18,7 @@ class RuneMetrics(commands.Cog):
                 async with session.get(wiki_url) as response:
                     if response.status == 200:
                         html = await response.text()
-                        pattern = r'<img src="(/images/thumb/[^"]+\.png/\d+px-[^"]+\.png[^"]*)"
+                        pattern = r'<img src="(/images/thumb/[^"]+\.png/\d+px-[^"]+\.png[^"]*)'
                         match = re.search(pattern, html)
                         
                         if match:
