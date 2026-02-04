@@ -21,33 +21,28 @@ class PriceChecker(commands.Cog):
         }
         
     async def search_item_image(self, item_name: str) -> str:
-        """Search for item image URL based on item name"""
+        """Search for RuneScape Wiki image URL based on item name"""
         try:
-            # First try to find exact match in item dictionary
-            for item in self.item_dictionary:
-                if item['value'].lower() == item_name.lower():
-                    if 'icon' in item and item['icon']:
-                        base_url = "https://www.ely.gg"
-                        icon_path = item['icon']
-                        
-                        if 'cdn.discordapp.com' in icon_path:
-                            return icon_path.replace('https://www.ely.gghttps://', 'https://')
-                        else:
-                            return base_url + icon_path
+            # Convert item name to wiki format (replace spaces with underscores, capitalize)
+            wiki_name = item_name.replace(' ', '_').title().replace("'S", "'s")
             
-            # If no exact match, try partial matching
-            for item in self.item_dictionary:
-                if item_name.lower() in item['value'].lower():
-                    if 'icon' in item and item['icon']:
-                        base_url = "https://www.ely.gg"
-                        icon_path = item['icon']
-                        
-                        if 'cdn.discordapp.com' in icon_path:
-                            return icon_path.replace('https://www.ely.gghttps://', 'https://')
-                        else:
-                            return base_url + icon_path
+            # Try common wiki image patterns
+            wiki_patterns = [
+                f"{wiki_name}_detail.png",
+                f"{wiki_name}.png",
+                f"{wiki_name}_icon.png"
+            ]
             
-            # Default fallback image
+            for pattern in wiki_patterns:
+                wiki_url = f"https://runescape.wiki/images/thumb/{pattern}/100px-{pattern}"
+                
+                # Test if image exists
+                async with aiohttp.ClientSession() as session:
+                    async with session.head(wiki_url) as response:
+                        if response.status == 200:
+                            return wiki_url
+            
+            # Fallback
             return "https://cdn.discordapp.com/attachments/1241642636796887171/1323062450559516792/phatset.png"
             
         except Exception as e:
