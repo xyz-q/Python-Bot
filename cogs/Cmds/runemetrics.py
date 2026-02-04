@@ -72,9 +72,9 @@ class RuneMetrics(commands.Cog):
                     async with session.get(wiki_url) as response:
                         if response.status == 200:
                             html = await response.text()
-                            # Look for timestamp near clock icon
-                            clock_pattern = r'<i class="fa fa-clock-o"></i>\s*([^<]+)'
-                            match = re.search(clock_pattern, html)
+                            # Look for timestamp in format: 30-Jan-2026 01:36
+                            timestamp_pattern = r'(\d{1,2}-[A-Za-z]{3}-\d{4} \d{2}:\d{2})'
+                            match = re.search(timestamp_pattern, html)
                             
                             if match:
                                 timestamp_text = match.group(1).strip()
@@ -130,8 +130,8 @@ class RuneMetrics(commands.Cog):
             if wiki_timestamp:
                 # Try to parse wiki timestamp format
                 try:
-                    # This will depend on the actual format from the wiki
-                    drop_time = datetime.strptime(wiki_timestamp, '%d %B %Y %H:%M')  # Adjust format as needed
+                    # Parse the wiki timestamp format: 30-Jan-2026 01:36
+                    drop_time = datetime.strptime(wiki_timestamp, '%d-%b-%Y %H:%M')
                     unix_timestamp = int(drop_time.timestamp())
                 except:
                     # Fallback to test timestamp
