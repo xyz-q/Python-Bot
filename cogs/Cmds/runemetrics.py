@@ -127,19 +127,28 @@ class RuneMetrics(commands.Cog):
             wiki_timestamp = await self.get_wiki_timestamp(drop['item'])
             
             # Use wiki timestamp if available, otherwise use test timestamp
+            print(f"Wiki timestamp for {drop['item']}: {wiki_timestamp}")
+            print(f"Test timestamp for {drop['item']}: {drop['date']}")
+            
             if wiki_timestamp:
                 # Try to parse wiki timestamp format
                 try:
                     # Parse the wiki timestamp format: 30-Jan-2026 01:36
+                    print(f"Trying to parse wiki timestamp: {wiki_timestamp}")
                     drop_time = datetime.strptime(wiki_timestamp, '%d-%b-%Y %H:%M')
                     unix_timestamp = int(drop_time.timestamp())
-                except:
+                    print(f"Successfully parsed wiki timestamp. Unix: {unix_timestamp}")
+                except Exception as e:
+                    print(f"Failed to parse wiki timestamp: {e}")
                     # Fallback to test timestamp
                     drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
                     unix_timestamp = int(drop_time.timestamp())
+                    print(f"Using test timestamp instead. Unix: {unix_timestamp}")
             else:
+                print(f"No wiki timestamp found, using test timestamp")
                 drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
                 unix_timestamp = int(drop_time.timestamp())
+                print(f"Test timestamp Unix: {unix_timestamp}")
             
             embed = discord.Embed(
                 title="R0SA PERCS has received a drop!",
