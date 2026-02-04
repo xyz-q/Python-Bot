@@ -16,12 +16,43 @@ class PriceChecker(commands.Cog):
         self.item_dictionary = load_ely_data()
         self.api_disabled = True  # Set to False when API is back online
         
-
         self.item_aliases = {
             "hween": "halloween mask",
-
-
         }
+        
+    async def search_item_image(self, item_name: str) -> str:
+        """Search for item image URL based on item name"""
+        try:
+            # First try to find exact match in item dictionary
+            for item in self.item_dictionary:
+                if item['value'].lower() == item_name.lower():
+                    if 'icon' in item and item['icon']:
+                        base_url = "https://www.ely.gg"
+                        icon_path = item['icon']
+                        
+                        if 'cdn.discordapp.com' in icon_path:
+                            return icon_path.replace('https://www.ely.gghttps://', 'https://')
+                        else:
+                            return base_url + icon_path
+            
+            # If no exact match, try partial matching
+            for item in self.item_dictionary:
+                if item_name.lower() in item['value'].lower():
+                    if 'icon' in item and item['icon']:
+                        base_url = "https://www.ely.gg"
+                        icon_path = item['icon']
+                        
+                        if 'cdn.discordapp.com' in icon_path:
+                            return icon_path.replace('https://www.ely.gghttps://', 'https://')
+                        else:
+                            return base_url + icon_path
+            
+            # Default fallback image
+            return "https://cdn.discordapp.com/attachments/1241642636796887171/1323062450559516792/phatset.png"
+            
+        except Exception as e:
+            print(f"Error searching for item image: {e}")
+            return "https://cdn.discordapp.com/attachments/1241642636796887171/1323062450559516792/phatset.png"
         
 
 
@@ -237,7 +268,9 @@ class PriceChecker(commands.Cog):
                 description=f"Prices matching item name - {item_name.title()}",
                 color=discord.Color.gold()
             )
-            embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1323062450559516792/phatset.png?ex=6")
+            # Search for appropriate image for multiple matches
+            image_url = await self.search_item_image(processed_name)
+            embed.set_thumbnail(url=image_url)
             headers = {
                 'accept': '*/*',
                 'accept-language': 'en-US,en;q=0.9',
@@ -337,23 +370,10 @@ class PriceChecker(commands.Cog):
                             )
     
                                       
-                            try:
-                                base_url = "https://www.ely.gg"
-                                icon_path = found_item['icon']
-                                
-                              
-                                if 'cdn.discordapp.com' in icon_path:
-                                    icon_url = icon_path.replace('https://www.ely.gghttps://', 'https://')
-                                else:
-                                    icon_url = base_url + icon_path
-                                
-                                print(f"Attempting to set thumbnail with URL: {icon_url}")  
-                                embed.set_thumbnail(url=icon_url)
-                                
-                                print(f"Image set found with: {icon_url}")
-                                await asyncio.sleep(1)  
-                            except Exception as e:
-                                print(f"Failed to set thumbnail: {e}")
+                            # Search for and set item image
+                            image_url = await self.search_item_image(found_item['value'])
+                            embed.set_thumbnail(url=image_url)
+                            print(f"Image set found with: {image_url}")
                             
                             
 
