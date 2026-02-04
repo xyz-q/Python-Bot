@@ -10,6 +10,7 @@ class RuneMetrics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.drops_channel_id = None  # Will be set by command
+        self.check_new_drops.start()  # Auto-start the drop checker
 
     async def get_wiki_image_url(self, item_name):
         """Search for RuneScape Wiki image URL by parsing HTML"""
