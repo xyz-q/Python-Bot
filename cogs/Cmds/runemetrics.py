@@ -2,14 +2,20 @@ import discord
 from discord.ext import commands
 import aiohttp
 import json
+import re
 
 class RuneMetrics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    def get_wiki_image_url(self, item_name):
+        """Convert item name to wiki image URL"""
+        # Clean the item name for wiki URL
+        clean_name = item_name.replace(" ", "_").replace("'", "%27")
+        return f"https://runescape.wiki/images/thumb/{clean_name}_detail.png/100px-{clean_name}_detail.png"
+
     @commands.command(name='drops')
     async def check_drops(self, ctx, username: str = "R0SA+PERCS"):
-        # Use the RuneMetrics API directly
         api_url = f"https://apps.runescape.com/runemetrics/profile/profile?user={username}&activities=20"
         
         try:
@@ -24,8 +30,13 @@ class RuneMetrics(commands.Cog):
                         for activity in activities:
                             text = activity.get('text', '')
                             if text.lower().startswith('i found'):
+                                # Extract item name from "I found a/an/some [item]"
+                                item_match = re.search(r'I found (?:a |an |some )?(.*)', text, re.IGNORECASE)
+                                item_name = item_match.group(1) if item_match else text
+                                
                                 found_items.append({
                                     'text': text,
+                                    'item_name': item_name,
                                     'date': activity.get('date')
                                 })
                         
@@ -35,12 +46,18 @@ class RuneMetrics(commands.Cog):
                                 color=discord.Color.gold()
                             )
                             
-                            for item in found_items[:10]:  # Limit to 10 items
+                            for item in found_items[:10]:
+                                wiki_image = self.get_wiki_image_url(item['item_name'])
                                 embed.add_field(
                                     name="Drop",
-                                    value=f"{item['text']} ({item['date']})",
+                                    value=f"[{item['text']}]({wiki_image}) ({item['date']})",
                                     inline=False
                                 )
+                            
+                            # Set thumbnail to first item's image
+                            if found_items:
+                                first_item_image = self.get_wiki_image_url(found_items[0]['item_name'])
+                                embed.set_thumbnail(url=first_item_image)
                             
                             await ctx.send(embed=embed)
                         else:
