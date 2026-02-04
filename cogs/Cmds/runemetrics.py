@@ -53,7 +53,39 @@ class RuneMetrics(commands.Cog):
             print(f"Error searching for item image: {e}")
             return None
 
-    def get_time_ago(self, date_str):
+    async def get_wiki_timestamp(self, item_name):
+        """Get timestamp from wiki page"""
+        try:
+            wiki_name = item_name.strip().replace(' ', '_')
+            variations = [
+                wiki_name,
+                wiki_name.lower(),
+                wiki_name.replace('_Robe_Bottoms', '_robe_bottom'),
+                wiki_name.replace('_Codex', '_codex'),
+                wiki_name.lower().replace('_robe_bottoms', '_robe_bottom'),
+            ]
+            
+            for variant in variations:
+                wiki_url = f"https://runescape.wiki/w/{variant}"
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(wiki_url) as response:
+                        if response.status == 200:
+                            html = await response.text()
+                            # Look for timestamp near clock icon
+                            clock_pattern = r'<i class="fa fa-clock-o"></i>\s*([^<]+)'
+                            match = re.search(clock_pattern, html)
+                            
+                            if match:
+                                timestamp_text = match.group(1).strip()
+                                print(f"Found timestamp: {timestamp_text}")
+                                return timestamp_text
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error getting wiki timestamp: {e}")
+            return None
         """Convert date string to time ago format"""
         from datetime import datetime, timedelta
         try:
