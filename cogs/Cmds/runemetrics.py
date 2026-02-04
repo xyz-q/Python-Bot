@@ -17,16 +17,12 @@ class RuneMetrics(commands.Cog):
                 async with session.get(url) as response:
                     if response.status == 200:
                         html = await response.text()
-                        soup = BeautifulSoup(html, 'html.parser')
                         
-                        # Find all h3 elements with the specific class
-                        activities = soup.find_all('h3', class_='activities-block__title ng-binding')
+                        # Debug: Print first 1000 chars of HTML
+                        print(f"HTML Preview: {html[:1000]}")
                         
-                        found_items = []
-                        for activity in activities:
-                            text = activity.get_text()
-                            if text.lower().startswith('i found'):
-                                found_items.append(text)
+                        # Look for "I found" in the raw HTML
+                        found_items = re.findall(r'I found [^<]+', html, re.IGNORECASE)
                         
                         if found_items:
                             embed = discord.Embed(
