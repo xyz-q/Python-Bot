@@ -80,6 +80,27 @@ class RuneMetrics(commands.Cog):
                                 timestamp_text = match.group(1).strip()
                                 print(f"Found timestamp: {timestamp_text}")
                                 return timestamp_text
+                            else:
+                                # Debug: look for any clock icon
+                                clock_debug = re.search(r'<i[^>]*fa-clock[^>]*>.*?</i>', html)
+                                if clock_debug:
+                                    print(f"Found clock element: {clock_debug.group(0)}")
+                                else:
+                                    print(f"No clock element found for {variant}")
+                                
+                                # Try alternative patterns
+                                alt_patterns = [
+                                    r'fa-clock-o[^>]*>([^<]+)',
+                                    r'(\d{1,2}-[A-Za-z]{3}-\d{4} \d{2}:\d{2})',
+                                    r'clock[^>]*>([^<]*\d{1,2}-[A-Za-z]{3}-\d{4}[^<]*)</'
+                                ]
+                                
+                                for alt_pattern in alt_patterns:
+                                    alt_match = re.search(alt_pattern, html)
+                                    if alt_match:
+                                        timestamp_text = alt_match.group(1).strip()
+                                        print(f"Found timestamp with alt pattern: {timestamp_text}")
+                                        return timestamp_text
             
             return None
             
