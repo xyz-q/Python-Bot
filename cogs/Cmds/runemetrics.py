@@ -251,7 +251,7 @@ class RuneMetrics(commands.Cog):
         with open(filepath, 'w') as f:
             json.dump(drops, f, indent=2)
     
-    @tasks.loop(minutes=5)
+    @tasks.loop(seconds=5)
     async def check_new_drops(self):
         """Check for new drops every 5 minutes"""
         username = "R0SA+PERCS"
