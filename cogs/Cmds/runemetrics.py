@@ -1,8 +1,7 @@
 import discord
 from discord.ext import commands
 import aiohttp
-import re
-from bs4 import BeautifulSoup
+import json
 
 class RuneMetrics(commands.Cog):
     def __init__(self, bot):
@@ -10,19 +9,25 @@ class RuneMetrics(commands.Cog):
 
     @commands.command(name='drops')
     async def check_drops(self, ctx, username: str = "R0SA+PERCS"):
-        url = f"https://apps.runescape.com/runemetrics/app/activities/player/{username}"
+        # Use the RuneMetrics API directly
+        api_url = f"https://apps.runescape.com/runemetrics/profile/profile?user={username}&activities=20"
         
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
+                async with session.get(api_url) as response:
                     if response.status == 200:
-                        html = await response.text()
+                        data = await response.json()
                         
-                        # Debug: Print first 1000 chars of HTML
-                        print(f"HTML Preview: {html[:1000]}")
+                        activities = data.get('activities', [])
+                        found_items = []
                         
-                        # Look for "I found" in the raw HTML
-                        found_items = re.findall(r'I found [^<]+', html, re.IGNORECASE)
+                        for activity in activities:
+                            text = activity.get('text', '')
+                            if text.lower().startswith('i found'):
+                                found_items.append({
+                                    'text': text,
+                                    'date': activity.get('date')
+                                })
                         
                         if found_items:
                             embed = discord.Embed(
@@ -33,7 +38,7 @@ class RuneMetrics(commands.Cog):
                             for item in found_items[:10]:  # Limit to 10 items
                                 embed.add_field(
                                     name="Drop",
-                                    value=item,
+                                    value=f"{item['text']} ({item['date']})",
                                     inline=False
                                 )
                             
