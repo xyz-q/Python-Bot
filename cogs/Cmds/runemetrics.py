@@ -30,7 +30,7 @@ class RuneMetrics(commands.Cog):
                         print(f"Response status: {response.status} for {variant}")
                         if response.status == 200:
                             html = await response.text()
-                            pattern = r'<figure class="mw-halign-left"[^>]*>.*?<img src="(/images/thumb/[^"]+\.png/\d+px-[^"]+\.png[^"]*)'
+                            pattern = r'<figure[^>]*mw-halign-left[^>]*>.*?<img src="(/images/thumb/[^"]+\.png/\d+px-[^"]+\.png[^"]*)'
                             match = re.search(pattern, html, re.DOTALL)
                             
                             if match:
