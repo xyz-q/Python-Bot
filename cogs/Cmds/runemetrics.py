@@ -82,10 +82,12 @@ class RuneMetrics(commands.Cog):
     @commands.command(name='testimg')
     async def test_images(self, ctx):
         """Test the 3 specific images in drop format"""
+        from datetime import datetime, timedelta
+        now = datetime.now()
         test_drops = [
-            {'item': 'Shard of Genesis Essence', 'date': '07-Feb-2025 12:30'},
-            {'item': 'Praesul Codex', 'date': '06-Feb-2025 18:45'},
-            {'item': 'Vestments of Havoc Robe Bottoms', 'date': '05-Feb-2025 09:15'}
+            {'item': 'Shard of Genesis Essence', 'date': (now - timedelta(hours=2)).strftime('%d-%b-%Y %H:%M')},
+            {'item': 'Praesul Codex', 'date': (now - timedelta(hours=6)).strftime('%d-%b-%Y %H:%M')},
+            {'item': 'Vestments of Havoc Robe Bottoms', 'date': (now - timedelta(days=1)).strftime('%d-%b-%Y %H:%M')}
         ]
         
         for drop in test_drops:
