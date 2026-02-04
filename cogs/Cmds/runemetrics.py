@@ -124,10 +124,22 @@ class RuneMetrics(commands.Cog):
         
         for drop in test_drops:
             image_url = await self.get_wiki_image_url(drop['item'])
+            wiki_timestamp = await self.get_wiki_timestamp(drop['item'])
             
-            # Convert to Unix timestamp for Discord format
-            drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
-            unix_timestamp = int(drop_time.timestamp())
+            # Use wiki timestamp if available, otherwise use test timestamp
+            if wiki_timestamp:
+                # Try to parse wiki timestamp format
+                try:
+                    # This will depend on the actual format from the wiki
+                    drop_time = datetime.strptime(wiki_timestamp, '%d %B %Y %H:%M')  # Adjust format as needed
+                    unix_timestamp = int(drop_time.timestamp())
+                except:
+                    # Fallback to test timestamp
+                    drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
+                    unix_timestamp = int(drop_time.timestamp())
+            else:
+                drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
+                unix_timestamp = int(drop_time.timestamp())
             
             embed = discord.Embed(
                 title="R0SA PERCS has received a drop!",
