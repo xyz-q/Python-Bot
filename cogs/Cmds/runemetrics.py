@@ -134,107 +134,6 @@ class RuneMetrics(commands.Cog):
         except:
             return date_str
 
-    @commands.command(name='testimg')
-    async def test_images(self, ctx):
-        """Test the 3 specific images using real RuneMetrics data"""
-        username = "R0SA+PERCS"
-        api_url = f"https://apps.runescape.com/runemetrics/profile/profile?user={username}&activities=20"
-        
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(api_url) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        activities = data.get('activities', [])
-                        
-                        # Find recent drops
-                        found_drops = []
-                        for activity in activities:
-                            text = activity.get('text', '')
-                            if text.lower().startswith('i found'):
-                                item_match = re.search(r'I found (?:a |an |some )?(.*)', text, re.IGNORECASE)
-                                item_name = item_match.group(1) if item_match else text
-                                
-                                found_drops.append({
-                                    'text': text,
-                                    'item_name': item_name,
-                                    'date': activity.get('date')
-                                })
-                        
-                        # Use first 3 drops for testing
-                        for drop in found_drops[:3]:
-                            image_url = await self.get_wiki_image_url(drop['item_name'])
-                            
-                            # Parse the actual drop date from RuneMetrics
-                            try:
-                                drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
-                                unix_timestamp = int(drop_time.timestamp())
-                                print(f"Using real drop time: {drop['date']} -> Unix: {unix_timestamp}")
-                            except Exception as e:
-                                print(f"Failed to parse drop date {drop['date']}: {e}")
-                                # Fallback to current time
-                                unix_timestamp = int(datetime.now().timestamp())
-                            
-                            embed = discord.Embed(
-                                title="R0SA PERCS has received a drop!",
-                                description=drop['text'],
-                                color=discord.Color.gold()
-                            )
-                            embed.add_field(name="Time", value=f"<t:{unix_timestamp}:R>", inline=False)
-                            
-                            if image_url:
-                                embed.set_thumbnail(url=image_url)
-                            
-                            message = await ctx.send(embed=embed)
-                            await message.add_reaction("<:gz:1468531948061458463>")
-                    else:
-                        await ctx.send(f"Error fetching RuneMetrics data: Status {response.status}")
-        except Exception as e:
-            await ctx.send(f"Error: {str(e)}")
-
-
-    @commands.command(name='testdrop')
-    async def test_drop_notification(self, ctx):
-        """Test a drop notification in the set channel"""
-        if not self.drops_channel_id:
-            await ctx.send("❌ No drops channel set! Use `,setchannel` first.")
-            return
-            
-        channel = self.bot.get_channel(self.drops_channel_id)
-        if not channel:
-            await ctx.send("❌ Drops channel not found!")
-            return
-            
-        # Send a test drop notification using same format as testimg
-        image_url = await self.get_wiki_image_url("Shard of Genesis Essence")
-        
-        embed = discord.Embed(
-            title="R0SA PERCS has received a drop!",
-            description="I found a Shard of Genesis Essence",
-            color=discord.Color.gold()
-        )
-        embed.add_field(name="Time", value=f"<t:{int(datetime.now().timestamp())}:R>", inline=False)
-        
-        if image_url:
-            embed.set_thumbnail(url=image_url)
-        
-        message = await channel.send(embed=embed)
-        await message.add_reaction("<:gz:1468531948061458463>")
-        await ctx.send(f"✅ Test notification sent to {channel.mention}!")
-
-    @commands.command(name='rmdrop')
-    async def remove_last_drop(self, ctx):
-        """Remove the last drop from storage for testing"""
-        username = "R0SA+PERCS"
-        existing_drops = self.load_drops_data(username)
-        
-        if existing_drops:
-            removed_drop = existing_drops.pop()  # Remove last drop
-            self.save_drops_data(username, existing_drops)
-            await ctx.send(f"✅ Removed last drop: {removed_drop['text']}")
-        else:
-            await ctx.send("❌ No drops found in storage to remove!")
-
     def load_drops_data(self, username):
         """Load existing drops data from JSON"""
         filename = f"{username.lower().replace('+', '-')}-drops.json"
@@ -253,7 +152,7 @@ class RuneMetrics(commands.Cog):
         with open(filepath, 'w') as f:
             json.dump(drops, f, indent=2)
     
-    @tasks.loop(seconds=5)
+    @tasks.loop(minutes=5)
     async def check_new_drops(self):
         """Check for new drops every 5 minutes"""
         username = "R0SA+PERCS"
