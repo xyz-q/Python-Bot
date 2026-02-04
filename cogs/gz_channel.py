@@ -8,6 +8,7 @@ class GzChannel(commands.Cog):
         self.bot = bot
         self.gz_channels = self.load_gz_channels()
         self.gz_emoji = "<:gz:1468531948061458463>"
+        self.startup_scan_done = False
     
     def load_gz_channels(self):
         """Load gz channels from file"""
@@ -50,15 +51,8 @@ class GzChannel(commands.Cog):
         else:
             await ctx.send(f"{channel.mention} is not a gz channel!")
     
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        """React to images in gz channels"""
-        if message.author.bot:
-            return
-        
-        if message.channel.id not in self.gz_channels:
-            return
-        
+    async def check_message_for_images(self, message):
+        """Check if message has images and react if needed"""
         # Check if message has attachments, embeds with images, or gyazo links
         has_image = False
         
@@ -79,7 +73,49 @@ class GzChannel(commands.Cog):
                     break
         
         if has_image:
-            await message.add_reaction(self.gz_emoji)
+            try:
+                await message.add_reaction(self.gz_emoji)
+            except:
+                pass  # Ignore errors (message deleted, no permissions, etc.)
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Scan last 5 messages in gz channels on startup"""
+        if self.startup_scan_done:
+            return
+        
+        self.startup_scan_done = True
+        
+        for channel_id in self.gz_channels:
+            try:
+                channel = self.bot.get_channel(channel_id)
+                if channel:
+                    async for message in channel.history(limit=5):
+                        if not message.author.bot:
+                            await self.check_message_for_images(message)
+            except:
+                pass  # Ignore errors
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        """React to images in gz channels"""
+        if message.author.bot:
+            return
+        
+        if message.channel.id not in self.gz_channels:
+            return
+        
+        await self.check_message_for_images(message)
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        """React to images in gz channels"""
+        if message.author.bot:
+            return
+        
+        if message.channel.id not in self.gz_channels:
+            return
+        
+        await self.check_message_for_images(message)
 
 async def setup(bot):
     await bot.add_cog(GzChannel(bot))
