@@ -13,7 +13,13 @@ class RuneMetrics(commands.Cog):
         try:
             wiki_name = item_name.strip().replace(' ', '_')
             # Try different variations
-            variations = [wiki_name, wiki_name.replace('_Robe_Bottoms', '_robe_bottom'), wiki_name.replace('_Codex', '_codex')]
+            variations = [
+                wiki_name,  # Original
+                wiki_name.lower(),  # All lowercase
+                wiki_name.replace('_Robe_Bottoms', '_robe_bottom'),  # Fix plurals
+                wiki_name.replace('_Codex', '_codex'),  # Fix case
+                wiki_name.lower().replace('_robe_bottoms', '_robe_bottom'),  # Lowercase + fix plurals
+            ]
             
             for variant in variations:
                 wiki_url = f"https://runescape.wiki/w/{variant}"
