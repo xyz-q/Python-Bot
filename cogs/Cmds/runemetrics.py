@@ -10,8 +10,11 @@ class RuneMetrics(commands.Cog):
 
     def get_wiki_image_url(self, item_name):
         """Convert item name to wiki image URL"""
-        # Clean the item name for wiki URL
-        clean_name = item_name.replace(" ", "_").replace("'", "%27")
+        # Clean the item name for wiki URL - keep original capitalization
+        clean_name = item_name.strip().replace(" ", "_")
+        # Handle apostrophes properly for wiki URLs  
+        clean_name = clean_name.replace("'", "%27")
+        # Try the exact name first, if that fails wiki will redirect
         return f"https://runescape.wiki/images/thumb/{clean_name}_detail.png/100px-{clean_name}_detail.png"
 
     @commands.command(name='drops')
