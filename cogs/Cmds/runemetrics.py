@@ -36,7 +36,13 @@ class RuneMetrics(commands.Cog):
                             if match:
                                 return f"https://runescape.wiki{match.group(1)}"
                             else:
-                                print(f"No image found for {variant}")
+                                # Debug: print a snippet of HTML to see the structure
+                                img_snippet = re.search(r'<img[^>]*src="[^"]*detail\.png[^"]*"[^>]*>', html)
+                                if img_snippet:
+                                    print(f"Found img tag: {img_snippet.group(0)}")
+                                else:
+                                    print(f"No img tag with detail.png found for {variant}")
+                                print(f"No image pattern match for {variant}")
             
             print(f"Wiki page not found for {item_name}")
             return None
