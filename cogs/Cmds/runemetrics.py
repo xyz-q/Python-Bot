@@ -9,7 +9,7 @@ from datetime import datetime
 class RuneMetrics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.drops_channel_id = 883168123451220032  # Set the drops channel ID
+        self.drops_channel_id = 1337571798471934002  # Set the drops channel ID
         self.check_new_drops.start()  # Auto-start the drop checker
 
     async def get_wiki_image_url(self, item_name):
@@ -191,12 +191,7 @@ class RuneMetrics(commands.Cog):
         except Exception as e:
             await ctx.send(f"Error: {str(e)}")
 
-    @commands.command(name='dropschannel')
-    async def set_drops_channel(self, ctx):
-        """Set current channel as drops notification channel"""
-        self.drops_channel_id = ctx.channel.id
-        await ctx.send(f"✅ Set {ctx.channel.mention} as drops notification channel!")
-    
+
     @commands.command(name='testdrop')
     async def test_drop_notification(self, ctx):
         """Test a drop notification in the set channel"""
@@ -317,76 +312,5 @@ class RuneMetrics(commands.Cog):
         except Exception as e:
             print(f"Error checking drops: {e}")
     
-    @commands.command(name='startdrops')
-    async def start_drop_checker(self, ctx):
-        """Start the automatic drop checker"""
-        if not self.check_new_drops.is_running():
-            self.check_new_drops.start()
-            await ctx.send("Drop checker started!")
-        else:
-            await ctx.send("Drop checker is already running!")
-    
-    @commands.command(name='stopdrops')
-    async def stop_drop_checker(self, ctx):
-        """Stop the automatic drop checker"""
-        if self.check_new_drops.is_running():
-            self.check_new_drops.cancel()
-            await ctx.send("Drop checker stopped!")
-        else:
-            await ctx.send("Drop checker is not running!")
-    async def check_drops(self, ctx, username: str = "R0SA+PERCS"):
-        api_url = f"https://apps.runescape.com/runemetrics/profile/profile?user={username}&activities=20"
-        
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(api_url) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        
-                        activities = data.get('activities', [])
-                        found_items = []
-                        
-                        for activity in activities:
-                            text = activity.get('text', '')
-                            if text.lower().startswith('i found'):
-                                # Extract item name from "I found a/an/some [item]"
-                                item_match = re.search(r'I found (?:a |an |some )?(.*)', text, re.IGNORECASE)
-                                item_name = item_match.group(1) if item_match else text
-                                
-                                found_items.append({
-                                    'text': text,
-                                    'item_name': item_name,
-                                    'date': activity.get('date')
-                                })
-                        
-                        if found_items:
-                            # Replace + with space in username for display
-                            display_username = username.replace('+', ' ')
-                            embed = discord.Embed(
-                                title=f"Recent Drops - {display_username}",
-                                color=discord.Color.gold()
-                            )
-                            
-                            for item in found_items[:10]:
-                                wiki_image = await self.get_wiki_image_url(item['item_name'])
-                                embed.add_field(
-                                    name="Drop",
-                                    value=f"[{item['text']}]({wiki_image}) ({item['date']})",
-                                    inline=False
-                                )
-                            
-                            # Set thumbnail to first item's image
-                            if found_items:
-                                first_item_image = await self.get_wiki_image_url(found_items[0]['item_name'])
-                                embed.set_thumbnail(url=first_item_image)
-                            
-                            await ctx.send(embed=embed)
-                        else:
-                            await ctx.send(f"No recent drops found for {username}")
-                    else:
-                        await ctx.send(f"Error fetching data: Status {response.status}")
-        except Exception as e:
-            await ctx.send(f"Error: {str(e)}")
-
 async def setup(bot):
     await bot.add_cog(RuneMetrics(bot))
