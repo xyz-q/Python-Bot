@@ -11,11 +11,13 @@ class RuneMetrics(commands.Cog):
     async def get_wiki_image_url(self, item_name):
         """Search for RuneScape Wiki image URL by parsing HTML"""
         try:
-            wiki_name = item_name.replace(' ', '_').title()
+            wiki_name = item_name.strip().replace(' ', '_')
             wiki_url = f"https://runescape.wiki/w/{wiki_name}"
+            print(f"Trying wiki URL: {wiki_url}")
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(wiki_url) as response:
+                    print(f"Response status: {response.status} for {item_name}")
                     if response.status == 200:
                         html = await response.text()
                         pattern = r'<figure class="mw-halign-left"[^>]*>.*?<img src="(/images/thumb/[^"]+\.png/\d+px-[^"]+\.png[^"]*)'
