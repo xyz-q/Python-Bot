@@ -12,22 +12,25 @@ class RuneMetrics(commands.Cog):
         """Search for RuneScape Wiki image URL by parsing HTML"""
         try:
             wiki_name = item_name.strip().replace(' ', '_')
-            wiki_url = f"https://runescape.wiki/w/{wiki_name}"
-            print(f"Trying wiki URL: {wiki_url}")
+            # Try different variations
+            variations = [wiki_name, wiki_name.replace('_Robe_Bottoms', '_robe_bottom'), wiki_name.replace('_Codex', '_codex')]
             
-            async with aiohttp.ClientSession() as session:
-                async with session.get(wiki_url) as response:
-                    print(f"Response status: {response.status} for {item_name}")
-                    if response.status == 200:
-                        html = await response.text()
-                        pattern = r'<figure class="mw-halign-left"[^>]*>.*?<img src="(/images/thumb/[^"]+\.png/\d+px-[^"]+\.png[^"]*)'
-                        match = re.search(pattern, html)
-                        
-                        if match:
-                            return f"https://runescape.wiki{match.group(1)}"
-                        else:
-                            print(f"No image found for {item_name}")
-                            return None
+            for variant in variations:
+                wiki_url = f"https://runescape.wiki/w/{variant}"
+                print(f"Trying wiki URL: {wiki_url}")
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(wiki_url) as response:
+                        print(f"Response status: {response.status} for {variant}")
+                        if response.status == 200:
+                            html = await response.text()
+                            pattern = r'<figure class="mw-halign-left"[^>]*>.*?<img src="(/images/thumb/[^"]+\.png/\d+px-[^"]+\.png[^"]*)'
+                            match = re.search(pattern, html, re.DOTALL)
+                            
+                            if match:
+                                return f"https://runescape.wiki{match.group(1)}"
+                            else:
+                                print(f"No image found for {variant}")
             
             print(f"Wiki page not found for {item_name}")
             return None
