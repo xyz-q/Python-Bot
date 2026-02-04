@@ -9,7 +9,7 @@ from datetime import datetime
 class RuneMetrics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.drops_channel_id = None  # Will be set by command
+        self.drops_channel_id = 883168123451220032  # Set the drops channel ID
         self.check_new_drops.start()  # Auto-start the drop checker
 
     async def get_wiki_image_url(self, item_name):
