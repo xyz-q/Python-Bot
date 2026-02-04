@@ -23,12 +23,16 @@ class RuneMetrics(commands.Cog):
                         
                         if match:
                             return f"https://runescape.wiki{match.group(1)}"
+                        else:
+                            print(f"No image found for {item_name}")
+                            return None
             
-            return "https://runescape.wiki/images/thumb/Coins_detail.png/100px-Coins_detail.png"
+            print(f"Wiki page not found for {item_name}")
+            return None
             
         except Exception as e:
             print(f"Error searching for item image: {e}")
-            return "https://runescape.wiki/images/thumb/Coins_detail.png/100px-Coins_detail.png"
+            return None
 
     @commands.command(name='drops')
     async def check_drops(self, ctx, username: str = "R0SA+PERCS"):
