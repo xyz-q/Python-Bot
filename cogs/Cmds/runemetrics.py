@@ -9,6 +9,7 @@ from datetime import datetime
 class RuneMetrics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.drops_channel_id = None  # Will be set by command
 
     async def get_wiki_image_url(self, item_name):
         """Search for RuneScape Wiki image URL by parsing HTML"""
@@ -189,6 +190,37 @@ class RuneMetrics(commands.Cog):
         except Exception as e:
             await ctx.send(f"Error: {str(e)}")
 
+    @commands.command(name='setchannel')
+    async def set_drops_channel(self, ctx):
+        """Set current channel as drops notification channel"""
+        self.drops_channel_id = ctx.channel.id
+        await ctx.send(f"✅ Set {ctx.channel.mention} as drops notification channel!")
+    
+    @commands.command(name='testdrop')
+    async def test_drop_notification(self, ctx):
+        """Test a drop notification in the set channel"""
+        if not self.drops_channel_id:
+            await ctx.send("❌ No drops channel set! Use `,setchannel` first.")
+            return
+            
+        channel = self.bot.get_channel(self.drops_channel_id)
+        if not channel:
+            await ctx.send("❌ Drops channel not found!")
+            return
+            
+        # Send a test drop notification
+        embed = discord.Embed(
+            title="🎉 New Drop Alert!",
+            description="I found a Shard of Genesis Essence",
+            color=discord.Color.green(),
+            timestamp=datetime.now()
+        )
+        embed.add_field(name="Player", value="R0SA PERCS", inline=True)
+        embed.add_field(name="Time", value=f"<t:{int(datetime.now().timestamp())}:R>", inline=True)
+        
+        await channel.send(embed=embed)
+        await ctx.send(f"✅ Test notification sent to {channel.mention}!")
+
     def load_drops_data(self, username):
         """Load existing drops data from JSON"""
         filename = f"{username.lower().replace('+', '-')}-drops.json"
@@ -211,7 +243,7 @@ class RuneMetrics(commands.Cog):
     async def check_new_drops(self):
         """Check for new drops every 5 minutes"""
         username = "R0SA+PERCS"
-        channel_id = 123456789  # Replace with your channel ID
+        channel_id = self.drops_channel_id  # Use the set channel instead of hardcoded
         
         try:
             # Get current drops
