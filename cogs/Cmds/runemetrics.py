@@ -134,54 +134,60 @@ class RuneMetrics(commands.Cog):
 
     @commands.command(name='testimg')
     async def test_images(self, ctx):
-        """Test the 3 specific images in drop format"""
-        from datetime import datetime, timedelta
-        now = datetime.now()
-        test_drops = [
-            {'item': 'Shard of Genesis Essence', 'date': (now - timedelta(hours=2)).strftime('%d-%b-%Y %H:%M')},
-            {'item': 'Praesul Codex', 'date': (now - timedelta(hours=6)).strftime('%d-%b-%Y %H:%M')},
-            {'item': 'Vestments of Havoc Robe Bottoms', 'date': (now - timedelta(days=1)).strftime('%d-%b-%Y %H:%M')}
-        ]
+        """Test the 3 specific images using real RuneMetrics data"""
+        username = "R0SA+PERCS"
+        api_url = f"https://apps.runescape.com/runemetrics/profile/profile?user={username}&activities=20"
         
-        for drop in test_drops:
-            image_url = await self.get_wiki_image_url(drop['item'])
-            wiki_timestamp = await self.get_wiki_timestamp(drop['item'])
-            
-            # Use wiki timestamp if available, otherwise use test timestamp
-            print(f"Wiki timestamp for {drop['item']}: {wiki_timestamp}")
-            print(f"Test timestamp for {drop['item']}: {drop['date']}")
-            
-            if wiki_timestamp:
-                # Try to parse wiki timestamp format
-                try:
-                    # Parse the wiki timestamp format: 30-Jan-2026 01:36
-                    print(f"Trying to parse wiki timestamp: {wiki_timestamp}")
-                    drop_time = datetime.strptime(wiki_timestamp, '%d-%b-%Y %H:%M')
-                    unix_timestamp = int(drop_time.timestamp())
-                    print(f"Successfully parsed wiki timestamp. Unix: {unix_timestamp}")
-                except Exception as e:
-                    print(f"Failed to parse wiki timestamp: {e}")
-                    # Fallback to test timestamp
-                    drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
-                    unix_timestamp = int(drop_time.timestamp())
-                    print(f"Using test timestamp instead. Unix: {unix_timestamp}")
-            else:
-                print(f"No wiki timestamp found, using test timestamp")
-                drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
-                unix_timestamp = int(drop_time.timestamp())
-                print(f"Test timestamp Unix: {unix_timestamp}")
-            
-            embed = discord.Embed(
-                title="R0SA PERCS has received a drop!",
-                description=f"I found {drop['item']}",
-                color=discord.Color.gold()
-            )
-            embed.add_field(name="Time", value=f"<t:{unix_timestamp}:R>", inline=False)
-            
-            if image_url:
-                embed.set_thumbnail(url=image_url)
-            
-            await ctx.send(embed=embed)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        activities = data.get('activities', [])
+                        
+                        # Find recent drops
+                        found_drops = []
+                        for activity in activities:
+                            text = activity.get('text', '')
+                            if text.lower().startswith('i found'):
+                                item_match = re.search(r'I found (?:a |an |some )?(.*)', text, re.IGNORECASE)
+                                item_name = item_match.group(1) if item_match else text
+                                
+                                found_drops.append({
+                                    'text': text,
+                                    'item_name': item_name,
+                                    'date': activity.get('date')
+                                })
+                        
+                        # Use first 3 drops for testing
+                        for drop in found_drops[:3]:
+                            image_url = await self.get_wiki_image_url(drop['item_name'])
+                            
+                            # Parse the actual drop date from RuneMetrics
+                            try:
+                                drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
+                                unix_timestamp = int(drop_time.timestamp())
+                                print(f"Using real drop time: {drop['date']} -> Unix: {unix_timestamp}")
+                            except Exception as e:
+                                print(f"Failed to parse drop date {drop['date']}: {e}")
+                                # Fallback to current time
+                                unix_timestamp = int(datetime.now().timestamp())
+                            
+                            embed = discord.Embed(
+                                title="R0SA PERCS has received a drop!",
+                                description=drop['text'],
+                                color=discord.Color.gold()
+                            )
+                            embed.add_field(name="Time", value=f"<t:{unix_timestamp}:R>", inline=False)
+                            
+                            if image_url:
+                                embed.set_thumbnail(url=image_url)
+                            
+                            await ctx.send(embed=embed)
+                    else:
+                        await ctx.send(f"Error fetching RuneMetrics data: Status {response.status}")
+        except Exception as e:
+            await ctx.send(f"Error: {str(e)}")
 
     def load_drops_data(self, username):
         """Load existing drops data from JSON"""
