@@ -225,6 +225,19 @@ class RuneMetrics(commands.Cog):
         await channel.send(embed=embed)
         await ctx.send(f"✅ Test notification sent to {channel.mention}!")
 
+    @commands.command(name='rmdrop')
+    async def remove_last_drop(self, ctx):
+        """Remove the last drop from storage for testing"""
+        username = "R0SA+PERCS"
+        existing_drops = self.load_drops_data(username)
+        
+        if existing_drops:
+            removed_drop = existing_drops.pop()  # Remove last drop
+            self.save_drops_data(username, existing_drops)
+            await ctx.send(f"✅ Removed last drop: {removed_drop['text']}")
+        else:
+            await ctx.send("❌ No drops found in storage to remove!")
+
     def load_drops_data(self, username):
         """Load existing drops data from JSON"""
         filename = f"{username.lower().replace('+', '-')}-drops.json"
