@@ -72,9 +72,9 @@ class RuneMetrics(commands.Cog):
                     async with session.get(wiki_url) as response:
                         if response.status == 200:
                             html = await response.text()
-                            # Look for timestamp in format: 30-Jan-2026 01:36
-                            timestamp_pattern = r'(\d{1,2}-[A-Za-z]{3}-\d{4} \d{2}:\d{2})'
-                            match = re.search(timestamp_pattern, html)
+                            # Look for timestamp inside clock icon element
+                            clock_pattern = r'<i class="fa fa-clock-o"[^>]*>([^<]*)</i>'
+                            match = re.search(clock_pattern, html)
                             
                             if match:
                                 timestamp_text = match.group(1).strip()
