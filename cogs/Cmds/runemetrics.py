@@ -8,14 +8,27 @@ class RuneMetrics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    def get_wiki_image_url(self, item_name):
-        """Convert item name to wiki image URL"""
-        # Clean the item name for wiki URL - keep original capitalization
-        clean_name = item_name.strip().replace(" ", "_")
-        # Handle apostrophes properly for wiki URLs  
-        clean_name = clean_name.replace("'", "%27")
-        # Try the exact name first, if that fails wiki will redirect
-        return f"https://runescape.wiki/images/thumb/{clean_name}_detail.png/100px-{clean_name}_detail.png"
+    async def get_wiki_image_url(self, item_name):
+        """Search for RuneScape Wiki image URL by parsing HTML"""
+        try:
+            wiki_name = item_name.replace(' ', '_').title()
+            wiki_url = f"https://runescape.wiki/w/{wiki_name}"
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(wiki_url) as response:
+                    if response.status == 200:
+                        html = await response.text()
+                        pattern = r'<img src="(/images/thumb/[^"]+\.png/\d+px-[^"]+\.png[^"]*)"
+                        match = re.search(pattern, html)
+                        
+                        if match:
+                            return f"https://runescape.wiki{match.group(1)}"
+            
+            return "https://runescape.wiki/images/thumb/Coins_detail.png/100px-Coins_detail.png"
+            
+        except Exception as e:
+            print(f"Error searching for item image: {e}")
+            return "https://runescape.wiki/images/thumb/Coins_detail.png/100px-Coins_detail.png"
 
     @commands.command(name='drops')
     async def check_drops(self, ctx, username: str = "R0SA+PERCS"):
@@ -44,13 +57,15 @@ class RuneMetrics(commands.Cog):
                                 })
                         
                         if found_items:
+                            # Replace + with space in username for display
+                            display_username = username.replace('+', ' ')
                             embed = discord.Embed(
-                                title=f"Recent Drops - {username}",
+                                title=f"Recent Drops - {display_username}",
                                 color=discord.Color.gold()
                             )
                             
                             for item in found_items[:10]:
-                                wiki_image = self.get_wiki_image_url(item['item_name'])
+                                wiki_image = await self.get_wiki_image_url(item['item_name'])
                                 embed.add_field(
                                     name="Drop",
                                     value=f"[{item['text']}]({wiki_image}) ({item['date']})",
@@ -59,7 +74,7 @@ class RuneMetrics(commands.Cog):
                             
                             # Set thumbnail to first item's image
                             if found_items:
-                                first_item_image = self.get_wiki_image_url(found_items[0]['item_name'])
+                                first_item_image = await self.get_wiki_image_url(found_items[0]['item_name'])
                                 embed.set_thumbnail(url=first_item_image)
                             
                             await ctx.send(embed=embed)
