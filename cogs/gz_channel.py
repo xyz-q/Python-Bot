@@ -80,32 +80,10 @@ class GzChannel(commands.Cog):
     
     @commands.Cog.listener()
     async def on_ready(self):
-        """Scan last 5 messages in gz channels on startup"""
-        if self.startup_scan_done:
-            return
-        
-        self.startup_scan_done = True
-        
-        for channel_id in self.gz_channels:
-            try:
-                channel = self.bot.get_channel(channel_id)
-                if channel:
-                    async for message in channel.history(limit=5):
-                        if not message.author.bot:
-                            await self.check_message_for_images(message)
-            except:
-                pass  # Ignore errors
+        """Mark startup scan as done"""
+        if not self.startup_scan_done:
+            self.startup_scan_done = True
 
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        """React to images in gz channels"""
-        if message.author.bot:
-            return
-        
-        if message.channel.id not in self.gz_channels:
-            return
-        
-        await self.check_message_for_images(message)
     @commands.Cog.listener()
     async def on_message(self, message):
         """React to images in gz channels"""
