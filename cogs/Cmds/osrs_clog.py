@@ -122,7 +122,7 @@ class OSRSCollectionLog(commands.Cog):
         else:
             await ctx.send("No items to remove!")
     
-    @tasks.loop(minutes=5)
+    @tasks.loop(seconds=30)
     async def check_new_items(self):
         if not self.config.get('channel_id'):
             return
@@ -140,7 +140,7 @@ class OSRSCollectionLog(commands.Cog):
                 item_name = item.get('name')
                 embed = discord.Embed(
                     title="🎉 New Collection Log Item!",
-                    description=f"**{item_name}**",
+                    description=f"**R0SA PERCS** found a **{item_name}**",
                     color=discord.Color.gold(),
                     timestamp=datetime.fromisoformat(item.get('date'))
                 )
@@ -149,7 +149,8 @@ class OSRSCollectionLog(commands.Cog):
                 if image_url:
                     embed.set_thumbnail(url=image_url)
                 
-                await channel.send(embed=embed)
+                message = await channel.send(embed=embed)
+                await message.add_reaction("<:gz:1468531948061458463>")
         
         if recent_items:
             self.save_config()
