@@ -139,13 +139,13 @@ class OSRSCollectionLog(commands.Cog):
                 
                 item_name = item.get('name')
                 
-                # Get full log data for item count
+                # Get full log data for collection count
                 log_data = await self.get_full_log()
-                total_obtained = 0
-                total_items = 0
+                collections_finished = 0
+                collections_available = 0
                 if log_data and 'data' in log_data:
-                    total_obtained = log_data['data'].get('total_obtained', 0)
-                    total_items = log_data['data'].get('total_items', 0)
+                    collections_finished = log_data['data'].get('total_collections_finished', 0)
+                    collections_available = log_data['data'].get('total_collections_available', 0)
                 
                 embed = discord.Embed(
                     title="New Collection Log Item!",
@@ -154,8 +154,8 @@ class OSRSCollectionLog(commands.Cog):
                     timestamp=datetime.fromisoformat(item.get('date'))
                 )
                 
-                if total_items > 0:
-                    embed.add_field(name="Collection Log", value=f"{total_obtained:,} / {total_items:,}", inline=False)
+                if collections_available > 0:
+                    embed.add_field(name="Collection Log", value=f"{collections_finished:,} / {collections_available:,}", inline=False)
                 
                 image_url = await self.get_item_image(item_name)
                 if image_url:
