@@ -45,6 +45,18 @@ class OSRSCollectionLog(commands.Cog):
                     return await response.json()
                 return None
     
+    async def get_item_image(self, item_name):
+        url = f"https://oldschool.runescape.wiki/api.php?action=query&titles={item_name}&prop=pageimages&format=json&pithumbsize=250"
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    pages = data.get('query', {}).get('pages', {})
+                    for page in pages.values():
+                        return page.get('thumbnail', {}).get('source')
+                return None
+    
     @commands.command(name='osrsclog')
     @commands.is_owner()
     async def set_clog_channel(self, ctx, channel: discord.TextChannel = None):
@@ -111,12 +123,19 @@ class OSRSCollectionLog(commands.Cog):
             item_id = item.get('id')
             if item_id not in self.config['found_items']:
                 self.config['found_items'].append(item_id)
+                
+                item_name = item.get('name')
                 embed = discord.Embed(
                     title="🎉 New Collection Log Item!",
-                    description=f"**{item.get('name')}**",
+                    description=f"**{item_name}**",
                     color=discord.Color.gold(),
                     timestamp=datetime.fromisoformat(item.get('date'))
                 )
+                
+                image_url = await self.get_item_image(item_name)
+                if image_url:
+                    embed.set_thumbnail(url=image_url)
+                
                 await channel.send(embed=embed)
         
         if recent_items:
