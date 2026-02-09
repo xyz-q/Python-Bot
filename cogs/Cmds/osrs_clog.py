@@ -80,20 +80,8 @@ class OSRSCollectionLog(commands.Cog):
             await ctx.send(f"Error: {log_data['error']['Message']}")
             return
         
-        # Show summary
-        total_obtained = log_data.get('total_obtained', 0)
-        total_items = log_data.get('total_items', 0)
-        unique_obtained = log_data.get('unique_obtained', 0)
-        unique_items = log_data.get('unique_items', 0)
-        
-        embed = discord.Embed(
-            title=f"{self.username}'s Collection Log",
-            color=discord.Color.orange()
-        )
-        embed.add_field(name="Total Items", value=f"{total_obtained:,} / {total_items:,}", inline=True)
-        embed.add_field(name="Unique Items", value=f"{unique_obtained:,} / {unique_items:,}", inline=True)
-        
-        await ctx.send(embed=embed)
+        # Debug: show raw data
+        await ctx.send(f"```json\n{json.dumps(log_data, indent=2)[:1900]}\n```")
 
 async def setup(bot):
     await bot.add_cog(OSRSCollectionLog(bot))
