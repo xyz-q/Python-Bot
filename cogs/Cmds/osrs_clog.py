@@ -138,12 +138,24 @@ class OSRSCollectionLog(commands.Cog):
                 self.config['found_items'].append(item_id)
                 
                 item_name = item.get('name')
+                
+                # Get full log data for item count
+                log_data = await self.get_full_log()
+                total_obtained = 0
+                total_items = 0
+                if log_data and 'data' in log_data:
+                    total_obtained = log_data['data'].get('total_obtained', 0)
+                    total_items = log_data['data'].get('total_items', 0)
+                
                 embed = discord.Embed(
                     title="New Collection Log Item!",
                     description=f"\n**R0SA PERCS** found a **{item_name}**",
                     color=discord.Color.gold(),
                     timestamp=datetime.fromisoformat(item.get('date'))
                 )
+                
+                if total_items > 0:
+                    embed.add_field(name="Collection Log", value=f"{total_obtained:,} / {total_items:,}", inline=False)
                 
                 image_url = await self.get_item_image(item_name)
                 if image_url:
