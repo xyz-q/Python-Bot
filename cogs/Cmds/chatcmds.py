@@ -128,8 +128,8 @@ class ChatCommands(commands.Cog):
             
             status_msg = await channel.send(f"🧹 Cleaning {limit} messages...")
             
-            # Only add extra count if purging in the same channel (to account for bot's status message)
-            purge_limit = limit + 1 if channel == ctx.channel else limit
+            # Add +1 for command message if purging in same channel, +1 for status message
+            purge_limit = limit + 2 if channel == ctx.channel else limit
             
             deleted = await channel.purge(
                 limit=purge_limit,
