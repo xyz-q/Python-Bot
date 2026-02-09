@@ -57,6 +57,34 @@ class OSRSCollectionLog(commands.Cog):
                         return page.get('thumbnail', {}).get('source')
                 return None
     
+    async def get_ge_price(self, item_name):
+        """Get GE price from OSRS Wiki API"""
+        url = f"https://prices.runescape.wiki/api/v1/osrs/mapping"
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    items = await response.json()
+                    # Find item ID by name
+                    item_id = None
+                    for item in items:
+                        if item.get('name', '').lower() == item_name.lower():
+                            item_id = item.get('id')
+                            break
+                    
+                    if not item_id:
+                        return None
+                    
+                    # Get latest price
+                    price_url = f"https://prices.runescape.wiki/api/v1/osrs/latest"
+                    async with session.get(price_url) as price_response:
+                        if price_response.status == 200:
+                            price_data = await price_response.json()
+                            item_price = price_data.get('data', {}).get(str(item_id), {})
+                            # Return high price if available, otherwise low price
+                            return item_price.get('high') or item_price.get('low')
+                return None
+    
     @commands.command(name='osrsclog')
     @commands.is_owner()
     async def set_clog_channel(self, ctx, channel: discord.TextChannel = None):
@@ -122,6 +150,57 @@ class OSRSCollectionLog(commands.Cog):
         else:
             await ctx.send("No items to remove!")
     
+    @commands.command(name='testclogdrop')
+    @commands.is_owner()
+    async def test_drop(self, ctx, *, item_name: str):
+        """Test a collection log drop notification with any item name"""
+        if not self.config.get('channel_id'):
+            await ctx.send("No channel set! Use ,osrsclog first.")
+            return
+        
+        channel = self.bot.get_channel(self.config['channel_id'])
+        if not channel:
+            await ctx.send("Channel not found!")
+            return
+        
+        # Get GE price
+        ge_price = await self.get_ge_price(item_name)
+        
+        # Build title with price if available
+        title = "New Collection Log Item!"
+        if ge_price:
+            title += f"\n**({ge_price:,})**"
+        
+        # Get full log data for collection count
+        log_data = await self.get_full_log()
+        collections_finished = 0
+        collections_available = 0
+        if log_data and 'data' in log_data:
+            collections_finished = log_data['data'].get('total_collections_finished', 0)
+            collections_available = log_data['data'].get('total_collections_available', 0)
+        
+        embed = discord.Embed(
+            title=title,
+            description=f"\n**R0SA PERCS** found a **{item_name}**",
+            color=discord.Color.gold(),
+            timestamp=datetime.now()
+        )
+        
+        if collections_available > 0:
+            embed.add_field(name="Collection Log", value=f"{collections_finished:,} / {collections_available:,}", inline=False)
+        
+        image_url = await self.get_item_image(item_name)
+        if image_url:
+            embed.set_thumbnail(url=image_url)
+        
+        message = await channel.send(embed=embed)
+        await message.add_reaction("<:gz:1468531948061458463>")
+        
+        if ge_price:
+            await ctx.send(f"✅ Sent test drop for **{item_name}** with GE price: **{ge_price:,}** gp")
+        else:
+            await ctx.send(f"✅ Sent test drop for **{item_name}** (no GE price - untradeable)")
+    
     @tasks.loop(seconds=30)
     async def check_new_items(self):
         if not self.config.get('channel_id'):
@@ -139,6 +218,14 @@ class OSRSCollectionLog(commands.Cog):
                 
                 item_name = item.get('name')
                 
+                # Get GE price
+                ge_price = await self.get_ge_price(item_name)
+                
+                # Build title with price if available
+                title = "New Collection Log Item!"
+                if ge_price:
+                    title += f"\n**({ge_price:,})**"
+                
                 # Get full log data for collection count
                 log_data = await self.get_full_log()
                 collections_finished = 0
@@ -148,7 +235,7 @@ class OSRSCollectionLog(commands.Cog):
                     collections_available = log_data['data'].get('total_collections_available', 0)
                 
                 embed = discord.Embed(
-                    title="New Collection Log Item!",
+                    title=title,
                     description=f"\n**R0SA PERCS** found a **{item_name}**",
                     color=discord.Color.gold(),
                     timestamp=datetime.fromisoformat(item.get('date'))
