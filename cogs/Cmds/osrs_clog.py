@@ -108,16 +108,15 @@ class OSRSCollectionLog(commands.Cog):
         
         recent_items = await self.get_recent_items()
         for item in recent_items:
-            item_key = f"{item.get('item_name')}_{item.get('obtained_at')}"
-            if item_key not in self.config['found_items']:
-                self.config['found_items'].append(item_key)
+            item_id = item.get('id')
+            if item_id not in self.config['found_items']:
+                self.config['found_items'].append(item_id)
                 embed = discord.Embed(
                     title="🎉 New Collection Log Item!",
-                    description=f"**{item.get('item_name')}**",
-                    color=discord.Color.gold()
+                    description=f"**{item.get('name')}**",
+                    color=discord.Color.gold(),
+                    timestamp=datetime.fromisoformat(item.get('date'))
                 )
-                embed.add_field(name="Source", value=item.get('source', 'Unknown'))
-                embed.add_field(name="Obtained", value=item.get('obtained_at', 'Unknown'))
                 await channel.send(embed=embed)
         
         if recent_items:
