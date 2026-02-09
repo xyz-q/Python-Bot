@@ -178,11 +178,6 @@ class OSRSCollectionLog(commands.Cog):
         # Get GE price
         ge_price = await self.get_ge_price(item_name)
         
-        # Build title with price if available
-        title = "New Collection Log Item!"
-        if ge_price:
-            title += f"\n**({ge_price:,})**"
-        
         # Get full log data for collection count
         log_data = await self.get_full_log()
         collections_finished = 0
@@ -192,14 +187,17 @@ class OSRSCollectionLog(commands.Cog):
             collections_available = log_data['data'].get('total_collections_available', 0)
         
         embed = discord.Embed(
-            title=title,
+            title="New Collection Log Item!",
             description=f"\n**R0SA PERCS** found {self.get_article(item_name)}**{item_name}**",
             color=discord.Color.gold(),
             timestamp=datetime.now()
         )
         
         if collections_available > 0:
-            embed.add_field(name="Collection Log", value=f"{collections_finished:,} / {collections_available:,}", inline=False)
+            embed.add_field(name="Collection Log", value=f"{collections_finished:,} / {collections_available:,}", inline=True)
+        
+        if ge_price:
+            embed.add_field(name="GE Price", value=f"{ge_price:,} gp", inline=True)
         
         image_url = await self.get_item_image(item_name)
         if image_url:
@@ -233,11 +231,6 @@ class OSRSCollectionLog(commands.Cog):
                 # Get GE price
                 ge_price = await self.get_ge_price(item_name)
                 
-                # Build title with price if available
-                title = "New Collection Log Item!"
-                if ge_price:
-                    title += f"\n**({ge_price:,})**"
-                
                 # Get full log data for collection count
                 log_data = await self.get_full_log()
                 collections_finished = 0
@@ -247,14 +240,17 @@ class OSRSCollectionLog(commands.Cog):
                     collections_available = log_data['data'].get('total_collections_available', 0)
                 
                 embed = discord.Embed(
-                    title=title,
+                    title="New Collection Log Item!",
                     description=f"\n**R0SA PERCS** found {self.get_article(item_name)}**{item_name}**",
                     color=discord.Color.gold(),
                     timestamp=datetime.fromisoformat(item.get('date'))
                 )
                 
                 if collections_available > 0:
-                    embed.add_field(name="Collection Log", value=f"{collections_finished:,} / {collections_available:,}", inline=False)
+                    embed.add_field(name="Collection Log", value=f"{collections_finished:,} / {collections_available:,}", inline=True)
+                
+                if ge_price:
+                    embed.add_field(name="GE Price", value=f"{ge_price:,} gp", inline=True)
                 
                 image_url = await self.get_item_image(item_name)
                 if image_url:
