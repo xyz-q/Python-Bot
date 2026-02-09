@@ -85,6 +85,18 @@ class OSRSCollectionLog(commands.Cog):
                             return item_price.get('high') or item_price.get('low')
                 return None
     
+    def get_article(self, item_name):
+        """Get the appropriate article (a/an) or empty string for plural items"""
+        # Check if item name ends with 's' (likely plural)
+        if item_name.lower().endswith('s'):
+            return ""
+        
+        # Check for vowel sound at start for a/an
+        vowels = ['a', 'e', 'i', 'o', 'u']
+        if item_name[0].lower() in vowels:
+            return "an "
+        return "a "
+    
     @commands.command(name='osrsclog')
     @commands.is_owner()
     async def set_clog_channel(self, ctx, channel: discord.TextChannel = None):
@@ -181,7 +193,7 @@ class OSRSCollectionLog(commands.Cog):
         
         embed = discord.Embed(
             title=title,
-            description=f"\n**R0SA PERCS** found a **{item_name}**",
+            description=f"\n**R0SA PERCS** found {self.get_article(item_name)}**{item_name}**",
             color=discord.Color.gold(),
             timestamp=datetime.now()
         )
@@ -236,7 +248,7 @@ class OSRSCollectionLog(commands.Cog):
                 
                 embed = discord.Embed(
                     title=title,
-                    description=f"\n**R0SA PERCS** found a **{item_name}**",
+                    description=f"\n**R0SA PERCS** found {self.get_article(item_name)}**{item_name}**",
                     color=discord.Color.gold(),
                     timestamp=datetime.fromisoformat(item.get('date'))
                 )
