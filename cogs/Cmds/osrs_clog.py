@@ -80,8 +80,19 @@ class OSRSCollectionLog(commands.Cog):
             await ctx.send(f"Error: {log_data['error']['Message']}")
             return
         
-        # Debug: show raw data
-        await ctx.send(f"```json\n{json.dumps(log_data, indent=2)[:1900]}\n```")
+        data = log_data.get('data', {})
+        
+        embed = discord.Embed(
+            title=f"{data.get('player_name_with_capitalization', self.username)}'s Collection Log",
+            color=discord.Color.orange(),
+            timestamp=datetime.now()
+        )
+        embed.add_field(name="Collections", value=f"{data.get('total_collections_finished', 0):,} / {data.get('total_collections_available', 0):,}", inline=True)
+        embed.add_field(name="Categories", value=f"{data.get('total_categories_finished', 0):,} / {data.get('total_categories_available', 0):,}", inline=True)
+        embed.add_field(name="EHC", value=f"{data.get('ehc', 0):.2f}", inline=True)
+        embed.set_footer(text=f"Last updated: {data.get('last_changed', 'Unknown')}")
+        
+        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(OSRSCollectionLog(bot))
