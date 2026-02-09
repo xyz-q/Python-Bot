@@ -69,6 +69,7 @@ class OSRSCollectionLog(commands.Cog):
         await ctx.send(f"OSRS collection log notifications will be sent to {channel.mention}")
     
     @commands.command(name='testosrsclog')
+    @commands.is_owner()
     async def test_clog(self, ctx):
         """Test the TempleOSRS API"""
         msg = await ctx.send("Checking TempleOSRS API...")
@@ -81,6 +82,7 @@ class OSRSCollectionLog(commands.Cog):
             await ctx.send(f"Found {len(recent_items)} new items!\n{recent_items}")
     
     @commands.command(name='osrsclogview')
+    @commands.is_owner()
     async def view_log(self, ctx):
         """View your full collection log stats"""
         msg = await ctx.send("Fetching collection log...")
@@ -108,6 +110,17 @@ class OSRSCollectionLog(commands.Cog):
         
         await msg.delete()
         await ctx.send(embed=embed)
+    
+    @commands.command(name='osrsclogclear')
+    @commands.is_owner()
+    async def clear_last(self, ctx):
+        """Remove the last tracked item to test notifications"""
+        if self.config['found_items']:
+            removed = self.config['found_items'].pop()
+            self.save_config()
+            await ctx.send(f"Removed item ID: {removed}")
+        else:
+            await ctx.send("No items to remove!")
     
     @tasks.loop(minutes=5)
     async def check_new_items(self):
