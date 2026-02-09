@@ -152,6 +152,43 @@ class RuneMetrics(commands.Cog):
         with open(filepath, 'w') as f:
             json.dump(drops, f, indent=2)
     
+    @commands.command(name='testrs3drops')
+    @commands.is_owner()
+    async def test_drops(self, ctx):
+        """Test the RuneMetrics API"""
+        username = "R0SA+PERCS"
+        msg = await ctx.send("Checking RuneMetrics API...")
+        
+        api_url = f"https://apps.runescape.com/runemetrics/profile/profile?user={username}&activities=20"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    activities = data.get('activities', [])
+                    drops = [a for a in activities if a.get('text', '').lower().startswith('i found')]
+                    
+                    await msg.delete()
+                    if not drops:
+                        await ctx.send("No drops found in recent activities!")
+                    else:
+                        await ctx.send(f"Found {len(drops)} drops!\n{drops}")
+                else:
+                    await msg.delete()
+                    await ctx.send(f"API error: {response.status}")
+    
+    @commands.command(name='clearrs3drops')
+    @commands.is_owner()
+    async def clear_last_drop(self, ctx):
+        """Remove the last tracked drop to test notifications"""
+        username = "R0SA+PERCS"
+        drops = self.load_drops_data(username)
+        if drops:
+            removed = drops.pop()
+            self.save_drops_data(username, drops)
+            await ctx.send(f"Removed drop: {removed['text']}")
+        else:
+            await ctx.send("No drops to remove!")
+    
     @tasks.loop(minutes=5)
     async def check_new_drops(self):
         """Check for new drops every 5 minutes"""
