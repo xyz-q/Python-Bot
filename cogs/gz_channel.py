@@ -53,19 +53,21 @@ class GzChannel(commands.Cog):
     
     async def check_message_for_images(self, message):
         """Check if message has images and react if needed"""
-        # Check if message has attachments, embeds with images, or gyazo links
         has_image = False
         
-        # Check for gyazo links in message content
-        if "gyazo.com/" in message.content:
+        # Check for image URLs in message content (gyazo, imgur, etc.)
+        image_domains = ['gyazo.com/', 'imgur.com/', 'i.imgur.com/', 'cdn.discordapp.com/attachments/']
+        if any(domain in message.content for domain in image_domains):
             has_image = True
         
+        # Check attachments
         if message.attachments:
             for attachment in message.attachments:
                 if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
                     has_image = True
                     break
         
+        # Check embeds
         if message.embeds:
             for embed in message.embeds:
                 if embed.image or embed.thumbnail:
@@ -76,7 +78,7 @@ class GzChannel(commands.Cog):
             try:
                 await message.add_reaction(self.gz_emoji)
             except:
-                pass  # Ignore errors (message deleted, no permissions, etc.)
+                pass
     
     @commands.Cog.listener()
     async def on_ready(self):
