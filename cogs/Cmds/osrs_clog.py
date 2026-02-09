@@ -139,8 +139,8 @@ class OSRSCollectionLog(commands.Cog):
                 
                 item_name = item.get('name')
                 embed = discord.Embed(
-                    title="🎉 New Collection Log Item!",
-                    description=f"**R0SA PERCS** found a **{item_name}**",
+                    title="New Collection Log Item!",
+                    description=f"\n**R0SA PERCS** found a **{item_name}**",
                     color=discord.Color.gold(),
                     timestamp=datetime.fromisoformat(item.get('date'))
                 )
