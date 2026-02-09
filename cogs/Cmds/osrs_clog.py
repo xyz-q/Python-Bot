@@ -11,6 +11,7 @@ class OSRSCollectionLog(commands.Cog):
         self.data_file = os.path.join('.json', 'osrs-clog-config.json')
         self.config = self.load_config()
         self.username = "R0sa Percs"
+        self.check_new_items.start()
         
     def load_config(self):
         if os.path.exists(self.data_file):
@@ -95,6 +96,36 @@ class OSRSCollectionLog(commands.Cog):
         
         await msg.delete()
         await ctx.send(embed=embed)
+    
+    @tasks.loop(minutes=5)
+    async def check_new_items(self):
+        if not self.config.get('channel_id'):
+            return
+        
+        channel = self.bot.get_channel(self.config['channel_id'])
+        if not channel:
+            return
+        
+        recent_items = await self.get_recent_items()
+        for item in recent_items:
+            item_key = f"{item.get('item_name')}_{item.get('obtained_at')}"
+            if item_key not in self.config['found_items']:
+                self.config['found_items'].append(item_key)
+                embed = discord.Embed(
+                    title="🎉 New Collection Log Item!",
+                    description=f"**{item.get('item_name')}**",
+                    color=discord.Color.gold()
+                )
+                embed.add_field(name="Source", value=item.get('source', 'Unknown'))
+                embed.add_field(name="Obtained", value=item.get('obtained_at', 'Unknown'))
+                await channel.send(embed=embed)
+        
+        if recent_items:
+            self.save_config()
+    
+    @check_new_items.before_loop
+    async def before_check(self):
+        await self.bot.wait_until_ready()
 
 async def setup(bot):
     await bot.add_cog(OSRSCollectionLog(bot))
