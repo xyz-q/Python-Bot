@@ -201,6 +201,9 @@ class CS2Updates(commands.Cog):
             current_update_id = patch_item.get('gid', '')
             
             if last_update.get('gid') != current_update_id:
+                # Save immediately to prevent duplicate sends
+                self.save_last_update({'gid': current_update_id})
+                
                 # Check if this update is actually new (within last 24 hours)
                 update_time = datetime.fromtimestamp(patch_item.get('date', 0))
                 time_diff = datetime.now() - update_time
@@ -208,9 +211,6 @@ class CS2Updates(commands.Cog):
                 if time_diff.total_seconds() < 86400:  # 24 hours
                     # New update found, send notifications
                     await self.send_notifications(patch_item)
-                
-                # Always save the current update ID to prevent duplicates
-                self.save_last_update({'gid': current_update_id})
                 
         except Exception as e:
             print(f"Error checking CS2 updates: {e}")
