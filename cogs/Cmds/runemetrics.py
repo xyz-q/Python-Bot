@@ -183,15 +183,15 @@ class RuneMetrics(commands.Cog):
         username = "R0SA+PERCS"
         drops = self.load_drops_data(username)
         if drops:
-            removed = drops.pop()
+            removed = drops.pop(0)
             self.save_drops_data(username, drops)
             await ctx.send(f"Removed drop: {removed['text']}")
         else:
             await ctx.send("No drops to remove!")
     
-    @tasks.loop(minutes=5)
+    @tasks.loop(seconds=30)
     async def check_new_drops(self):
-        """Check for new drops every 5 minutes"""
+        """Check for new drops every 30 seconds"""
         username = "R0SA+PERCS"
         channel_id = self.drops_channel_id  # Use the set channel instead of hardcoded
         
