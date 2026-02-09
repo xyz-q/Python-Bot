@@ -58,9 +58,10 @@ class OSRSCollectionLog(commands.Cog):
     @commands.command(name='testosrsclog')
     async def test_clog(self, ctx):
         """Test the TempleOSRS API"""
-        await ctx.send("Checking TempleOSRS API...")
+        msg = await ctx.send("Checking TempleOSRS API...")
         recent_items = await self.get_recent_items()
         
+        await msg.delete()
         if not recent_items:
             await ctx.send("No new items found. Make sure you've synced to TempleOSRS and obtained a new item!")
         else:
@@ -69,15 +70,15 @@ class OSRSCollectionLog(commands.Cog):
     @commands.command(name='osrsclogview')
     async def view_log(self, ctx):
         """View your full collection log stats"""
-        await ctx.send("Fetching collection log...")
+        msg = await ctx.send("Fetching collection log...")
         log_data = await self.get_full_log()
         
         if not log_data:
-            await ctx.send("Failed to fetch collection log!")
+            await msg.edit(content="Failed to fetch collection log!")
             return
         
         if 'error' in log_data:
-            await ctx.send(f"Error: {log_data['error']['Message']}")
+            await msg.edit(content=f"Error: {log_data['error']['Message']}")
             return
         
         data = log_data.get('data', {})
@@ -92,6 +93,7 @@ class OSRSCollectionLog(commands.Cog):
         embed.add_field(name="EHC", value=f"{data.get('ehc', 0):.2f}", inline=True)
         embed.set_footer(text=f"Last updated: {data.get('last_changed', 'Unknown')}")
         
+        await msg.delete()
         await ctx.send(embed=embed)
 
 async def setup(bot):
