@@ -46,16 +46,35 @@ class OSRSCollectionLog(commands.Cog):
                 return None
     
     async def get_item_image(self, item_name):
-        url = f"https://oldschool.runescape.wiki/api.php?action=query&titles={item_name}&prop=pageimages&format=json&pithumbsize=250"
-        
+        """Get item image from OSRS Wiki, with fallback for variants"""
         async with aiohttp.ClientSession() as session:
+            # Try original name first
+            url = f"https://oldschool.runescape.wiki/api.php?action=query&titles={item_name}&prop=pageimages&format=json&pithumbsize=250"
             async with session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
                     pages = data.get('query', {}).get('pages', {})
                     for page in pages.values():
-                        return page.get('thumbnail', {}).get('source')
-                return None
+                        img = page.get('thumbnail', {}).get('source')
+                        if img:
+                            return img
+            
+            # Try without common suffixes
+            suffixes_to_remove = [' (uncharged)', ' (broken)', ' (inactive)', ' (empty)', ' (charged)', ' (active)']
+            for suffix in suffixes_to_remove:
+                if item_name.lower().endswith(suffix.lower()):
+                    base_name = item_name[:-len(suffix)]
+                    url = f"https://oldschool.runescape.wiki/api.php?action=query&titles={base_name}&prop=pageimages&format=json&pithumbsize=250"
+                    async with session.get(url) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            pages = data.get('query', {}).get('pages', {})
+                            for page in pages.values():
+                                img = page.get('thumbnail', {}).get('source')
+                                if img:
+                                    return img
+            
+            return None
     
     async def get_ge_price(self, item_name):
         """Get GE price from OSRS Wiki API"""
