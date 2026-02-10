@@ -53,6 +53,38 @@ class RuneMetrics(commands.Cog):
             print(f"Error searching for item image: {e}")
             return None
 
+    async def get_ge_price(self, item_name):
+        """Get GE price from RS3 Wiki"""
+        try:
+            wiki_name = item_name.strip().replace(' ', '_')
+            variations = [
+                wiki_name,
+                wiki_name.title(),
+                wiki_name.lower(),
+                '_'.join([word.capitalize() if word.lower() not in ['ability', 'codex'] else word.lower() for word in wiki_name.split('_')]),
+            ]
+            
+            for variant in variations:
+                wiki_url = f"https://runescape.wiki/w/{variant}"
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(wiki_url) as response:
+                        if response.status == 200:
+                            html = await response.text()
+                            # Look for GE price in infobox-quantity-replace span
+                            pattern = r'<span class="infobox-quantity-replace">([0-9,]+)</span>'
+                            match = re.search(pattern, html)
+                            
+                            if match:
+                                price_str = match.group(1).replace(',', '')
+                                return int(price_str)
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error getting GE price: {e}")
+            return None
+
     async def get_wiki_timestamp(self, item_name):
         """Get timestamp from wiki page"""
         try:
@@ -238,6 +270,7 @@ class RuneMetrics(commands.Cog):
                                     item_name = item_match.group(1) if item_match else drop['text']
                                     
                                     image_url = await self.get_wiki_image_url(item_name)
+                                    ge_price = await self.get_ge_price(item_name)
                                     
                                     # Use current time since API dates are unreliable
                                     unix_timestamp = int(datetime.now().timestamp())
@@ -252,8 +285,8 @@ class RuneMetrics(commands.Cog):
                                     
                                     embed.add_field(name="Time", value=f"<t:{unix_timestamp}:R>", inline=True)
                                     
-                                    # TODO: Add GE Price field here when implemented
-                                    # embed.add_field(name="GE Price", value=f"{ge_price:,} gp", inline=True)
+                                    if ge_price:
+                                        embed.add_field(name="GE Price", value=f"{ge_price:,} gp", inline=True)
                                     
                                     if image_url:
                                         print(f"Using image URL: {image_url}")
