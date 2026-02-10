@@ -21,6 +21,8 @@ class RuneMetrics(commands.Cog):
                 wiki_name,  # Original
                 wiki_name.title(),  # Title case
                 wiki_name.lower(),  # All lowercase
+                # Special case: capitalize first letter of each word except 'ability'
+                '_'.join([word.capitalize() if word.lower() != 'ability' else word.lower() for word in wiki_name.split('_')]),
                 wiki_name.replace('_Robe_Bottoms', '_robe_bottom'),  # Fix plurals
                 wiki_name.replace('_Codex', '_codex'),  # Fix case
                 wiki_name.lower().replace('_robe_bottoms', '_robe_bottom'),  # Lowercase + fix plurals
