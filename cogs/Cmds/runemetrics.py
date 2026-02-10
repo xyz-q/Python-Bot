@@ -187,6 +187,16 @@ class RuneMetrics(commands.Cog):
         else:
             await ctx.send("No drops to remove!")
     
+    @commands.command(name='testrs3img')
+    @commands.is_owner()
+    async def test_image(self, ctx, *, item_name: str):
+        """Test image fetching for a specific item"""
+        image_url = await self.get_wiki_image_url(item_name)
+        if image_url:
+            await ctx.send(f"✅ Found image for **{item_name}**:\n{image_url}")
+        else:
+            await ctx.send(f"❌ No image found for **{item_name}**")
+    
     @tasks.loop(seconds=30)
     async def check_new_drops(self):
         """Check for new drops every 30 seconds"""
