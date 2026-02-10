@@ -244,11 +244,16 @@ class RuneMetrics(commands.Cog):
                                     print(f"Using current time for timestamp: {unix_timestamp}")
                                     
                                     embed = discord.Embed(
-                                        title="R0SA PERCS has received a drop!",
-                                        description=drop['text'],
-                                        color=discord.Color.gold()
+                                        title="New Drop!",
+                                        description=f"\n**R0SA PERCS** found {item_name}",
+                                        color=discord.Color.gold(),
+                                        timestamp=datetime.now()
                                     )
-                                    embed.add_field(name="Time", value=f"<t:{unix_timestamp}:R>", inline=False)
+                                    
+                                    embed.add_field(name="Time", value=f"<t:{unix_timestamp}:R>", inline=True)
+                                    
+                                    # TODO: Add GE Price field here when implemented
+                                    # embed.add_field(name="GE Price", value=f"{ge_price:,} gp", inline=True)
                                     
                                     if image_url:
                                         print(f"Using image URL: {image_url}")
