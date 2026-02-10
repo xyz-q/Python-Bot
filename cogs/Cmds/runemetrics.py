@@ -231,17 +231,9 @@ class RuneMetrics(commands.Cog):
                                     
                                     image_url = await self.get_wiki_image_url(item_name)
                                     
-                                    # Parse the actual drop date from RuneMetrics
-                                    try:
-                                        drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
-                                        unix_timestamp = int(drop_time.timestamp())
-                                        print(f"Parsed drop time: {drop['date']} -> {unix_timestamp}")
-                                    except Exception as e:
-                                        print(f"Failed to parse timestamp '{drop['date']}': {e}")
-                                        # Fallback to current time
-                                        unix_timestamp = int(datetime.now().timestamp())
-                                    
-                                    print(f"Using unix timestamp: {unix_timestamp} for relative time")
+                                    # Use current time since API dates are unreliable
+                                    unix_timestamp = int(datetime.now().timestamp())
+                                    print(f"Using current time for timestamp: {unix_timestamp}")
                                     
                                     embed = discord.Embed(
                                         title="R0SA PERCS has received a drop!",
