@@ -235,9 +235,13 @@ class RuneMetrics(commands.Cog):
                                     try:
                                         drop_time = datetime.strptime(drop['date'], '%d-%b-%Y %H:%M')
                                         unix_timestamp = int(drop_time.timestamp())
+                                        print(f"Parsed drop time: {drop['date']} -> {unix_timestamp}")
                                     except Exception as e:
+                                        print(f"Failed to parse timestamp '{drop['date']}': {e}")
                                         # Fallback to current time
                                         unix_timestamp = int(datetime.now().timestamp())
+                                    
+                                    print(f"Using unix timestamp: {unix_timestamp} for relative time")
                                     
                                     embed = discord.Embed(
                                         title="R0SA PERCS has received a drop!",
@@ -247,7 +251,10 @@ class RuneMetrics(commands.Cog):
                                     embed.add_field(name="Time", value=f"<t:{unix_timestamp}:R>", inline=False)
                                     
                                     if image_url:
+                                        print(f"Using image URL: {image_url}")
                                         embed.set_thumbnail(url=image_url)
+                                    else:
+                                        print(f"No image found for: {item_name}")
                                     
                                     message = await channel.send(embed=embed)
                                     await message.add_reaction("<:gz:1468531948061458463>")
