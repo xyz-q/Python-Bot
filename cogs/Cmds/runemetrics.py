@@ -19,6 +19,7 @@ class RuneMetrics(commands.Cog):
             # Try different variations
             variations = [
                 wiki_name,  # Original
+                wiki_name.title(),  # Title case
                 wiki_name.lower(),  # All lowercase
                 wiki_name.replace('_Robe_Bottoms', '_robe_bottom'),  # Fix plurals
                 wiki_name.replace('_Codex', '_codex'),  # Fix case
@@ -34,19 +35,14 @@ class RuneMetrics(commands.Cog):
                         print(f"Response status: {response.status} for {variant}")
                         if response.status == 200:
                             html = await response.text()
-                            pattern = r'<figure[^>]*mw-halign-left[^>]*>.*?<img src="(/images/thumb/[^"]+\.png/\d+px-[^"]+\.png[^"]*)'
-                            match = re.search(pattern, html, re.DOTALL)
+                            # Look for any img tag with detail.png in /images/thumb/
+                            pattern = r'<img[^>]*src="(/images/thumb/[^"]*detail\.png[^"]*)"'
+                            match = re.search(pattern, html)
                             
                             if match:
                                 return f"https://runescape.wiki{match.group(1)}"
                             else:
-                                # Debug: print a snippet of HTML to see the structure
-                                img_snippet = re.search(r'<img[^>]*src="[^"]*detail\.png[^"]*"[^>]*>', html)
-                                if img_snippet:
-                                    print(f"Found img tag: {img_snippet.group(0)}")
-                                else:
-                                    print(f"No img tag with detail.png found for {variant}")
-                                print(f"No image pattern match for {variant}")
+                                print(f"No detail.png image found for {variant}")
             
             print(f"Wiki page not found for {item_name}")
             return None
