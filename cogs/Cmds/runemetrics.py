@@ -9,7 +9,7 @@ from datetime import datetime
 class RuneMetrics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.drops_channel_id = 883168123451220032  # Set the drops channel ID
+        self.drops_channel_id = 1176833761787265034  # Set the drops channel ID
         self.check_new_drops.start()  # Auto-start the drop checker
 
     async def get_wiki_image_url(self, item_name):
@@ -276,12 +276,15 @@ class RuneMetrics(commands.Cog):
                                     item_match = re.search(r'I found (?:a |an |some )?(.*)', drop['text'], re.IGNORECASE)
                                     item_name = item_match.group(1) if item_match else drop['text']
                                     
+                                    print(f"Processing drop: {item_name}")
+                                    
                                     image_url = await self.get_wiki_image_url(item_name)
                                     ge_price = await self.get_ge_price(item_name)
                                     
-                                    # Use current time since API dates are unreliable
+                                    print(f"Image URL: {image_url}")
+                                    print(f"GE Price: {ge_price}")
+                                    
                                     unix_timestamp = int(datetime.now().timestamp())
-                                    print(f"Using current time for timestamp: {unix_timestamp}")
                                     
                                     embed = discord.Embed(
                                         title="New Drop!",
@@ -296,10 +299,7 @@ class RuneMetrics(commands.Cog):
                                         embed.add_field(name="GE Price", value=f"{ge_price:,} gp", inline=True)
                                     
                                     if image_url:
-                                        print(f"Using image URL: {image_url}")
                                         embed.set_thumbnail(url=image_url)
-                                    else:
-                                        print(f"No image found for: {item_name}")
                                     
                                     message = await channel.send(embed=embed)
                                     await message.add_reaction("<:gz:1468531948061458463>")
