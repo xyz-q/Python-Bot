@@ -224,10 +224,17 @@ class RuneMetrics(commands.Cog):
     async def test_image(self, ctx, *, item_name: str):
         """Test image fetching for a specific item"""
         image_url = await self.get_wiki_image_url(item_name)
+        ge_price = await self.get_ge_price(item_name)
+        
         if image_url:
             await ctx.send(f"✅ Found image for **{item_name}**:\n{image_url}")
         else:
             await ctx.send(f"❌ No image found for **{item_name}**")
+        
+        if ge_price:
+            await ctx.send(f"✅ Found GE price for **{item_name}**: **{ge_price:,}** gp")
+        else:
+            await ctx.send(f"❌ No GE price found for **{item_name}** (might be untradeable)")
     
     @tasks.loop(seconds=30)
     async def check_new_drops(self):
