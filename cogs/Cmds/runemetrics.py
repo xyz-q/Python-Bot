@@ -10,7 +10,9 @@ from urllib.parse import quote
 class RuneMetrics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.drops_channel_id = 883168123451220032 # Set the drops channel ID
+        self.drops_channel_id = 883168123451220032  # Set the drops channel ID
+        self.min_ge_price = 1000000  # Minimum GE price to post (1M gp)
+        self.blocked_items = ['crystal triskelion fragment']  # Items to never post
         self.check_new_drops.start()  # Auto-start the drop checker
 
     async def get_wiki_image_url(self, item_name):
@@ -285,10 +287,20 @@ class RuneMetrics(commands.Cog):
                                     item_match = re.search(r'I found (?:a |an |some )?(.*)', drop['text'], re.IGNORECASE)
                                     item_name = item_match.group(1) if item_match else drop['text']
                                     
+                                    # Check if item is blocked
+                                    if item_name.lower() in self.blocked_items:
+                                        print(f"Skipping blocked item: {item_name}")
+                                        continue
+                                    
                                     print(f"Processing drop: {item_name}")
                                     
                                     image_url = await self.get_wiki_image_url(item_name)
                                     ge_price = await self.get_ge_price(item_name)
+                                    
+                                    # Skip if item has GE price but below minimum threshold
+                                    if ge_price and ge_price < self.min_ge_price:
+                                        print(f"Skipping {item_name} - price {ge_price:,} below minimum {self.min_ge_price:,}")
+                                        continue
                                     
                                     print(f"Image URL: {image_url}")
                                     print(f"GE Price: {ge_price}")
