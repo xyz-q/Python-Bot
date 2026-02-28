@@ -5,6 +5,7 @@ import json
 import re
 import os
 from datetime import datetime
+from urllib.parse import quote
 
 class RuneMetrics(commands.Cog):
     def __init__(self, bot):
@@ -15,21 +16,27 @@ class RuneMetrics(commands.Cog):
     async def get_wiki_image_url(self, item_name):
         """Search for RuneScape Wiki image URL by parsing HTML"""
         try:
-            wiki_name = item_name.strip().replace(' ', '_')
+            # Clean the item name
+            item_name = item_name.strip().rstrip('.')
+            item_name = item_name.replace("&#39;", "'").replace("&apos;", "'")
+            
+            wiki_name = item_name.replace(' ', '_')
             # Try different variations
             variations = [
-                wiki_name,  # Original
-                wiki_name.title(),  # Title case
-                wiki_name.lower(),  # All lowercase
-                # Special case: capitalize first letter of each word except 'ability' and 'codex'
-                '_'.join([word.capitalize() if word.lower() not in ['ability', 'codex'] else word.lower() for word in wiki_name.split('_')]),
-                wiki_name.replace('_Robe_Bottoms', '_robe_bottom'),  # Fix plurals
-                wiki_name.replace('_Codex', '_codex'),  # Fix case
-                wiki_name.lower().replace('_robe_bottoms', '_robe_bottom'),  # Lowercase + fix plurals
+                wiki_name,
+                wiki_name.title(),
+                wiki_name.lower(),
+                '_'.join([word.capitalize() if word.lower() not in ['ability', 'codex', 'of'] else word.lower() for word in wiki_name.split('_')]),
+                # Try reversing "Robe bottom of X" to "X robe bottom"
+                re.sub(r'Robe_bottom_of_(.*)', r"\1_robe_bottom", wiki_name, flags=re.IGNORECASE),
             ]
             
             for variant in variations:
-                wiki_url = f"https://runescape.wiki/w/{variant}"
+                if not variant:
+                    continue
+                # URL encode the variant properly
+                encoded_variant = quote(variant, safe='')
+                wiki_url = f"https://runescape.wiki/w/{encoded_variant}"
                 print(f"Trying wiki URL: {wiki_url}")
                 
                 async with aiohttp.ClientSession() as session:
@@ -37,14 +44,11 @@ class RuneMetrics(commands.Cog):
                         print(f"Response status: {response.status} for {variant}")
                         if response.status == 200:
                             html = await response.text()
-                            # Look for any img tag with detail.png in /images/thumb/
                             pattern = r'<img[^>]*src="(/images/thumb/[^"]*detail\.png[^"]*)"'
                             match = re.search(pattern, html)
                             
                             if match:
                                 return f"https://runescape.wiki{match.group(1)}"
-                            else:
-                                print(f"No detail.png image found for {variant}")
             
             print(f"Wiki page not found for {item_name}")
             return None
