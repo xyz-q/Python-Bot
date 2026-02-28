@@ -60,16 +60,21 @@ class RuneMetrics(commands.Cog):
     async def get_ge_price(self, item_name):
         """Get GE price from RS3 Wiki"""
         try:
-            wiki_name = item_name.strip().replace(' ', '_')
+            # Clean the item name
+            item_name = item_name.strip().rstrip('.')
+            item_name = item_name.replace("&#39;", "'").replace("&apos;", "'")
+            
+            wiki_name = item_name.replace(' ', '_')
             variations = [
                 wiki_name,
                 wiki_name.title(),
                 wiki_name.lower(),
-                '_'.join([word.capitalize() if word.lower() not in ['ability', 'codex'] else word.lower() for word in wiki_name.split('_')]),
+                '_'.join([word.capitalize() if word.lower() not in ['ability', 'codex', 'of'] else word.lower() for word in wiki_name.split('_')]),
             ]
             
             for variant in variations:
-                wiki_url = f"https://runescape.wiki/w/{variant}"
+                encoded_variant = quote(variant, safe='')
+                wiki_url = f"https://runescape.wiki/w/{encoded_variant}"
                 
                 async with aiohttp.ClientSession() as session:
                     async with session.get(wiki_url) as response:
