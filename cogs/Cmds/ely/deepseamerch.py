@@ -64,6 +64,27 @@ class TravellingMerchant(commands.Cog):
     "default": "📦"
 }
 
+    OWNER_ID = 110927272210354176
+    DEPRECATION_NOTE = "⚠️ The Travelling Merchant is being removed from RuneScape. Please let <@110927272210354176> know if anything looks off!"
+
+    def removed_embed(self):
+        embed = discord.Embed(
+            title="Travelling Merchant Unavailable",
+            description=f"The Travelling Merchant's Shop could not be found. It may have been removed from the game.\n\nPlease contact <@{self.OWNER_ID}> if this is unexpected.",
+            color=discord.Color.red()
+        )
+        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
+        return embed
+
+    def error_embed(self):
+        embed = discord.Embed(
+            title="Travelling Merchant - Error",
+            description=f"Unable to fetch the merchant's stock. Please try again later.\n\nIf this keeps happening, contact <@{self.OWNER_ID}>.",
+            color=discord.Color.orange()
+        )
+        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
+        return embed
+
     def load_preferences(self):
         try:
             with open('.json/merchant_preferences.json', 'r') as f:
@@ -111,28 +132,37 @@ class TravellingMerchant(commands.Cog):
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                 }
                 async with session.get('https://runescape.wiki/w/Travelling_Merchant%27s_Shop', headers=headers, timeout=10) as response:
-                    if response.status == 200:
-                        html = await response.text()
-                        soup = BeautifulSoup(html, 'html.parser')
-                        
-                        inventory_items = soup.find_all('td', class_="inventory-image")[:4]
-                        print(f"Found {len(inventory_items)} inventory items")
-                        
-                        if inventory_items:
-                            items = []
-                            coin_spans = soup.find_all('span', class_="coins")[:4]
-                            
-                            for item, coin_span in zip(inventory_items, coin_spans):
-                                anchor = item.find('a')
-                                if anchor and anchor.get('title'):
-                                    item_name = anchor['title']
-                                    price = coin_span.text.strip() if coin_span else "Price unknown"
-                                    items.append((item_name, price))
-                                    print(f"Added item: {item_name} - {price}")
-                            
-                            print(f"Final items list: {items}")
-                            return items if items else None
-                    return None
+                    if response.status == 404:
+                        print("Travelling Merchant wiki page returned 404 - merchant may have been removed from the game.")
+                        return "removed"
+                    
+                    if response.status != 200:
+                        print(f"Wiki returned status {response.status}")
+                        return None
+                    
+                    html = await response.text()
+                    soup = BeautifulSoup(html, 'html.parser')
+                    
+                    inventory_items = soup.find_all('td', class_="inventory-image")[:4]
+                    print(f"Found {len(inventory_items)} inventory items")
+                    
+                    if not inventory_items:
+                        print("No inventory items found - merchant may have been removed.")
+                        return "removed"
+                    
+                    items = []
+                    coin_spans = soup.find_all('span', class_="coins")[:4]
+                    
+                    for item, coin_span in zip(inventory_items, coin_spans):
+                        anchor = item.find('a')
+                        if anchor and anchor.get('title'):
+                            item_name = anchor['title']
+                            price = coin_span.text.strip() if coin_span else "Price unknown"
+                            items.append((item_name, price))
+                            print(f"Added item: {item_name} - {price}")
+                    
+                    print(f"Final items list: {items}")
+                    return items if items else "removed"
         except Exception as e:
             print(f"Error scraping merchant stock: {e}")
             return None
@@ -182,22 +212,26 @@ class TravellingMerchant(commands.Cog):
             async with ctx.typing():
                 items = await self.get_merchant_stock()
 
-                if items and len(items) > 0:
-                    now = datetime.now(pytz.UTC)
-                    next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-                    time_until_midnight = next_midnight - now
-                    hours, remainder = divmod(time_until_midnight.total_seconds(), 3600)
-                    minutes = remainder // 60
-                    embed = discord.Embed(
-                        title="Travelling Merchant's Stock",
-                        description="*Written by* <@110927272210354176>",
-                        color=discord.Color.gold(),
-                        
-                    )
-                    embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
-                    embed.set_footer(
-                        text=f"Use ,merch to get daily notifications! • Resets in {int(hours)}h {int(minutes)}m"
-                    )
+                if items == "removed":
+                    await ctx.send(embed=self.removed_embed())
+                    return
+
+                if not items:
+                    await ctx.send(embed=self.error_embed())
+                    return
+
+                now = datetime.now(pytz.UTC)
+                next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                time_until_midnight = next_midnight - now
+                hours, remainder = divmod(time_until_midnight.total_seconds(), 3600)
+                minutes = remainder // 60
+                embed = discord.Embed(
+                    title="Travelling Merchant's Stock",
+                    description=f"*Written by* <@110927272210354176>\n\n{self.DEPRECATION_NOTE}",
+                    color=discord.Color.gold(),
+                )
+                embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
+                embed.set_footer(text=f"Use ,merch to get daily notifications! • Resets in {int(hours)}h {int(minutes)}m")
 
                     
                     for item_name, price in items:
@@ -241,11 +275,8 @@ class TravellingMerchant(commands.Cog):
                         )
     
                     await ctx.send(embed=embed)
-                else:
-                    await ctx.send("Unable to fetch the merchant's stock. Please try again later.")
-                    
         except Exception as e:
-            await ctx.send(f"An error occurred: {str(e)}")
+            await ctx.send(embed=self.error_embed())
             print(f"Error in stock command: {e}")
     
     
@@ -254,16 +285,33 @@ class TravellingMerchant(commands.Cog):
 
     @tasks.loop(time=time(hour=0, minute=15, second=0))
     async def daily_notification(self):
-        """Send daily notifications to subscribed users"""
-        # Use live scraping for accurate data
         items = await self.get_merchant_stock()
-        
-        if not items:
+
+        if items == "removed":
+            embed = self.removed_embed()
+            for user_id in self.user_preferences:
+                try:
+                    user = await self.bot.fetch_user(int(user_id))
+                    if user:
+                        await user.send(embed=embed)
+                except Exception as e:
+                    print(f"Failed to send removal notice to user {user_id}: {e}")
             return
-    
+
+        if not items:
+            embed = self.error_embed()
+            for user_id in self.user_preferences:
+                try:
+                    user = await self.bot.fetch_user(int(user_id))
+                    if user:
+                        await user.send(embed=embed)
+                except Exception as e:
+                    print(f"Failed to send error notice to user {user_id}: {e}")
+            return
+
         embed = discord.Embed(
             title="Travelling Merchant's Stock",
-            description="*Written by* <@110927272210354176>",
+            description=f"*Written by* <@110927272210354176>\n\n{self.DEPRECATION_NOTE}",
             color=discord.Color.gold(),
             timestamp=datetime.now(pytz.UTC)
         )
@@ -439,23 +487,38 @@ class TravellingMerchant(commands.Cog):
 
     @tasks.loop(time=time(hour=0, minute=5, second=5))
     async def daily_channel(self):
-        """Send daily notifications to subscribed channels"""
-        # Use live scraping for accurate data
         items = await self.get_merchant_stock()
-        
+
+        if items == "removed":
+            embed = self.removed_embed()
+            for channel_id in self.subscribed_channels:
+                try:
+                    channel = self.bot.get_channel(int(channel_id))
+                    if channel:
+                        await channel.send(embed=embed)
+                except Exception as e:
+                    print(f"Failed to send removal notice to channel {channel_id}: {e}")
+            return
+
         if not items:
+            embed = self.error_embed()
+            for channel_id in self.subscribed_channels:
+                try:
+                    channel = self.bot.get_channel(int(channel_id))
+                    if channel:
+                        await channel.send(embed=embed)
+                except Exception as e:
+                    print(f"Failed to send error notice to channel {channel_id}: {e}")
             return
 
         embed = discord.Embed(
             title="Travelling Merchant's Stock",
-            description="*Written by* <@110927272210354176>",
+            description=f"*Written by* <@110927272210354176>\n\n{self.DEPRECATION_NOTE}",
             color=discord.Color.gold(),
             timestamp=datetime.now(pytz.UTC)
         )
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
-        embed.set_footer(
-            text=f"Use ,merch to get daily notifications!"
-        )
+        embed.set_footer(text=f"Use ,merch to get daily notifications!")
         
         # Don't remove duplicates - merchant can have same item multiple times
         for item_name, price in items:
@@ -685,6 +748,29 @@ class TravellingMerchant(commands.Cog):
                 print(f"Failed to send to user {user_id}: {e}")
         
         await ctx.send(f"Sent merchant notification to {success} users (Failed: {failed})")
+
+    @commands.command(name="merchtest")
+    @commands.is_owner()
+    async def merch_test(self, ctx, *, mode: str = "normal"):
+        """Test merchant embeds. Modes: normal, removed, error"""
+        if mode == "removed":
+            await ctx.send(embed=self.removed_embed())
+        elif mode == "error":
+            await ctx.send(embed=self.error_embed())
+        else:
+            now = datetime.now(pytz.UTC)
+            next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+            time_until_midnight = next_midnight - now
+            hours, remainder = divmod(time_until_midnight.total_seconds(), 3600)
+            minutes = remainder // 60
+            embed = discord.Embed(
+                title="Travelling Merchant's Stock",
+                description=f"*Written by* <@110927272210354176>\n\n{self.DEPRECATION_NOTE}\n\n**Test Message:** {mode}",
+                color=discord.Color.gold(),
+            )
+            embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
+            embed.set_footer(text=f"Use ,merch to get daily notifications! • Resets in {int(hours)}h {int(minutes)}m")
+            await ctx.send(embed=embed)
 
     @commands.command(name="listsubscribed")
     @commands.is_owner()
