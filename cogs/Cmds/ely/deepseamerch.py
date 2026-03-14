@@ -79,7 +79,7 @@ class TravellingMerchant(commands.Cog):
     def error_embed(self):
         embed = discord.Embed(
             title="Travelling Merchant - Error",
-            description=f"Unable to fetch the merchant's stock. Please try again later.\n\nIf this keeps happening, contact <@{self.OWNER_ID}>.",
+            description=f"Unable to fetch the merchant's stock. Please contact <@{self.OWNER_ID}>.",
             color=discord.Color.orange()
         )
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
