@@ -85,6 +85,15 @@ class TravellingMerchant(commands.Cog):
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
         return embed
 
+    def final_embed(self):
+        embed = discord.Embed(
+            title="Travelling Merchant Discontinued",
+            description="The Travelling Merchant has been permanently discontinued in RuneScape.\n\nThis command and all related notifications will be removed soon. Thank you for using this feature!",
+            color=discord.Color.red()
+        )
+        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
+        return embed
+
     def load_preferences(self):
         try:
             with open('.json/merchant_preferences.json', 'r') as f:
@@ -122,6 +131,31 @@ class TravellingMerchant(commands.Cog):
             await ctx.send(f"<:add:1328511998647861390> Notifications enabled for {user.name if user else 'yourself'}.")
         
         self.save_preferences()
+
+
+    @commands.command(name="merch_final")
+    @commands.is_owner()
+    async def send_final_announcement(self, ctx):
+        """
+        Send a final announcement to all users with merchant notifications enabled.
+        This should be run once before removing the cog.
+        """
+        embed = self.final_embed()
+        sent_count = 0
+        failed_count = 0
+        
+        for user_id in self.user_preferences:
+            try:
+                user = await self.bot.fetch_user(int(user_id))
+                if user:
+                    await user.send(embed=embed)
+                    sent_count += 1
+                    await asyncio.sleep(0.5)  # Rate limit to avoid spam
+            except Exception as e:
+                print(f"Failed to send final announcement to user {user_id}: {e}")
+                failed_count += 1
+        
+        await ctx.send(f"Final announcement sent to {sent_count} users. Failed: {failed_count}.")
 
 
     async def get_merchant_stock(self):
@@ -208,75 +242,7 @@ class TravellingMerchant(commands.Cog):
     @commands.command(name="stock")
     async def check_stock_command(self, ctx):
         """Manual command to check merchant stock"""
-        try:
-            async with ctx.typing():
-                items = await self.get_merchant_stock()
-
-                if items == "removed":
-                    await ctx.send(embed=self.removed_embed())
-                    return
-
-                if not items:
-                    await ctx.send(embed=self.error_embed())
-                    return
-
-                now = datetime.now(pytz.UTC)
-                next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-                time_until_midnight = next_midnight - now
-                hours, remainder = divmod(time_until_midnight.total_seconds(), 3600)
-                minutes = remainder // 60
-                embed = discord.Embed(
-                    title="Travelling Merchant's Stock",
-                    description=f"*Written by* <@110927272210354176>\n\n{self.DEPRECATION_NOTE}",
-                    color=discord.Color.gold(),
-                )
-                embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
-                embed.set_footer(text=f"Use ,merch to get daily notifications! • Resets in {int(hours)}h {int(minutes)}m")
-
-                for item_name, price in items:
-                    emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
-                    
-                    if item_name == "Uncharted island map (Deep Sea Fishing)":
-                        embed.add_field(
-                            name=f"{emoji} {item_name}", 
-                            value=f"{price} <:goldpoints:1319902464115343473>", 
-                            inline=False
-                        )
-                        continue
-                    
-                    next_date = None
-                    today = datetime.now(pytz.UTC).date()
-                    
-                    for date, daily_items in stock.items():
-                        try:
-                            stock_date = datetime.strptime(date, '%d %B %Y').date()
-                            if stock_date > today and item_name in daily_items:
-                                if next_date is None or stock_date < next_date:
-                                    next_date = stock_date
-                        except ValueError as e:
-                            print(f"Error parsing date {date}: {e}")
-                            continue
-                    
-                    if next_date:
-                        days_until = (next_date - today).days
-                        next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
-                        if days_until == 1:
-                            next_date_str += f" (Tomorrow)"
-                        else:
-                            next_date_str += f" ({days_until} days)"
-                    else:
-                        next_date_str = "\nNo future appearances found"
-
-                    embed.add_field(
-                        name=f"{emoji} {item_name}", 
-                        value=f"{price} <:goldpoints:1319902464115343473>{next_date_str}", 
-                        inline=False
-                    )
-
-                await ctx.send(embed=embed)
-        except Exception as e:
-            await ctx.send(embed=self.error_embed())
-            print(f"Error in stock command: {e}")
+        await ctx.send(embed=self.final_embed())
     
     
     
@@ -284,91 +250,15 @@ class TravellingMerchant(commands.Cog):
 
     @tasks.loop(time=time(hour=0, minute=15, second=0))
     async def daily_notification(self):
-        items = await self.get_merchant_stock()
-
-        if items == "removed":
-            embed = self.removed_embed()
-            for user_id in self.user_preferences:
-                try:
-                    user = await self.bot.fetch_user(int(user_id))
-                    if user:
-                        await user.send(embed=embed)
-                except Exception as e:
-                    print(f"Failed to send removal notice to user {user_id}: {e}")
-            return
-
-        if not items:
-            embed = self.error_embed()
-            for user_id in self.user_preferences:
-                try:
-                    user = await self.bot.fetch_user(int(user_id))
-                    if user:
-                        await user.send(embed=embed)
-                except Exception as e:
-                    print(f"Failed to send error notice to user {user_id}: {e}")
-            return
-
-        embed = discord.Embed(
-            title="Travelling Merchant's Stock",
-            description=f"*Written by* <@110927272210354176>\n\n{self.DEPRECATION_NOTE}",
-            color=discord.Color.gold(),
-            timestamp=datetime.now(pytz.UTC)
-        )
-        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
-        embed.set_footer(text=datetime.now(pytz.UTC).strftime('%a'))
-        
-        # Don't remove duplicates - merchant can have same item multiple times
-        for item_name, price in items:
-            emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
-            
-            if item_name == "Uncharted island map (Deep Sea Fishing)":
-                embed.add_field(
-                    name=f"{emoji} {item_name}", 
-                    value=f"{price} <:goldpoints:1319902464115343473>", 
-                    inline=False
-                )
-                continue
-            
-            next_date = None
-            today = datetime.now(pytz.UTC).date()
-            
-            for date, daily_items in stock.items():
-                try:
-                    stock_date = datetime.strptime(date, '%d %B %Y').date()
-                    if stock_date > today and item_name in daily_items:
-                        if next_date is None or stock_date < next_date:
-                            next_date = stock_date
-                except ValueError as e:
-                    print(f"Error parsing date {date}: {e}")
-                    continue
-            
-            if next_date:
-                days_until = (next_date - today).days
-                next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
-                if days_until == 1:
-                    next_date_str += f" (Tomorrow)"
-                else:
-                    next_date_str += f" ({days_until} days)"
-            else:
-                next_date_str = "\nNo future appearances found"
-    
-            embed.add_field(
-                name=f"{emoji} {item_name}", 
-                value=f"{price} <:goldpoints:1319902464115343473>{next_date_str}", 
-                inline=False
-            )
-    
+        embed = self.final_embed()
         for user_id in self.user_preferences:
             try:
                 user = await self.bot.fetch_user(int(user_id))
                 if user:
                     await user.send(embed=embed)
-                    print("sending embed to dms...")
             except Exception as e:
-                print(f"Failed to send notification to user {user_id}: {e}")
-    
-    
-    
+                print(f"Failed to send final notice to user {user_id}: {e}")
+
 
     @daily_notification.before_loop
     async def before_daily_notification(self):
@@ -486,88 +376,14 @@ class TravellingMerchant(commands.Cog):
 
     @tasks.loop(time=time(hour=0, minute=5, second=5))
     async def daily_channel(self):
-        items = await self.get_merchant_stock()
-
-        if items == "removed":
-            embed = self.removed_embed()
-            for channel_id in self.subscribed_channels:
-                try:
-                    channel = self.bot.get_channel(int(channel_id))
-                    if channel:
-                        await channel.send(embed=embed)
-                except Exception as e:
-                    print(f"Failed to send removal notice to channel {channel_id}: {e}")
-            return
-
-        if not items:
-            embed = self.error_embed()
-            for channel_id in self.subscribed_channels:
-                try:
-                    channel = self.bot.get_channel(int(channel_id))
-                    if channel:
-                        await channel.send(embed=embed)
-                except Exception as e:
-                    print(f"Failed to send error notice to channel {channel_id}: {e}")
-            return
-
-        embed = discord.Embed(
-            title="Travelling Merchant's Stock",
-            description=f"*Written by* <@110927272210354176>\n\n{self.DEPRECATION_NOTE}",
-            color=discord.Color.gold(),
-            timestamp=datetime.now(pytz.UTC)
-        )
-        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1241642636796887171/1319813845585494087/logo.png")
-        embed.set_footer(text=f"Use ,merch to get daily notifications!")
-        
-        # Don't remove duplicates - merchant can have same item multiple times
-        for item_name, price in items:
-            emoji = self.item_emojis.get(item_name, self.item_emojis["default"])
-            
-            if item_name == "Uncharted island map (Deep Sea Fishing)":
-                embed.add_field(
-                    name=f"{emoji} {item_name}", 
-                    value=f"{price} <:goldpoints:1319902464115343473>", 
-                    inline=False
-                )
-                continue
-            
-            next_date = None
-            today = datetime.now(pytz.UTC).date()
-            
-            for date, daily_items in stock.items():
-                try:
-                    stock_date = datetime.strptime(date, '%d %B %Y').date()
-                    if stock_date > today and item_name in daily_items:
-                        if next_date is None or stock_date < next_date:
-                            next_date = stock_date
-                except ValueError as e:
-                    print(f"Error parsing date {date}: {e}")
-                    continue
-            
-            if next_date:
-                days_until = (next_date - today).days
-                next_date_str = f"\nNext appearance: {next_date.strftime('%d %B %Y')}"
-                if days_until == 1:
-                    next_date_str += f" (Tomorrow)"
-                else:
-                    next_date_str += f" ({days_until} days)"
-            else:
-                next_date_str = "\nNo future appearances found"
-
-            embed.add_field(
-                name=f"{emoji} {item_name}", 
-                value=f"{price} <:goldpoints:1319902464115343473>{next_date_str}", 
-                inline=False
-            )
-
+        embed = self.final_embed()
         for channel_id in self.subscribed_channels:
             try:
                 channel = self.bot.get_channel(int(channel_id))
                 if channel:
                     await channel.send(embed=embed)
-                    
             except Exception as e:
-                print(f"Failed to send notification to channel {channel_id}: {e}")
+                print(f"Failed to send final notice to channel {channel_id}: {e}")
 
     @commands.command(name="testmerchant")
     @commands.is_owner()
