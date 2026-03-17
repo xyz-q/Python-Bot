@@ -20,8 +20,8 @@ class TravellingMerchant(commands.Cog):
         self.load_preferences()
         self.load_cpreferences()
         self.subscribed_channels = {}
-        self.daily_notification.start()  
-        self.daily_channel.start()
+        # self.daily_notification.start()  # Disabled: Merchant discontinued
+        # self.daily_channel.start()  # Disabled: Merchant discontinued
         self.subscribed_channels = []
         self.load_subscribed_channels()  
         self.YOUR_USER_ID = 123456789012345678
