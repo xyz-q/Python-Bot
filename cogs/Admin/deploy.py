@@ -41,8 +41,8 @@ class Deploy(commands.Cog):
             if "AFTER=" in line:
                 after = line.split("=", 1)[1].strip()
 
-            if "CHANGED_FILES=" in line:
-                changed = line.replace("CHANGED_FILES=", "").split()
+            if line.startswith("CHANGED_FILES="):
+                changed = line.split("=", 1)[1].strip().split()
 
         embed = discord.Embed()
 
