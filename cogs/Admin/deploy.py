@@ -17,7 +17,7 @@ class Deploy(commands.Cog):
         await self.check_pending_deploy()
 
     async def check_pending_deploy(self):
-        """Loads the JSON file and updates the exact deployment message that was left hanging."""
+        """Loads the JSON file and updates the exact deployment message left hanging."""
         if not os.path.exists(STATE_FILE):
             return
 
@@ -25,24 +25,20 @@ class Deploy(commands.Cog):
             with open(STATE_FILE, "r") as f:
                 state = json.load(f)
 
-            # Immediately delete the file so it doesn't loop on future restarts
             os.remove(STATE_FILE)
 
-            # Wait for internal Discord caches to load completely
             await self.bot.wait_until_ready()
 
-            # Find the exact channel and message from the saved state data
             channel = await self.bot.fetch_channel(state["channel_id"])
             msg = await channel.fetch_message(state["message_id"])
             
             total_time = round(time.time() - state["start_time"], 2)
 
-            # Edit the original message to show the final successful status
             embed = discord.Embed(title="Deploy Report", color=discord.Color.green())
-            embed.add_field(name="status", value="UPDATED (ONLINE)", inline=False)
+            embed.add_field(name="status", value=state.get("status", "UPDATED (ONLINE)"), inline=False)
             embed.add_field(name="commit", value=f"`{state['before'][:7]}` -> `{state['after'][:7]}`", inline=False)
             
-            if state["changed"]:
+            if state.get("changed"):
                 embed.add_field(name="files changed", value="\n".join(state["changed"][:10]), inline=False)
             else:
                 embed.add_field(name="files changed", value="None", inline=False)
@@ -62,6 +58,11 @@ class Deploy(commands.Cog):
         start_time = time.time()
         msg = await ctx.send("Deploying...")
 
+        before = "unknown"
+        after = "unknown"
+        status = "UNKNOWN"
+        changed = []
+
         try:
             # 1. Execute the bash script
             process = await asyncio.create_subprocess_exec(
@@ -73,20 +74,20 @@ class Deploy(commands.Cog):
             stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=45.0)
             output = (stdout.decode() or "") + "\n" + (stderr.decode() or "")
             
-            before = "unknown"
-            after = "unknown"
-            status = "UNKNOWN"
-            changed = []
-
-            # 2. Fixed, bulletproof output parser using exact string values
+            # 2. Simplified un-crashable Key/Value parsing
             for line in output.splitlines():
                 line = line.strip()
-                if line.startswith("BEFORE="):
-                    before = line.split("BEFORE=", 1)[1]
-                elif line.startswith("AFTER="):
-                    after = line.split("AFTER=", 1)[1]
-                elif line.startswith("CHANGED_FILES="):
-                    changed = line.split("CHANGED_FILES=", 1)[1].split()
+                if "=" in line:
+                    parts = line.split("=", 1)
+                    key = parts[0]
+                    val = parts[1]
+                    
+                    if key == "BEFORE":
+                        before = val
+                    elif key == "AFTER":
+                        after = val
+                    elif key == "CHANGED_FILES":
+                        changed = val.split()
                 
                 if "NO_CHANGE" in line:
                     status = "NO_CHANGE"
@@ -103,36 +104,35 @@ class Deploy(commands.Cog):
                 embed.add_field(name="time", value=f"{round(time.time() - start_time, 2)}s", inline=False)
                 return await msg.edit(content=None, embed=embed)
 
-            # 4. Save the tracking state data into the JSON file
-            state_data = {
-                "channel_id": ctx.channel.id,
-                "message_id": msg.id,         # Remembers the exact message to edit later
-                "before": str(before),
-                "after": str(after),
-                "status": status,
-                "changed": changed,
-                "start_time": start_time
-            }
-            
-            with open(STATE_FILE, "w") as f:
-                json.dump(state_data, f, indent=4)
-
-            # 5. Flip the embed status to intermediate "RESTARTING"
-            embed = discord.Embed(title="Deploy Report", color=discord.Color.orange())
-            embed.add_field(name="status", value="RESTARTING (APPLYING CHANGES)", inline=False)
-            embed.add_field(name="commit", value=f"`{before[:7]}` -> `{after[:7]}`", inline=False)
-            embed.add_field(name="time", value=f"{round(time.time() - start_time, 2)}s", inline=False)
-            
-            await msg.edit(content=None, embed=embed)
-            
-            # Give Discord a brief window to process the network request before the bot drops offline
-            await asyncio.sleep(2.0)
-
-            # 6. Execute systemd process bounce
-            await asyncio.create_subprocess_exec("sudo", "/bin/systemctl", "restart", "discord-bot.service")
-
         except Exception as e:
-            return await msg.edit(content=f"ERROR: Execution failed: {e}")
+            # If parsing crashed, catch it, show the error, but FORCE the script to save the JSON anyway
+            status = f"PARSING_CRASH: {str(e)[:30]}"
+
+        # 4. Save the tracking state data into the JSON file (Moved outside of the parsing block)
+        state_data = {
+            "channel_id": ctx.channel.id,
+            "message_id": msg.id,
+            "before": str(before),
+            "after": str(after),
+            "status": status,
+            "changed": changed,
+            "start_time": start_time
+        }
+        
+        with open(STATE_FILE, "w") as f:
+            json.dump(state_data, f, indent=4)
+
+        # 5. Flip the embed status to intermediate "RESTARTING"
+        embed = discord.Embed(title="Deploy Report", color=discord.Color.orange())
+        embed.add_field(name="status", value="RESTARTING (APPLYING CHANGES)", inline=False)
+        embed.add_field(name="commit", value=f"`{str(before)[:7]}` -> `{str(after)[:7]}`", inline=False)
+        embed.add_field(name="time", value=f"{round(time.time() - start_time, 2)}s", inline=False)
+        
+        await msg.edit(content=None, embed=embed)
+        await asyncio.sleep(2.0)
+
+        # 6. Execute systemd process bounce
+        await asyncio.create_subprocess_exec("sudo", "/bin/systemctl", "restart", "discord-bot.service")
 
 async def setup(bot):
     await bot.add_cog(Deploy(bot))
