@@ -80,11 +80,12 @@ class Client(commands.Bot):
         await self.process_commands(message)
 
 client = Client()
-async def main():
-    async with client:
-        await client.start(DISCORD_TOKEN)
 
-asyncio.run(main())
+def run_bot():
+    client.run(DISCORD_TOKEN)
+
+if __name__ == "__main__":
+    run_bot()
 
 
 
