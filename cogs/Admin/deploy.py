@@ -2,10 +2,19 @@ import subprocess
 import discord
 from discord.ext import commands
 import time
+import asyncio
 
 class Deploy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    def run_deploy(self):
+        process = subprocess.run(
+            ["bash", "/home/matty0/bot/Python-Bot/deploy.sh"],
+            capture_output=True,
+            text=True
+        )
+        return process.stdout + "\n" + process.stderr
 
     @commands.command()
     async def deploy(self, ctx):
@@ -14,78 +23,47 @@ class Deploy(commands.Cog):
 
         start = time.time()
 
-        msg = await ctx.send("Deploying...")
+        msg = await ctx.send("running deploy...")
 
-        process = subprocess.run(
-            ["bash", "/home/matty0/bot/Python-Bot/deploy.sh"],
-            capture_output=True,
-            text=True
-        )
+        # 🔥 run in background thread so bot doesn't freeze
+        output = await asyncio.to_thread(self.run_deploy)
 
         duration = round(time.time() - start, 2)
-        output = (process.stdout or "") + "\n" + (process.stderr or "")
 
         before = None
         after = None
         changed = []
-        service_status = "unknown"
-        health = "unknown"
+        status = "unknown"
 
         for line in output.splitlines():
             if line.startswith("BEFORE="):
-                before = line.split("=", 1)[1].strip()
+                before = line.split("=", 1)[1]
 
             if line.startswith("AFTER="):
-                after = line.split("=", 1)[1].strip()
+                after = line.split("=", 1)[1]
 
             if line.startswith("CHANGED_FILES="):
-                changed = line.split("=", 1)[1].strip().split()
+                changed = line.split("=", 1)[1].split()
 
-            if "SERVICE_STATUS=" in line:
-                service_status = line.split("=", 1)[1].strip()
+            if "NO_CHANGE" in line:
+                status = "NO_CHANGE"
 
-            if "HEALTH=OK" in line:
-                health = "OK"
+            if "UPDATED" in line:
+                status = "UPDATED"
 
-            if "HEALTH=FAILED" in line:
-                health = "FAILED"
-
-        # fallback safety
         before = before or "unknown"
         after = after or "unknown"
 
-        if before == after:
-            status = "NO_CHANGE"
-        else:
-            status = "UPDATED"
-
         embed = discord.Embed(
-            title="Deploy Report",
-            color=discord.Color.green() if status == "UPDATED" else discord.Color.light_grey()
+            title="deploy",
+            color=discord.Color.green() if status == "UPDATED" else discord.Color.greyple()
         )
 
-        embed.add_field(name="Status", value=status, inline=False)
-        embed.add_field(name="Health Check", value=health, inline=False)
-        embed.add_field(name="Commit", value=f"`{before[:7]}` → `{after[:7]}`", inline=False)
+        embed.add_field(name="status", value=status, inline=False)
+        embed.add_field(name="commit", value=f"`{before[:7]}` → `{after[:7]}`", inline=False)
+        embed.add_field(name="time", value=f"{duration}s", inline=False)
 
-        embed.add_field(
-            name="Files Changed",
-            value="\n".join(changed[:10]) if changed else "None",
-            inline=False
-        )
-
-        embed.add_field(name="Service", value=service_status, inline=False)
-        embed.add_field(name="Time", value=f"{duration}s", inline=False)
-
-        if process.returncode != 0:
-            embed.add_field(
-                name="Error",
-                value=f"```{(process.stderr or 'no error output')[-1500:]}```",
-                inline=False
-            )
+        if changed:
+            embed.add_field(name="files changed", value="\n".join(changed[:10]), inline=False)
 
         await msg.edit(content=None, embed=embed)
-
-
-async def setup(bot):
-    await bot.add_cog(Deploy(bot))
