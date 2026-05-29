@@ -1,6 +1,7 @@
 import subprocess
 import discord
 from discord.ext import commands
+import time
 
 class Deploy(commands.Cog):
     def __init__(self, bot):
@@ -9,9 +10,11 @@ class Deploy(commands.Cog):
     @commands.command()
     async def deploy(self, ctx):
         if ctx.author.id != 110927272210354176:
-            return await ctx.send("no permission")
+            return
 
-        msg = await ctx.send("Deploying...")
+        start = time.time()
+
+        msg = await ctx.send("running deploy...")
 
         process = subprocess.run(
             ["bash", "/home/matty0/bot/Python-Bot/deploy.sh"],
@@ -19,45 +22,51 @@ class Deploy(commands.Cog):
             text=True
         )
 
+        duration = round(time.time() - start, 2)
+
         output = process.stdout + "\n" + process.stderr
 
-        # Parse useful info
-        status = "UNKNOWN"
-        before = None
-        after = None
+        status = "unknown"
+        before = "unknown"
+        after = "unknown"
         changed = []
 
         for line in output.splitlines():
             if "STATUS=" in line:
-                status = line.split("=",1)[1]
+                status = line.split("=", 1)[1].strip()
+
             if "BEFORE=" in line:
-                before = line.split("=",1)[1]
+                before = line.split("=", 1)[1].strip()
+
             if "AFTER=" in line:
-                after = line.split("=",1)[1]
+                after = line.split("=", 1)[1].strip()
+
             if "CHANGED_FILES=" in line:
                 changed = line.replace("CHANGED_FILES=", "").split()
 
-        color = discord.Color.green() if status == "SUCCESS" else discord.Color.red()
+        embed = discord.Embed()
 
-        embed = discord.Embed(
-            title="🚀 Bot Deployment",
-            description=f"Status: **{status}**",
-            color=color
-        )
+        embed.title = "deploy"
+        embed.color = discord.Color.green() if status == "SUCCESS" else discord.Color.red()
 
-        if before and after:
-            embed.add_field(name="Commit", value=f"`{before[:7]} → {after[:7]}`", inline=False)
+        embed.add_field(name="status", value=status, inline=False)
+        embed.add_field(name="commit", value=f"{before[:7]} → {after[:7]}", inline=False)
 
         if changed:
             embed.add_field(
-                name="Changed Files",
-                value="\n".join(changed[:10]) if changed else "None",
+                name="files changed",
+                value="\n".join(changed[:15]),
                 inline=False
             )
 
-        embed.set_footer(text="DL20 Deployment System")
+        embed.add_field(name="time", value=f"{duration}s", inline=False)
+
+        if process.returncode != 0:
+            err = (process.stderr or "no stderr").strip()
+            embed.add_field(name="error", value=f"```{err[-1500:]}```", inline=False)
 
         await msg.edit(content=None, embed=embed)
+
 
 async def setup(bot):
     await bot.add_cog(Deploy(bot))
