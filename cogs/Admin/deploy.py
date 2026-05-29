@@ -13,11 +13,9 @@ class Deploy(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Triggers automatically on boot to check for a pending deployment message."""
         await self.check_pending_deploy()
 
     async def check_pending_deploy(self):
-        """Loads the JSON file and updates the exact deployment message left hanging."""
         if not os.path.exists(STATE_FILE):
             return
 
@@ -26,12 +24,10 @@ class Deploy(commands.Cog):
                 state = json.load(f)
 
             os.remove(STATE_FILE)
-
             await self.bot.wait_until_ready()
 
             channel = await self.bot.fetch_channel(state["channel_id"])
             msg = await channel.fetch_message(state["message_id"])
-            
             total_time = round(time.time() - state["start_time"], 2)
 
             embed = discord.Embed(title="Deploy Report", color=discord.Color.green())
@@ -44,7 +40,6 @@ class Deploy(commands.Cog):
                 embed.add_field(name="files changed", value="None", inline=False)
                 
             embed.add_field(name="time", value=f"{total_time}s (Total Reload)", inline=False)
-
             await msg.edit(content=None, embed=embed)
 
         except Exception as e:
@@ -64,17 +59,19 @@ class Deploy(commands.Cog):
         changed = []
 
         try:
-            # 1. Execute the bash script
+            print("[Deploy Debug] Spawning bash subprocess...")
             process = await asyncio.create_subprocess_exec(
                 "bash", "/home/matty0/bot/Python-Bot/deploy.sh",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
 
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=45.0)
+            print("[Deploy Debug] Waiting for subprocess communication...")
+            # If the script hangs, this timeout WILL force it to move to the except block
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=20.0)
             output = (stdout.decode() or "") + "\n" + (stderr.decode() or "")
+            print(f"[Deploy Debug] Script output received:\n{output}")
             
-            # 2. Simplified un-crashable Key/Value parsing
             for line in output.splitlines():
                 line = line.strip()
                 if "=" in line:
@@ -94,21 +91,30 @@ class Deploy(commands.Cog):
                 elif "UPDATED" in line:
                     status = "UPDATED"
 
-            # 3. If there are no updates, finish right here without restarting
+            print(f"[Deploy Debug] Parsed values -> Status: {status}, Before: {before}, After: {after}")
+
             if status != "UPDATED":
+                print("[Deploy Debug] Status is not UPDATED. Editing message and stopping.")
                 embed_color = discord.Color.greyple() if status == "NO_CHANGE" else discord.Color.red()
                 embed = discord.Embed(title="Deploy Report", color=embed_color)
                 embed.add_field(name="status", value=status, inline=False)
                 embed.add_field(name="commit", value=f"`{before[:7]}` -> `{after[:7]}`", inline=False)
-                embed.add_field(name="files changed", value="None", inline=False)
                 embed.add_field(name="time", value=f"{round(time.time() - start_time, 2)}s", inline=False)
                 return await msg.edit(content=None, embed=embed)
 
+        except asyncio.TimeoutError:
+            print("[Deploy Debug] Subprocess execution timed out!")
+            status = "TIMEOUT_ERROR"
+            try:
+                process.kill()
+            except:
+                pass
+            return await msg.edit(content="ERROR: The deployment script hung and timed out after 20 seconds.")
         except Exception as e:
-            # If parsing crashed, catch it, show the error, but FORCE the script to save the JSON anyway
-            status = f"PARSING_CRASH: {str(e)[:30]}"
+            print(f"[Deploy Debug] Subprocess processing crashed: {e}")
+            status = f"PARSING_CRASH: {str(e)[:20]}"
 
-        # 4. Save the tracking state data into the JSON file (Moved outside of the parsing block)
+        print("[Deploy Debug] Creating JSON state file...")
         state_data = {
             "channel_id": ctx.channel.id,
             "message_id": msg.id,
@@ -121,8 +127,8 @@ class Deploy(commands.Cog):
         
         with open(STATE_FILE, "w") as f:
             json.dump(state_data, f, indent=4)
+        print("[Deploy Debug] JSON state file written successfully.")
 
-        # 5. Flip the embed status to intermediate "RESTARTING"
         embed = discord.Embed(title="Deploy Report", color=discord.Color.orange())
         embed.add_field(name="status", value="RESTARTING (APPLYING CHANGES)", inline=False)
         embed.add_field(name="commit", value=f"`{str(before)[:7]}` -> `{str(after)[:7]}`", inline=False)
@@ -131,7 +137,7 @@ class Deploy(commands.Cog):
         await msg.edit(content=None, embed=embed)
         await asyncio.sleep(2.0)
 
-        # 6. Execute systemd process bounce
+        print("[Deploy Debug] Executing systemctl service restart command...")
         await asyncio.create_subprocess_exec("sudo", "/bin/systemctl", "restart", "discord-bot.service")
 
 async def setup(bot):
