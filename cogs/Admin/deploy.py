@@ -9,14 +9,12 @@ class Deploy(commands.Cog):
 
     @commands.command()
     async def deploy(self, ctx):
-        # 1. Security check (Only your ID can run this)
         if ctx.author.id != 110927272210354176:
             return
 
         start = time.time()
         msg = await ctx.send("Deploying...")
 
-        # 2. Asynchronously execute bash script with a 45-second safety timeout
         try:
             process = await asyncio.create_subprocess_exec(
                 "bash", "/home/matty0/bot/Python-Bot/deploy.sh",
@@ -36,7 +34,6 @@ class Deploy(commands.Cog):
         except Exception as e:
             return await msg.edit(content=f"❌ **Error executing script:** {e}")
 
-        # 3. Parse Output Lines Cleanly
         before = None
         after = None
         status = "UNKNOWN"
@@ -49,9 +46,7 @@ class Deploy(commands.Cog):
             elif line.startswith("AFTER="):
                 after = line.split("=", 1)[1]
             elif line.startswith("CHANGED_FILES="):
-                parts = line.split("=", 1)
-                if len(parts) > 1:
-                    changed = parts[1].split()
+                changed = line.split("=", 1)[1].split()
             elif "NO_CHANGE" in line:
                 status = "NO_CHANGE"
             elif "UPDATED" in line:
@@ -62,7 +57,6 @@ class Deploy(commands.Cog):
         before = before or "unknown"
         after = after or "unknown"
 
-        # 4. Color setting based on status
         if status == "UPDATED":
             embed_color = discord.Color.green()
         elif status == "NO_CHANGE":
@@ -70,7 +64,6 @@ class Deploy(commands.Cog):
         else:
             embed_color = discord.Color.red()
 
-        # 5. Build and send Report Embed
         embed = discord.Embed(title="Deploy Report", color=embed_color)
         embed.add_field(name="status", value=status, inline=False)
         embed.add_field(name="commit", value=f"`{before[:7]}` → `{after[:7]}`", inline=False)
