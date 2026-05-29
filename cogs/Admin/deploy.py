@@ -91,7 +91,7 @@ class Deploy(commands.Cog):
             status = "UNKNOWN"
             changed = []
 
-            # FIXED: Added the critical [1] index values to pull actual strings, not list objects
+            # FIXED: Added indexers [1] to extract strings, allowing .split() to work correctly
             for line in output.splitlines():
                 line = line.strip()
                 if line.startswith("BEFORE="):
