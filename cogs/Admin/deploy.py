@@ -14,7 +14,7 @@ class Deploy(commands.Cog):
 
         start = time.time()
 
-        msg = await ctx.send("running deploy...")
+        msg = await ctx.send("Deploying...")
 
         process = subprocess.run(
             ["bash", "/home/matty0/bot/Python-Bot/deploy.sh"],
@@ -23,47 +23,66 @@ class Deploy(commands.Cog):
         )
 
         duration = round(time.time() - start, 2)
+        output = (process.stdout or "") + "\n" + (process.stderr or "")
 
-        output = process.stdout + "\n" + process.stderr
-
-        status = "unknown"
-        before = "unknown"
-        after = "unknown"
+        before = None
+        after = None
         changed = []
+        service_status = "unknown"
+        health = "unknown"
 
         for line in output.splitlines():
-            if "STATUS=" in line:
-                status = line.split("=", 1)[1].strip()
-
-            if "BEFORE=" in line:
+            if line.startswith("BEFORE="):
                 before = line.split("=", 1)[1].strip()
 
-            if "AFTER=" in line:
+            if line.startswith("AFTER="):
                 after = line.split("=", 1)[1].strip()
 
             if line.startswith("CHANGED_FILES="):
                 changed = line.split("=", 1)[1].strip().split()
 
-        embed = discord.Embed()
+            if "SERVICE_STATUS=" in line:
+                service_status = line.split("=", 1)[1].strip()
 
-        embed.title = "deploy"
-        embed.color = discord.Color.green() if status in ["UPDATED", "RESTARTED", "NO_CHANGE"] else discord.Color.red()
+            if "HEALTH=OK" in line:
+                health = "OK"
 
-        embed.add_field(name="status", value=status, inline=False)
-        embed.add_field(name="commit", value=f"{before[:7]} → {after[:7]}", inline=False)
+            if "HEALTH=FAILED" in line:
+                health = "FAILED"
 
-        if changed:
-            embed.add_field(
-                name="files changed",
-                value="\n".join(changed[:15]),
-                inline=False
-            )
+        # fallback safety
+        before = before or "unknown"
+        after = after or "unknown"
 
-        embed.add_field(name="time", value=f"{duration}s", inline=False)
+        if before == after:
+            status = "NO_CHANGE"
+        else:
+            status = "UPDATED"
+
+        embed = discord.Embed(
+            title="Deploy Report",
+            color=discord.Color.green() if status == "UPDATED" else discord.Color.light_grey()
+        )
+
+        embed.add_field(name="Status", value=status, inline=False)
+        embed.add_field(name="Health Check", value=health, inline=False)
+        embed.add_field(name="Commit", value=f"`{before[:7]}` → `{after[:7]}`", inline=False)
+
+        embed.add_field(
+            name="Files Changed",
+            value="\n".join(changed[:10]) if changed else "None",
+            inline=False
+        )
+
+        embed.add_field(name="Service", value=service_status, inline=False)
+        embed.add_field(name="Time", value=f"{duration}s", inline=False)
 
         if process.returncode != 0:
-            err = (process.stderr or "no stderr").strip()
-            embed.add_field(name="error", value=f"```{err[-1500:]}```", inline=False)
+            embed.add_field(
+                name="Error",
+                value=f"```{(process.stderr or 'no error output')[-1500:]}```",
+                inline=False
+            )
 
         await msg.edit(content=None, embed=embed)
 
