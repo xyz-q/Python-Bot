@@ -2,17 +2,60 @@ import discord
 from discord.ext import commands
 import asyncio
 import time
+import json
+import os
+
+STATE_FILE = "/home/matty0/bot/Python-Bot/deploy_state.json"
 
 class Deploy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Automatically checks for a pending deployment state on boot."""
+        await self.check_pending_deploy()
+
+    async def check_pending_deploy(self):
+        """Finalizes the deployment report after a successful systemd restart."""
+        if not os.path.exists(STATE_FILE):
+            return
+
+        try:
+            with open(STATE_FILE, "r") as f:
+                state = json.load(f)
+
+            os.remove(STATE_FILE)
+
+            channel = self.bot.get_channel(state["channel_id"])
+            if not channel:
+                channel = await self.bot.fetch_channel(state["channel_id"])
+            
+            msg = await channel.fetch_message(state["message_id"])
+            total_time = round(time.time() - state["start_time"], 2)
+
+            embed = discord.Embed(title="Deploy Report", color=discord.Color.green())
+            embed.add_field(name="status", value="UPDATED (ONLINE)", inline=False)
+            embed.add_field(name="commit", value=f"`{state['before'][:7]}` -> `{state['after'][:7]}`", inline=False)
+            
+            if state["changed"]:
+                embed.add_field(name="files changed", value="\n".join(state["changed"][:10]), inline=False)
+            else:
+                embed.add_field(name="files changed", value="None", inline=False)
+                
+            embed.add_field(name="time", value=f"{total_time}s (Total Reload)", inline=False)
+
+            await msg.edit(content=None, embed=embed)
+
+        except Exception as e:
+            print(f"[Deploy Error] Failed to resume deployment state: {e}")
 
     @commands.command()
     async def deploy(self, ctx):
         if ctx.author.id != 110927272210354176:
             return
 
-        start = time.time()
+        start_time = time.time()
         msg = await ctx.send("Deploying...")
 
         try:
@@ -30,9 +73,9 @@ class Deploy(commands.Cog):
                 process.kill()
             except:
                 pass
-            return await msg.edit(content="❌ **Deployment Timed Out!** The bash script hung for over 45 seconds.")
+            return await msg.edit(content="ERROR: Deployment Timed Out (Script exceeded 45 seconds).")
         except Exception as e:
-            return await msg.edit(content=f"❌ **Error executing script:** {e}")
+            return await msg.edit(content=f"ERROR: Execution failed: {e}")
 
         before = None
         after = None
@@ -46,7 +89,9 @@ class Deploy(commands.Cog):
             elif line.startswith("AFTER="):
                 after = line.split("=", 1)[1]
             elif line.startswith("CHANGED_FILES="):
-                changed = line.split("=", 1)[1].split()
+                parts = line.split("=", 1)
+                if len(parts) > 1:
+                    changed = parts[1].split()
             elif "NO_CHANGE" in line:
                 status = "NO_CHANGE"
             elif "UPDATED" in line:
@@ -57,25 +102,35 @@ class Deploy(commands.Cog):
         before = before or "unknown"
         after = after or "unknown"
 
-        if status == "UPDATED":
-            embed_color = discord.Color.green()
-        elif status == "NO_CHANGE":
-            embed_color = discord.Color.greyple()
-        else:
-            embed_color = discord.Color.red()
-
-        embed = discord.Embed(title="Deploy Report", color=embed_color)
-        embed.add_field(name="status", value=status, inline=False)
-        embed.add_field(name="commit", value=f"`{before[:7]}` → `{after[:7]}`", inline=False)
-        
-        if changed:
-            embed.add_field(name="files changed", value="\n".join(changed[:10]), inline=False)
-        else:
+        if status != "UPDATED":
+            embed_color = discord.Color.greyple() if status == "NO_CHANGE" else discord.Color.red()
+            embed = discord.Embed(title="Deploy Report", color=embed_color)
+            embed.add_field(name="status", value=status, inline=False)
+            embed.add_field(name="commit", value=f"`{before[:7]}` -> `{after[:7]}`", inline=False)
             embed.add_field(name="files changed", value="None", inline=False)
-            
-        embed.add_field(name="time", value=f"{round(time.time() - start, 2)}s", inline=False)
+            embed.add_field(name="time", value=f"{round(time.time() - start_time, 2)}s", inline=False)
+            return await msg.edit(content=None, embed=embed)
 
+        state_data = {
+            "channel_id": ctx.channel.id,
+            "message_id": msg.id,
+            "before": before,
+            "after": after,
+            "status": status,
+            "changed": changed,
+            "start_time": start_time
+        }
+        
+        with open(STATE_FILE, "w") as f:
+            json.dump(state_data, f, indent=4)
+
+        embed = discord.Embed(title="Deploy Report", color=discord.Color.orange())
+        embed.add_field(name="status", value="RESTARTING (APPLYING CHANGES)", inline=False)
+        embed.add_field(name="commit", value=f"`{before[:7]}` -> `{after[:7]}`", inline=False)
+        embed.add_field(name="time", value=f"{round(time.time() - start_time, 2)}s", inline=False)
         await msg.edit(content=None, embed=embed)
+
+        await asyncio.create_subprocess_exec("sudo", "/bin/systemctl", "restart", "discord-bot.service")
 
 async def setup(bot):
     await bot.add_cog(Deploy(bot))
