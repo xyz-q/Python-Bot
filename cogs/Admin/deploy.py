@@ -13,45 +13,31 @@ class Deploy(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Triggers automatically on boot to check for a pending deployment message."""
-        await self.check_pending_deploy()
-
-    async def check_pending_deploy(self):
-        """Loads the JSON file and updates the exact deployment message left hanging."""
+        """Attempts to recover context on boot with explicit console error logging."""
         if not os.path.exists(STATE_FILE):
             return
 
+        print("[DEPLOY LOG] State file found on boot. Attempting recovery...")
         try:
             with open(STATE_FILE, "r") as f:
                 state = json.load(f)
 
-            # Immediately delete the state file to prevent boot loops
             os.remove(STATE_FILE)
-
-            # Force the bot to wait until its channel cache is fully available
             await self.bot.wait_until_ready()
 
-            channel = await self.bot.fetch_channel(state["channel_id"])
-            msg = await channel.fetch_message(state["message_id"])
-            
-            total_time = round(time.time() - state["start_time"], 2)
+            channel = await self.bot.fetch_channel(int(state["channel_id"]))
+            msg = await channel.fetch_message(int(state["message_id"]))
+            total_time = round(time.time() - float(state["start_time"]), 2)
 
-            # Finalize the report card to green
             embed = discord.Embed(title="Deploy Report", color=discord.Color.green())
             embed.add_field(name="status", value="UPDATED (ONLINE)", inline=False)
-            embed.add_field(name="commit", value=f"`{state['before'][:7]}` -> `{state['after'][:7]}`", inline=False)
-            
-            if state["changed"]:
-                embed.add_field(name="files changed", value="\n".join(state["changed"][:10]), inline=False)
-            else:
-                embed.add_field(name="files changed", value="None", inline=False)
-                
             embed.add_field(name="time", value=f"{total_time}s (Total Reload)", inline=False)
 
             await msg.edit(content=None, embed=embed)
+            print("[DEPLOY LOG] Discord message updated successfully post-restart.")
 
         except Exception as e:
-            print(f"[Deploy Error] Failed to resume deployment state: {e}")
+            print(f"[DEPLOY CRASH] Failure inside on_ready recovery loop: {e}")
 
     @commands.command()
     async def deploy(self, ctx):
@@ -61,78 +47,52 @@ class Deploy(commands.Cog):
         start_time = time.time()
         msg = await ctx.send("Deploying...")
 
-        before = "unknown"
-        after = "unknown"
-        status = "UNKNOWN"
-        changed = []
-
+        # 1. Execute the bash script with an explicit timeout error catch
         try:
-            # 1. Fire off the subprocess bash script
             process = await asyncio.create_subprocess_exec(
                 "bash", "/home/matty0/bot/Python-Bot/deploy.sh",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30.0)
-            output = (stdout.decode() or "") + "\n" + (stderr.decode() or "")
-            
-            # 2. Bulletproof String Processing Engine (No array splits that cause index errors)
-            for line in output.splitlines():
-                line = line.strip()
-                if line.startswith("BEFORE="):
-                    before = line.replace("BEFORE=", "", 1)
-                elif line.startswith("AFTER="):
-                    after = line.replace("AFTER=", "", 1)
-                elif line.startswith("CHANGED_FILES="):
-                    changed = line.replace("CHANGED_FILES=", "", 1).split()
-                
-                if "NO_CHANGE" in line:
-                    status = "NO_CHANGE"
-                elif "UPDATED" in line:
-                    status = "UPDATED"
-
-            # 3. Handle early terminations immediately if no changes are detected
-            if status != "UPDATED":
-                embed_color = discord.Color.greyple() if status == "NO_CHANGE" else discord.Color.red()
-                embed = discord.Embed(title="Deploy Report", color=embed_color)
-                embed.add_field(name="status", value=status, inline=False)
-                embed.add_field(name="commit", value=f"`{before[:7]}` -> `{after[:7]}`", inline=False)
-                embed.add_field(name="files changed", value="None", inline=False)
-                embed.add_field(name="time", value=f"{round(time.time() - start_time, 2)}s", inline=False)
-                return await msg.edit(content=None, embed=embed)
-
+            await asyncio.wait_for(process.communicate(), timeout=30.0)
+        except asyncio.TimeoutError:
+            try:
+                process.kill()
+            except:
+                pass
+            return await msg.edit(content="❌ ERROR: The deployment script timed out after 30 seconds.")
         except Exception as e:
-            # If the subprocess engine throws any kind of unexpected fault, report it cleanly
-            return await msg.edit(content=f"ERROR: Framework execution failed: {e}")
+            return await msg.edit(content=f"❌ ERROR: Subprocess failed to execute: {e}")
 
-        # 4. Save tracking state configuration data down to disk space
-        state_data = {
-            "channel_id": ctx.channel.id,
-            "message_id": msg.id,
-            "before": str(before),
-            "after": str(after),
-            "status": status,
-            "changed": changed,
-            "start_time": start_time
-        }
-        
-        with open(STATE_FILE, "w") as f:
-            json.dump(state_data, f, indent=4)
+        # 2. Try writing the JSON state file with explicit error reporting to Discord
+        try:
+            state_data = {
+                "channel_id": int(ctx.channel.id),
+                "message_id": int(msg.id),
+                "start_time": float(start_time)
+            }
+            with open(STATE_FILE, "w") as f:
+                json.dump(state_data, f, indent=4)
+        except Exception as json_err:
+            return await msg.edit(content=f"❌ ERROR: Failed writing JSON file to disk: {json_err}")
 
-        # 5. Shift embed profile layout to orange pending state
-        embed = discord.Embed(title="Deploy Report", color=discord.Color.orange())
-        embed.add_field(name="status", value="RESTARTING (APPLYING CHANGES)", inline=False)
-        embed.add_field(name="commit", value=f"`{str(before)[:7]}` -> `{str(after)[:7]}`", inline=False)
-        embed.add_field(name="time", value=f"{round(time.time() - start_time, 2)}s", inline=False)
+        # 3. Transition message to orange state
+        try:
+            embed = discord.Embed(title="Deploy Report", color=discord.Color.orange())
+            embed.add_field(name="status", value="RESTARTING (APPLYING CHANGES)", inline=False)
+            embed.add_field(name="time", value=f"{round(time.time() - start_time, 2)}s", inline=False)
+            await msg.edit(content=None, embed=embed)
+        except Exception as embed_err:
+            return await ctx.send(f"❌ ERROR: Failed sending intermediate embed: {embed_err}")
         
-        await msg.edit(content=None, embed=embed)
-        
-        # Buffer packet release delay
+        # Pause to let the network packet clear before systemd kills the process
         await asyncio.sleep(2.0)
 
-        # 6. Issue systemctl background instance restart invocation
-        await asyncio.create_subprocess_exec("sudo", "/bin/systemctl", "restart", "discord-bot.service")
+        # 4. Trigger the background systemctl restart invocation
+        try:
+            await asyncio.create_subprocess_exec("sudo", "/bin/systemctl", "restart", "discord-bot.service")
+        except Exception as service_err:
+            return await ctx.send(f"❌ ERROR: Failed triggering systemctl restart: service_err")
 
 async def setup(bot):
     await bot.add_cog(Deploy(bot))
