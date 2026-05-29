@@ -14,6 +14,8 @@ class Deploy(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """Automatically checks for a pending deployment state on boot."""
+        # Critical Fix: Force the bot to fully log in and load its cache before proceeding
+        await self.bot.wait_until_ready()
         await self.check_pending_deploy()
 
     async def check_pending_deploy(self):
@@ -25,10 +27,10 @@ class Deploy(commands.Cog):
             with open(STATE_FILE, "r") as f:
                 state = json.load(f)
 
-            # Clean up the state file immediately
+            # Clean up the file so it doesn't trigger on accidental restarts
             os.remove(STATE_FILE)
 
-            # Resolve the original Discord context
+            # Fetch channel safely from the fully loaded cache
             channel = self.bot.get_channel(state["channel_id"])
             if not channel:
                 channel = await self.bot.fetch_channel(state["channel_id"])
@@ -36,7 +38,7 @@ class Deploy(commands.Cog):
             msg = await channel.fetch_message(state["message_id"])
             total_time = round(time.time() - state["start_time"], 2)
 
-            # Build the final success report
+            # Update the original message with the final report
             embed = discord.Embed(title="Deploy Report", color=discord.Color.green())
             embed.add_field(name="status", value="UPDATED (ONLINE)", inline=False)
             embed.add_field(name="commit", value=f"`{state['before'][:7]}` -> `{state['after'][:7]}`", inline=False)
@@ -62,7 +64,6 @@ class Deploy(commands.Cog):
         msg = await ctx.send("Deploying...")
 
         try:
-            # 1. Run the background deployment shell script
             process = await asyncio.create_subprocess_exec(
                 "bash", "/home/matty0/bot/Python-Bot/deploy.sh",
                 stdout=asyncio.subprocess.PIPE,
@@ -77,7 +78,6 @@ class Deploy(commands.Cog):
             status = "UNKNOWN"
             changed = []
 
-            # 2. Parse output strings (FIXED: Restored correct [1] indexers)
             for line in output.splitlines():
                 line = line.strip()
                 if line.startswith("BEFORE="):
@@ -96,7 +96,6 @@ class Deploy(commands.Cog):
             before = before or "unknown"
             after = after or "unknown"
 
-            # 3. Handle non-updating states immediately without restarting
             if status != "UPDATED":
                 embed_color = discord.Color.greyple() if status == "NO_CHANGE" else discord.Color.red()
                 embed = discord.Embed(title="Deploy Report", color=embed_color)
@@ -106,7 +105,6 @@ class Deploy(commands.Cog):
                 embed.add_field(name="time", value=f"{round(time.time() - start_time, 2)}s", inline=False)
                 return await msg.edit(content=None, embed=embed)
 
-            # 4. Save clean serialization state data
             state_data = {
                 "channel_id": ctx.channel.id,
                 "message_id": msg.id,
@@ -120,17 +118,14 @@ class Deploy(commands.Cog):
             with open(STATE_FILE, "w") as f:
                 json.dump(state_data, f, indent=4)
 
-            # 5. Output intermediate status card
             embed = discord.Embed(title="Deploy Report", color=discord.Color.orange())
             embed.add_field(name="status", value="RESTARTING (APPLYING CHANGES)", inline=False)
             embed.add_field(name="commit", value=f"`{before[:7]}` -> `{after[:7]}`", inline=False)
             embed.add_field(name="time", value=f"{round(time.time() - start_time, 2)}s", inline=False)
-            await msg.edit(content=None, embed=embed)
             
-            # Network clear buffer
+            await msg.edit(content=None, embed=embed)
             await asyncio.sleep(2.0)
 
-            # 6. Issue systemd background flush restart
             await asyncio.create_subprocess_exec("sudo", "/bin/systemctl", "restart", "discord-bot.service")
 
         except asyncio.TimeoutError:
