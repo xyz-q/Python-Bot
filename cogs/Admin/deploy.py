@@ -78,14 +78,14 @@ class Deploy(commands.Cog):
             status = "UNKNOWN"
             changed = []
 
-            # 2. Bulletproof output parser
+            # 2. Fixed, bulletproof output parser using exact string values
             for line in output.splitlines():
                 line = line.strip()
-                if "BEFORE=" in line:
+                if line.startswith("BEFORE="):
                     before = line.split("BEFORE=", 1)[1]
-                elif "AFTER=" in line:
+                elif line.startswith("AFTER="):
                     after = line.split("AFTER=", 1)[1]
-                elif "CHANGED_FILES=" in line:
+                elif line.startswith("CHANGED_FILES="):
                     changed = line.split("CHANGED_FILES=", 1)[1].split()
                 
                 if "NO_CHANGE" in line:
