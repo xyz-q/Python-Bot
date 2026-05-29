@@ -47,7 +47,7 @@ class Deploy(commands.Cog):
         embed = discord.Embed()
 
         embed.title = "deploy"
-        embed.color = discord.Color.green() if status == "SUCCESS" else discord.Color.red()
+        embed.color = discord.Color.green() if status in ["UPDATED", "RESTARTED", "NO_CHANGE"] else discord.Color.red()
 
         embed.add_field(name="status", value=status, inline=False)
         embed.add_field(name="commit", value=f"{before[:7]} → {after[:7]}", inline=False)
