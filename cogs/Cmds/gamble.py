@@ -2364,9 +2364,9 @@ class Economy(commands.Cog):
                 def check_special_flowers(hand_values, flowers_display):
                     for value, flower in zip(hand_values, flowers_display):
                         if value == 69:
-                            return "win", f"**WHITE FLOWER!** Instant Win! 💰\n", discord.Color.green()
+                            return "win", f"**WHITE FLOWER!** Instant Win! <a:MUGA:1178140574570790954>\n", discord.Color.green()
                         elif value == 420:
-                            return "loss", "**BLACK FLOWER!** House Wins! 💀", discord.Color.red()
+                            return "loss", "**BLACK FLOWER!** House Wins! <a:xdd:1221066292631568456>", discord.Color.red()
                     return None, None, None
 
                 result, message, color = check_special_flowers(player_hand, player_flowers)
