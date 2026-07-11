@@ -55,20 +55,31 @@ class CS2Updates(commands.Cog):
         seen = seen[-self.max_seen_gids:]
         self.save_last_update({'seen_gids': seen, 'gid': gid})
     
+    def clean_contents(self, raw_contents: str) -> str:
+        """Convert Steam's HTML/BBCode line breaks into newlines, then strip remaining tags"""
+        import re
+        text = raw_contents
+        text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'</li>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'<li[^>]*>', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'</p>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'\[\*\]', '\n', text)
+        text = re.sub(r'\[/?list[^\]]*\]', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'<[^<]+?>', '', text)
+        return text
+
     def format_changelog(self, raw_text: str) -> str:
         """Format raw changelog text into readable sections"""
-        import re
-        # Clean HTML entities
-        text = raw_text.replace('&quot;', '"').replace('&#39;', "'").replace('\\', '')
+        text = raw_text.replace('&quot;', '"').replace('&#39;', "'").replace('&amp;', '&').replace('\\', '')
         
-        # Split by periods and clean
-        items = [item.strip() for item in text.split('.') if item.strip() and len(item.strip()) > 5]
+        # Split by line breaks (each bullet is its own line after clean_contents)
+        raw_items = [line.strip() for line in text.split('\n')]
+        items = [item for item in raw_items if item and len(item) > 3]
         
         formatted = "**Counter-Strike 2 Update**\n\n**[ GAMEPLAY ]**\n\n"
         
         for item in items:
-            if item:
-                formatted += f"• {item}\n\n"
+            formatted += f"• {item}\n\n"
         
         return formatted.strip()
 
@@ -111,8 +122,7 @@ class CS2Updates(commands.Cog):
             url = patch_item.get('url', '')
             
             # Clean up content
-            import re
-            clean_content = re.sub('<[^<]+?>', '', contents)
+            clean_content = self.clean_contents(contents)
             formatted_content = self.format_changelog(clean_content)
             
             if len(formatted_content) > 4000:
@@ -238,8 +248,7 @@ class CS2Updates(commands.Cog):
         date = datetime.fromtimestamp(patch_item.get('date', 0))
         url = patch_item.get('url', '')
         
-        import re
-        clean_content = re.sub('<[^<]+?>', '', contents)
+        clean_content = self.clean_contents(contents)
         formatted_content = self.format_changelog(clean_content)
         
         if len(formatted_content) > 4000:
