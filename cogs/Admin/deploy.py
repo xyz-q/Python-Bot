@@ -4,6 +4,7 @@ import asyncio
 import time
 import json
 import os
+import signal
 
 STATE_FILE = "/home/matty0/bot/Python-Bot/deploy_state.json"
 REPO_DIR = "/home/matty0/bot/Python-Bot"
@@ -45,6 +46,7 @@ async def get_git_commit():
 class Deploy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.deploy_lock = asyncio.Lock()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -97,6 +99,19 @@ class Deploy(commands.Cog):
             )
             return await ctx.send(embed=embed)
 
+        if self.deploy_lock.locked():
+            embed = build_embed(
+                status="Already running",
+                description="A deploy is already in progress. Wait for it to finish before running another.",
+                color=discord.Color.red()
+            )
+            return await ctx.send(embed=embed)
+
+        async with self.deploy_lock:
+            await self._run_deploy(ctx)
+
+    async def _run_deploy(self, ctx):
+
         start_time = time.time()
         commit_before = await get_git_commit()
         embed = build_embed(
@@ -110,13 +125,18 @@ class Deploy(commands.Cog):
         try:
             process = await asyncio.create_subprocess_exec(
                 "bash", "/home/matty0/bot/Python-Bot/deploy.sh",
+                stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
+                start_new_session=True
             )
             stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30.0)
         except asyncio.TimeoutError:
             try:
-                process.kill()
+                # Kill the whole process group, not just the top-level bash PID -
+                # otherwise anything deploy.sh spawned (npm, pip, git) is left
+                # running orphaned and can jam up the next deploy attempt.
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
             except Exception:
                 pass
             embed = build_embed(
