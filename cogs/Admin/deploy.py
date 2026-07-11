@@ -90,7 +90,12 @@ class Deploy(commands.Cog):
     @commands.command()
     async def deploy(self, ctx):
         if ctx.author.id != OWNER_ID:
-            return
+            embed = build_embed(
+                status="Not authorized",
+                description="Only the bot owner can run this command.",
+                color=discord.Color.red()
+            )
+            return await ctx.send(embed=embed)
 
         start_time = time.time()
         commit_before = await get_git_commit()
