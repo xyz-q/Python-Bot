@@ -6,6 +6,7 @@ import json
 import os
 
 STATE_FILE = "/home/matty0/bot/Python-Bot/deploy_state.json"
+REPO_DIR = "/home/matty0/bot/Python-Bot"
 OWNER_ID = 110927272210354176
 
 
@@ -22,6 +23,23 @@ def build_embed(status, description, color, fields=None, footer_extra=None):
     footer = "Deploy System" + (f" · {footer_extra}" if footer_extra else "")
     embed.set_footer(text=footer)
     return embed
+
+
+async def get_git_commit():
+    """Returns the current short commit hash for REPO_DIR, or None on failure"""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git", "rev-parse", "--short", "HEAD",
+            cwd=REPO_DIR,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=5.0)
+        if proc.returncode == 0:
+            return out.decode(errors="ignore").strip()
+    except Exception:
+        pass
+    return None
 
 
 class Deploy(commands.Cog):
@@ -51,7 +69,10 @@ class Deploy(commands.Cog):
                 status="Online",
                 description="Deployment complete. Bot has restarted successfully.",
                 color=discord.Color.green(),
-                fields=[("Total time", f"{total_time}s", True)]
+                fields=[
+                    ("Git", state.get("git_status", "Unknown"), True),
+                    ("Total time", f"{total_time}s", True)
+                ]
             )
 
             await msg.edit(content=None, embed=embed)
@@ -72,6 +93,7 @@ class Deploy(commands.Cog):
             return
 
         start_time = time.time()
+        commit_before = await get_git_commit()
         embed = build_embed(
             status="Running deploy script",
             description="Pulling latest changes and installing updates.",
@@ -124,11 +146,19 @@ class Deploy(commands.Cog):
             return await msg.edit(content=None, embed=embed)
 
         # 3. Write the state file so on_ready can pick this up post-restart
+        commit_after = await get_git_commit()
+        git_changed = bool(commit_before and commit_after and commit_before != commit_after)
+        if commit_before and commit_after:
+            git_status = f"Updated ({commit_before} → {commit_after})" if git_changed else f"No changes ({commit_after})"
+        else:
+            git_status = "Unknown (couldn't read git commit)"
+
         try:
             state_data = {
                 "channel_id": int(ctx.channel.id),
                 "message_id": int(msg.id),
-                "start_time": float(start_time)
+                "start_time": float(start_time),
+                "git_status": git_status
             }
             with open(STATE_FILE, "w") as f:
                 json.dump(state_data, f, indent=4)
@@ -147,7 +177,10 @@ class Deploy(commands.Cog):
                 status="Restarting service",
                 description="Script completed successfully. Restarting the bot process now.",
                 color=discord.Color.orange(),
-                fields=[("Elapsed", f"{round(time.time() - start_time, 2)}s", True)]
+                fields=[
+                    ("Git", git_status, True),
+                    ("Elapsed", f"{round(time.time() - start_time, 2)}s", True)
+                ]
             )
             await msg.edit(content=None, embed=embed)
         except Exception as embed_err:

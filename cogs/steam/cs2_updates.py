@@ -5,6 +5,7 @@ import feedparser
 from datetime import datetime
 import json
 import os
+import re
 
 class CS2Updates(commands.Cog):
     def __init__(self, bot):
@@ -57,7 +58,6 @@ class CS2Updates(commands.Cog):
     
     def clean_contents(self, raw_contents: str) -> str:
         """Convert Steam's HTML/BBCode line breaks into newlines, then strip remaining tags"""
-        import re
         text = raw_contents
         text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
         text = re.sub(r'</li>', '\n', text, flags=re.IGNORECASE)
@@ -72,9 +72,21 @@ class CS2Updates(commands.Cog):
         """Format raw changelog text into readable sections"""
         text = raw_text.replace('&quot;', '"').replace('&#39;', "'").replace('&amp;', '&').replace('\\', '')
         
-        # Split by line breaks (each bullet is its own line after clean_contents)
-        raw_items = [line.strip() for line in text.split('\n')]
-        items = [item for item in raw_items if item and len(item) > 3]
+        # Some posts use <br>/list markup (already split into lines by clean_contents).
+        # Others are plain run-on sentences with no separators at all - periods
+        # sometimes with no space before the next capitalized sentence. Split on
+        # both to cover each style.
+        lines = text.split('\n')
+        items = []
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            sentences = re.split(r'\.\s*(?=[A-Z])', line)
+            for sentence in sentences:
+                sentence = sentence.strip().rstrip('.').strip()
+                if sentence and len(sentence) > 3:
+                    items.append(sentence)
         
         formatted = "**Counter-Strike 2 Update**\n\n**[ GAMEPLAY ]**\n\n"
         
