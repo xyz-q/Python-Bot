@@ -19,6 +19,7 @@ class Deploy(commands.Cog):
             return
 
         print("[DEPLOY LOG] State file found on boot. Attempting recovery...")
+        state = None
         try:
             with open(STATE_FILE, "r") as f:
                 state = json.load(f)
@@ -45,6 +46,12 @@ class Deploy(commands.Cog):
 
         except Exception as e:
             print(f"[DEPLOY CRASH] Failure inside on_ready recovery loop: {e}")
+            if state:
+                try:
+                    channel = await self.bot.fetch_channel(int(state["channel_id"]))
+                    await channel.send(f"⚠️ Bot restarted, but couldn't update the deploy message: {e}")
+                except Exception:
+                    pass
 
     @commands.command()
     async def deploy(self, ctx):
@@ -143,11 +150,45 @@ class Deploy(commands.Cog):
         # Pause to let the network packet clear before systemd kills the process
         await asyncio.sleep(2.0)
 
-        # 5. Trigger the background systemctl restart invocation
+        # 5. Trigger the systemctl restart and verify it was actually accepted
         try:
-            await asyncio.create_subprocess_exec("sudo", "/bin/systemctl", "restart", "discord-bot.service")
+            proc = await asyncio.create_subprocess_exec(
+                "sudo", "/bin/systemctl", "restart", "discord-bot.service",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            try:
+                # If the restart actually succeeds, systemd kills this process
+                # partway through this wait and none of the code below runs.
+                # We only get here if the restart command failed fast (bad perms, etc).
+                out, err = await asyncio.wait_for(proc.communicate(), timeout=10.0)
+                if proc.returncode != 0:
+                    if os.path.exists(STATE_FILE):
+                        os.remove(STATE_FILE)
+                    error_output = (err.decode(errors="ignore") or out.decode(errors="ignore") or "Unknown error").strip()
+                    embed = discord.Embed(
+                        title="🚀 Deploy Report",
+                        description="Restart command was rejected. Bot is still running the old process.",
+                        color=discord.Color.red(),
+                        timestamp=discord.utils.utcnow()
+                    )
+                    embed.add_field(name="Status", value=f"❌ systemctl exit code {proc.returncode}", inline=False)
+                    embed.add_field(name="Output", value=f"```{error_output[-1000:]}```", inline=False)
+                    await msg.edit(content=None, embed=embed)
+            except asyncio.TimeoutError:
+                # Taking a while to stop/start is normal, on_ready will finish the report
+                pass
         except Exception as service_err:
-            return await ctx.send(f"❌ ERROR: Failed triggering systemctl restart: {service_err}")
+            if os.path.exists(STATE_FILE):
+                os.remove(STATE_FILE)
+            embed = discord.Embed(
+                title="🚀 Deploy Report",
+                description="Failed to trigger the restart.",
+                color=discord.Color.red(),
+                timestamp=discord.utils.utcnow()
+            )
+            embed.add_field(name="Status", value=f"❌ {service_err}", inline=False)
+            return await msg.edit(content=None, embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Deploy(bot))
