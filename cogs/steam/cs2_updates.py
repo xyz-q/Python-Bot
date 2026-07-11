@@ -13,6 +13,7 @@ class CS2Updates(commands.Cog):
         self.steam_news_url = f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={self.cs2_app_id}&count=5&maxlength=8000&format=json"
         self.notifications_file = ".json/cs2_notifications.json"
         self.last_update_file = ".json/cs2_last_update.json"
+        self.max_seen_gids = 20
         self.check_updates.start()
     
     def cog_unload(self):
@@ -32,13 +33,27 @@ class CS2Updates(commands.Cog):
     def load_last_update(self):
         if os.path.exists(self.last_update_file):
             with open(self.last_update_file, 'r') as f:
-                return json.load(f)
-        return {}
+                data = json.load(f)
+                # migrate old single-gid format
+                if 'gid' in data and 'seen_gids' not in data:
+                    data['seen_gids'] = [data['gid']] if data['gid'] else []
+                if 'seen_gids' not in data:
+                    data['seen_gids'] = []
+                return data
+        return {'seen_gids': []}
     
     def save_last_update(self, data):
         os.makedirs(os.path.dirname(self.last_update_file), exist_ok=True)
         with open(self.last_update_file, 'w') as f:
             json.dump(data, f)
+    
+    def mark_gid_seen(self, gid):
+        data = self.load_last_update()
+        seen = data.get('seen_gids', [])
+        if gid not in seen:
+            seen.append(gid)
+        seen = seen[-self.max_seen_gids:]
+        self.save_last_update({'seen_gids': seen, 'gid': gid})
     
     def format_changelog(self, raw_text: str) -> str:
         """Format raw changelog text into readable sections"""
@@ -57,6 +72,17 @@ class CS2Updates(commands.Cog):
         
         return formatted.strip()
 
+    def pick_patch_item(self, newsitems):
+        """Pick the newest item whose title matches patch keywords"""
+        patch_keywords = ['update', 'patch', 'release', 'notes', 'changelog']
+        candidates = [
+            item for item in newsitems
+            if any(k in item.get('title', '').lower() for k in patch_keywords)
+        ]
+        if not candidates:
+            return newsitems[0] if newsitems else None
+        return max(candidates, key=lambda i: i.get('date', 0))
+
     @commands.command(aliases=['cs2patch', 'cs2update'])
     async def cs2updates(self, ctx):
         """Get the latest CS2 patch notes from Steam"""
@@ -73,18 +99,11 @@ class CS2Updates(commands.Cog):
                 await ctx.send("❌ No CS2 updates found.")
                 return
 
-            # Filter for patch notes/updates (not just any news)
-            patch_keywords = ['update', 'patch', 'release', 'notes', 'changelog']
-            patch_item = None
-            
-            for item in data['appnews']['newsitems']:
-                title = item.get('title', '').lower()
-                if any(keyword in title for keyword in patch_keywords):
-                    patch_item = item
-                    break
+            patch_item = self.pick_patch_item(data['appnews']['newsitems'])
             
             if not patch_item:
-                patch_item = data['appnews']['newsitems'][0]  # Fallback to latest
+                await ctx.send("❌ No CS2 updates found.")
+                return
 
             title = patch_item.get('title', 'No Title')
             contents = patch_item.get('contents', 'No content available')
@@ -143,7 +162,7 @@ class CS2Updates(commands.Cog):
                 async with session.get(self.steam_news_url) as response:
                     data = await response.json()
             
-            patch_item = data['appnews']['newsitems'][0]
+            patch_item = self.pick_patch_item(data['appnews']['newsitems'])
             await self.send_notifications(patch_item)
             await ctx.send("✅ Test notification sent to all subscribed users!")
         except Exception as e:
@@ -158,6 +177,7 @@ class CS2Updates(commands.Cog):
         
         embed = discord.Embed(title="CS2 Update Status", color=0xF7931E)
         embed.add_field(name="Last Update ID", value=last_update.get('gid', 'None'), inline=False)
+        embed.add_field(name="Seen GIDs", value=len(last_update.get('seen_gids', [])), inline=False)
         embed.add_field(name="Subscribers", value=len(notifications), inline=False)
         
         await ctx.send(embed=embed)
@@ -165,12 +185,12 @@ class CS2Updates(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def cs2clear(self, ctx):
-        """Clear last update ID to reset tracking"""
+        """Clear last update tracking to reset"""
         if os.path.exists(self.last_update_file):
             os.remove(self.last_update_file)
         await ctx.send("✅ CS2 update tracking cleared. Next check will treat current update as new.")
     
-    @tasks.loop(minutes=1)
+    @tasks.loop(minutes=30)
     async def check_updates(self):
         """Check for new CS2 updates every 30 minutes"""
         try:
@@ -183,33 +203,21 @@ class CS2Updates(commands.Cog):
             if not data.get('appnews', {}).get('newsitems'):
                 return
             
-            # Get latest patch
-            patch_keywords = ['update', 'patch', 'release', 'notes', 'changelog']
-            patch_item = None
-            
-            for item in data['appnews']['newsitems']:
-                title = item.get('title', '').lower()
-                if any(keyword in title for keyword in patch_keywords):
-                    patch_item = item
-                    break
-            
+            patch_item = self.pick_patch_item(data['appnews']['newsitems'])
             if not patch_item:
-                patch_item = data['appnews']['newsitems'][0]
+                return
             
-            # Check if this is a new update
-            last_update = self.load_last_update()
             current_update_id = patch_item.get('gid', '')
+            last_update = self.load_last_update()
             
-            if last_update.get('gid') != current_update_id:
+            if current_update_id and current_update_id not in last_update.get('seen_gids', []):
                 # Save immediately to prevent duplicate sends
-                self.save_last_update({'gid': current_update_id})
+                self.mark_gid_seen(current_update_id)
                 
-                # Check if this update is actually new (within last 24 hours)
                 update_time = datetime.fromtimestamp(patch_item.get('date', 0))
                 time_diff = datetime.now() - update_time
                 
                 if time_diff.total_seconds() < 86400:  # 24 hours
-                    # New update found, send notifications
                     await self.send_notifications(patch_item)
                 
         except Exception as e:
