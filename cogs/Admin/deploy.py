@@ -8,6 +8,22 @@ import os
 STATE_FILE = "/home/matty0/bot/Python-Bot/deploy_state.json"
 OWNER_ID = 110927272210354176
 
+
+def build_embed(status, description, color, fields=None, footer_extra=None):
+    embed = discord.Embed(
+        title="Deploy Report",
+        description=description,
+        color=color,
+        timestamp=discord.utils.utcnow()
+    )
+    embed.add_field(name="Status", value=status, inline=False)
+    for name, value, inline in (fields or []):
+        embed.add_field(name=name, value=value, inline=inline)
+    footer = "Deploy System" + (f" · {footer_extra}" if footer_extra else "")
+    embed.set_footer(text=footer)
+    return embed
+
+
 class Deploy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -31,15 +47,12 @@ class Deploy(commands.Cog):
             msg = await channel.fetch_message(int(state["message_id"]))
             total_time = round(time.time() - float(state["start_time"]), 2)
 
-            embed = discord.Embed(
-                title="🚀 Deploy Report",
-                description="Bot came back online successfully.",
+            embed = build_embed(
+                status="Online",
+                description="Deployment complete. Bot has restarted successfully.",
                 color=discord.Color.green(),
-                timestamp=discord.utils.utcnow()
+                fields=[("Total time", f"{total_time}s", True)]
             )
-            embed.add_field(name="Status", value="✅ Updated & Online", inline=True)
-            embed.add_field(name="Total Time", value=f"{total_time}s", inline=True)
-            embed.set_footer(text="Deploy System")
 
             await msg.edit(content=None, embed=embed)
             print("[DEPLOY LOG] Discord message updated successfully post-restart.")
@@ -49,7 +62,7 @@ class Deploy(commands.Cog):
             if state:
                 try:
                     channel = await self.bot.fetch_channel(int(state["channel_id"]))
-                    await channel.send(f"⚠️ Bot restarted, but couldn't update the deploy message: {e}")
+                    await channel.send(f"Bot restarted, but the deploy message couldn't be updated: {e}")
                 except Exception:
                     pass
 
@@ -59,13 +72,11 @@ class Deploy(commands.Cog):
             return
 
         start_time = time.time()
-        embed = discord.Embed(
-            title="🚀 Deploy Report",
-            description="Running deploy script...",
-            color=discord.Color.blurple(),
-            timestamp=discord.utils.utcnow()
+        embed = build_embed(
+            status="Running deploy script",
+            description="Pulling latest changes and installing updates.",
+            color=discord.Color.blurple()
         )
-        embed.add_field(name="Status", value="⏳ Deploying", inline=False)
         msg = await ctx.send(embed=embed)
 
         # 1. Execute the bash script and check its exit code
@@ -81,22 +92,19 @@ class Deploy(commands.Cog):
                 process.kill()
             except Exception:
                 pass
-            embed = discord.Embed(
-                title="🚀 Deploy Report",
-                description="Deploy script timed out.",
-                color=discord.Color.red(),
-                timestamp=discord.utils.utcnow()
+            embed = build_embed(
+                status="Timed out",
+                description="The deploy script did not finish within 30 seconds.",
+                color=discord.Color.red()
             )
-            embed.add_field(name="Status", value="❌ Timed out after 30s", inline=False)
             return await msg.edit(content=None, embed=embed)
         except Exception as e:
-            embed = discord.Embed(
-                title="🚀 Deploy Report",
-                description="Failed to launch deploy script.",
+            embed = build_embed(
+                status="Failed to launch",
+                description="The deploy script could not be started.",
                 color=discord.Color.red(),
-                timestamp=discord.utils.utcnow()
+                fields=[("Error", str(e), False)]
             )
-            embed.add_field(name="Status", value=f"❌ {e}", inline=False)
             return await msg.edit(content=None, embed=embed)
 
         # 2. Abort if the script itself failed - do NOT restart into broken code
@@ -104,14 +112,15 @@ class Deploy(commands.Cog):
             error_output = (stderr.decode(errors="ignore") or stdout.decode(errors="ignore") or "No output").strip()
             if len(error_output) > 1000:
                 error_output = error_output[-1000:]
-            embed = discord.Embed(
-                title="🚀 Deploy Report",
-                description="Deploy script exited with an error. Restart aborted.",
+            embed = build_embed(
+                status="Script error — restart aborted",
+                description="The deploy script exited with an error, so the restart was skipped.",
                 color=discord.Color.red(),
-                timestamp=discord.utils.utcnow()
+                fields=[
+                    ("Exit code", str(process.returncode), True),
+                    ("Output", f"```{error_output}```", False)
+                ]
             )
-            embed.add_field(name="Status", value=f"❌ Exit code {process.returncode}", inline=False)
-            embed.add_field(name="Output", value=f"```{error_output}```", inline=False)
             return await msg.edit(content=None, embed=embed)
 
         # 3. Write the state file so on_ready can pick this up post-restart
@@ -124,28 +133,25 @@ class Deploy(commands.Cog):
             with open(STATE_FILE, "w") as f:
                 json.dump(state_data, f, indent=4)
         except Exception as json_err:
-            embed = discord.Embed(
-                title="🚀 Deploy Report",
-                description="Script succeeded but failed to persist restart state.",
+            embed = build_embed(
+                status="Failed to save restart state",
+                description="The script ran successfully, but the restart could not be tracked.",
                 color=discord.Color.red(),
-                timestamp=discord.utils.utcnow()
+                fields=[("Error", str(json_err), False)]
             )
-            embed.add_field(name="Status", value=f"❌ {json_err}", inline=False)
             return await msg.edit(content=None, embed=embed)
 
         # 4. Transition message to "restarting" state
         try:
-            embed = discord.Embed(
-                title="🚀 Deploy Report",
-                description="Script succeeded, restarting service now...",
+            embed = build_embed(
+                status="Restarting service",
+                description="Script completed successfully. Restarting the bot process now.",
                 color=discord.Color.orange(),
-                timestamp=discord.utils.utcnow()
+                fields=[("Elapsed", f"{round(time.time() - start_time, 2)}s", True)]
             )
-            embed.add_field(name="Status", value="🔄 Restarting", inline=True)
-            embed.add_field(name="Elapsed", value=f"{round(time.time() - start_time, 2)}s", inline=True)
             await msg.edit(content=None, embed=embed)
         except Exception as embed_err:
-            return await ctx.send(f"❌ ERROR: Failed sending intermediate embed: {embed_err}")
+            return await ctx.send(f"Failed to update the deploy message: {embed_err}")
 
         # Pause to let the network packet clear before systemd kills the process
         await asyncio.sleep(2.0)
@@ -166,14 +172,15 @@ class Deploy(commands.Cog):
                     if os.path.exists(STATE_FILE):
                         os.remove(STATE_FILE)
                     error_output = (err.decode(errors="ignore") or out.decode(errors="ignore") or "Unknown error").strip()
-                    embed = discord.Embed(
-                        title="🚀 Deploy Report",
-                        description="Restart command was rejected. Bot is still running the old process.",
+                    embed = build_embed(
+                        status="Restart rejected",
+                        description="The restart command was rejected. The bot is still running the old process.",
                         color=discord.Color.red(),
-                        timestamp=discord.utils.utcnow()
+                        fields=[
+                            ("systemctl exit code", str(proc.returncode), True),
+                            ("Output", f"```{error_output[-1000:]}```", False)
+                        ]
                     )
-                    embed.add_field(name="Status", value=f"❌ systemctl exit code {proc.returncode}", inline=False)
-                    embed.add_field(name="Output", value=f"```{error_output[-1000:]}```", inline=False)
                     await msg.edit(content=None, embed=embed)
             except asyncio.TimeoutError:
                 # Taking a while to stop/start is normal, on_ready will finish the report
@@ -181,14 +188,14 @@ class Deploy(commands.Cog):
         except Exception as service_err:
             if os.path.exists(STATE_FILE):
                 os.remove(STATE_FILE)
-            embed = discord.Embed(
-                title="🚀 Deploy Report",
-                description="Failed to trigger the restart.",
+            embed = build_embed(
+                status="Failed to trigger restart",
+                description="The restart command could not be run.",
                 color=discord.Color.red(),
-                timestamp=discord.utils.utcnow()
+                fields=[("Error", str(service_err), False)]
             )
-            embed.add_field(name="Status", value=f"❌ {service_err}", inline=False)
             return await msg.edit(content=None, embed=embed)
+
 
 async def setup(bot):
     await bot.add_cog(Deploy(bot))
