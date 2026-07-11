@@ -153,7 +153,7 @@ class Deploy(commands.Cog):
         # 5. Trigger the systemctl restart and verify it was actually accepted
         try:
             proc = await asyncio.create_subprocess_exec(
-                "sudo", "/bin/systemctl", "restart", "discord-bot.service",
+                "sudo", "/bin/systemctl", "restart", "discord-bot.service", "--no-block",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
