@@ -344,17 +344,17 @@ class VoSCog(commands.Cog):
 
 
                         if should_update:
+                            # Create new embed and file
                             new_embed, new_file = self.create_vos_embed(vos_data)
 
+                            
+                            # Delete old VoS message if it exists
                             if vos_message:
-                                if new_file:
-                                    # districts changed / went from stale back to fresh — new image needed
-                                    await vos_message.edit(embed=new_embed, attachments=[new_file])
-                                else:
-                                    # going stale, or staying stale — no attachment change needed
-                                    await vos_message.edit(embed=new_embed)
-                            else:
-                                await channel.send(file=new_file, embed=new_embed)
+                                await vos_message.delete()
+
+                            
+                            # Send new VoS message
+                            await channel.send(file=new_file, embed=new_embed)
 
                             # Update announcement time if districts changed
                             if current_districts != self.last_districts:
