@@ -20,6 +20,7 @@ class SystemEvents(commands.Cog):
         self.status_channel_id = None
         self._load_status_message_id()
         self.connection_monitor.start()
+        self.channel_cleanup.start()
 
     def _load_status_message_id(self):
         try:
@@ -402,6 +403,26 @@ class SystemEvents(commands.Cog):
         except Exception as e:
             await ctx.send(f"Error during test: {str(e)}")
 
+    @tasks.loop(minutes=5)
+    async def channel_cleanup(self):
+        try:
+            channel = await self._get_status_channel()
+            if not channel or not self.status_message_id:
+                return
+            async for msg in channel.history(limit=100):
+                if msg.id != self.status_message_id:
+                    try:
+                        await msg.delete()
+                        await asyncio.sleep(0.5)
+                    except (discord.Forbidden, discord.NotFound):
+                        pass
+        except Exception as e:
+            print(f"\033[91mError in channel cleanup: {e}\033[0m")
+
+    @channel_cleanup.before_loop
+    async def before_channel_cleanup(self):
+        await self.bot.wait_until_ready()
+
     @tasks.loop(minutes=1)
     async def connection_monitor(self):
         try:
@@ -425,6 +446,7 @@ class SystemEvents(commands.Cog):
 
     def cog_unload(self):
         self.connection_monitor.cancel()
+        self.channel_cleanup.cancel()
 
     @commands.Cog.listener()
     async def on_error(self, event, *args, **kwargs):
