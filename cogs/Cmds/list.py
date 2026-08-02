@@ -3,348 +3,166 @@ import discord
 import asyncio
 
 commands_list = [
-    # kill.py > AdminCog
-    (",kill", "KILLS THE BOT [restricted command]"),
-    
-    # admincmds.py > AdminCommands
-    (",audit <#>", "Displays audit logs"),
-    (",autodelete", "Toggles the bot's autodelete function"),
-    (",hello", "Hello world command"),
-    (",kick <@user(s)> <reason>", "Kicks the user(s) from the server"),
-    (",kill2", "Alternative bot termination command [restricted]"),
-    (",ping", "Ping command - Test if the bot is responsive- displays the latency from the bot to the server"),
-    
-    # alchables.py > Alchables
-    (",alchables", "Displays best high alch items based on wiki data by volume"),
-    
-    # publish.py > AutoPublish
-    (",checkpublish", "Check publishing configuration for current channel"),
-    (",cleanup_status", "Check the status of the cleanup task"),
-    (",publish", "Start auto-publishing messages in the current channel"),
-    (",publishing", "Check which channels have auto-publishing enabled"),
-    (",set_cleanup_interval <minutes>", "Set the cleanup task interval in minutes"),
-    (",stoppublish", "Stop auto-publishing messages in the current channel"),
-    (",toggle_cleanup", "Toggle the automatic cleanup task"),
-    
-    # ban.py > BanSystem
-    (",ban <@member> <reason> <delete_messages>", "Ban a member from the server"),
-    
-    # gamblebj.py > Blackjack
-    (",blackjack <amount>", "Play blackjack with betting"),
-    
-    # blacklist.py > Blacklist
-    (",blacklist <@user>", "Add or remove user from blacklist"),
-    
-    # bosscmd.py > BossDrops
-    (",add_drops", "Interactive command to add boss drops"),
-    (",simulate <boss_name> <kill_count>", "Simulate kills for a given boss"),
-    
-    # bugreport.py > BugReport
-    (",bugreport", "Open the bug report form"),
-    (",viewbugs", "View all bug reports [owner only]"),
-    
-    # cs2_updates.py > CS2Updates
-    (",cs2clear", "Clear last update ID to reset tracking [owner only]"),
-    (",cs2notify", "Toggle CS2 update notifications in DMs"),
-    (",cs2status", "Check CS2 update tracking status [owner only]"),
-    (",cs2updates", "Get the latest CS2 patch notes from Steam"),
-    (",testcs2dm", "Test CS2 update DM notification [owner only]"),
-    
-    # chatcmds.py > ChatCommands
-    (",mock <@user>", "Toggle mocking of target user"),
-    (",purge <limit> <#channel>", "Delete messages in channel, default is 10"),
-    (",say <#channel> 'TEXT'", "Makes the bot chat the desired text in specified channel"),
-    
-    # checkhtml.py > CheckHTML
-    (",checkhtml <url> <search_term>", "Check HTML structure of any website"),
-    
-    # cogs.py > CogLister
-    (",listcogs", "Lists all cogs"),
-    
-    # coinflip.py > CoinFlip
-    (",coinflip", "Flip a coin - heads or tails"),
-    
-    # compare_commands.py > CommandComparison
-    (",compare", "Compare actual commands with hardcoded list"),
-    
-    # cooldown.py > CommandLock
-    (",another_task", "Another task command"),
-    (",long_task", "Long running task command"),
-    
-    # commandstats.py > CommandStats
-    (",mystats", "Display your command usage statistics"),
-    
-    # dms.py > DMCommands
-    (",dm <@user> <message>", "Send a message to target user"),
-    (",dms <@user>", "Show the bot's DMs with a user"),
-    
-    # downtime.py > DowntimeCog
-    (",downtime", "Check bot downtime information"),
-    
-    # gamble.py > Economy
     (",accept", "Accept a trade or transaction"),
     (",add <amount>", "Add currency to account"),
+    (",add_drops", "Interactive command to add boss drops"),
+    (",addgz", "Add gz entry"),
+    (",addlevel <@user> <amount>", "Add levels to user"),
+    (",addrole <@user> <@role>", "Add role to user"),
+    (",addspeciallevel <@user> <level>", "Add special level to user"),
+    (",afk", "Toggle AFK status"),
+    (",ai", "AI command"),
+    (",alerts", "View your RS3 price alerts"),
+    (",alchables", "Displays best high alch items"),
+    (",alllevels", "Display all user levels"),
+    (",another_task", "Another task command"),
+    (",audit <#>", "Displays audit logs"),
+    (",avatar <@user>", "Display user's avatar"),
     (",balance", "Check your balance"),
     (",balancelist", "List all user balances"),
-    (",clearcurrency", "Clear all currency data"),
-    (",cleartransactions", "Clear transaction history"),
-    (",flower", "Flower poker gambling game"),
-    (",housestats", "Display house gambling statistics"),
-    (",limits", "Show gambling limits"),
-    (",pvpflip", "PvP coin flip gambling"),
-    (",remove <amount>", "Remove currency from account"),
-    (",resetstats", "Reset gambling statistics"),
-    (",setbalance <amount>", "Set account balance"),
-    (",slots", "Play slot machine"),
-    (",staking", "Staking gambling game"),
-    (",stats", "Display gambling statistics"),
-    (",transactions", "View transaction history"),
-    (",transfer <@user> <amount>", "Transfer currency to another user"),
-    (",vault", "Access your vault"),
-    
-    # elynotify.py > ElyNotify
-    (",alerts", "View your RS3 price alerts"),
-    (",myalerts", "Display user's alerts"),
-    (",notify <item> <price> <h/l>", "Set price alert for RS3 item"),
-    (",removealert <item>", "Remove alert for specific item"),
-    
-    # emoji.py > EmojiCommands
-    (",emoji", "Get details of an emoji"),
-    (",emojiadd <link>", "Create an emoji from link"),
-    (",emojiremove <name>", "Delete an emoji"),
-    (",emojis", "List server emojis"),
-    
-    # errortest.py > ErrorTest
-    (",attribute_error", "Test attribute error"),
-    (",check_fail", "Test check failure"),
-    (",divide_by_zero", "Test division by zero error"),
-    (",index_error", "Test index error"),
-    (",key_error", "Test key error"),
-    (",permission_error", "Test permission error"),
-    (",type_error", "Test type error"),
-    (",value_error", "Test value error"),
-    
-    # firstseen.py > FirstSeen
-    (",firstseen <@user>", "Check when user was first seen"),
-    (",setfirstseen <@user>", "Set first seen date for user"),
-    
-    # gambletickets.py > GambleSystem
-    (",deposit <amount>", "Deposit currency into gambling system"),
-    ("/ticket", "Create a support ticket"),
-    (",withdraw <amount>", "Withdraw currency from gambling system"),
-    
-    # heartbeat.py > HeartbeatCog
-    (",starthb", "Start heartbeat monitoring"),
-    (",stophb", "Stop heartbeat monitoring"),
-    
-    # housetotal.py > HouseProfits
-    (",houseprofits", "Display house profit statistics"),
-    
-    # devlist.py > InfoCog
-    (",devlist", "List all available commands"),
-    
-    # invite.py > InviteCommand
-    (",invite", "Get bot invite link"),
-    
-    # levels.py > LevelSystem
-    (",addlevel <@user> <amount>", "Add levels to user"),
-    (",addspeciallevel <@user> <level>", "Add special level to user"),
-    (",alllevels", "Display all user levels"),
-    (",assignspecial <@user> <level>", "Assign special level to user"),
-    (",level <@user>", "Check user's level"),
-    (",levels", "Display level leaderboard"),
-    (",removespecial <@user>", "Remove special level from user"),
-    (",showspecials", "Show all special levels"),
-    
-    # links.py > LinksCog
-    (",links", "Display bot links"),
-    
-    # list.py > ListCog
-    (",list", "Display this command list"),
-    
-    # logs.py > LogManager
-    (",clearoldlogs", "Clear old log files"),
-    (",logstatus", "Check logging status"),
-    (",searchlog <query>", "Search through log files"),
-    (",setstatuschannel <#channel>", "Set status update channel"),
-    
-    # maintenance.py > Maintenance
-    (",maintenance", "Toggle maintenance mode"),
-    (",resetname", "Reset bot name"),
-    
-    # deepseamerchfuture.py > MerchantUpdater
-    (",stockupdate", "Update merchant stock information"),
-    
-    # ServerMessageReader.py > MessageReader
-    (",messages", "Read server messages"),
-    
-    # mp3.py > Mp3
-    (",mp3 <filename>", "Play MP3 file"),
-    (",mp3list", "List available MP3 files"),
-    (",stop", "Stop audio playback"),
-    
-    # volume.py > MusicCommands
-    (",volume <1-100>", "Set bot volume"),
-    
-    # notificationalerts.py > NotificationSystem
-    (",clearnotification", "Clear notifications"),
-    (",inspect_embed", "Inspect embed structure"),
-    (",notification", "Send notification"),
-    (",setnotification", "Set up notifications"),
-    
-    # ownertest.py > OwnerTest
-    (",testowner", "Test owner permissions"),
-    (",whoowner", "Display bot owner"),
-    
-    # ely.py > PriceChecker
-    (",recent", "Check recent RS3 item prices"),
-    
-    # profile.py > Profile
-    (",profile <@user>", "Display user profile"),
-    
-    # react.py > ReactionCog
-    (",react <emoji>", "Add reaction to message"),
-    
-    # rolecmds.py > RoleCmds
-    (",addrole <@user> <@role>", "Add role to user"),
-    (",removerole <@user> <@role>", "Remove role from user"),
-    (",role <@user> <@role>", "Toggle role for user"),
-    (",roles", "List server roles"),
-    
-    # viewroles.py > RoleViewer
-    (",myaccess", "View your access permissions"),
-    (",viewroles", "View all server roles"),
-    
-    # security.py > SecurityCamera
-    (",reset_camera", "Reset security camera"),
-    
-    # ServerInfo.py > ServerInfo
-    (",channellist", "List all server channels"),
-    (",serverlist", "List all servers bot is in"),
-    
-    # Invitation.py > ServerInvite
-    (",checkinvites", "Check server invites"),
-    (",inviteserver", "Create server invite"),
-    
-    # leaveserver.py > ServerManagement
-    (",leaveserver", "Leave current server"),
-    
-    # servermembers.py > ServerMembers
-    (",servermembers", "List server members"),
-    
-    # servervoice.py > ServerVoiceJoin
-    (",leavevc", "Leave voice channel"),
-    (",serverjoin", "Join server voice channel"),
-    (",voiceinfo", "Display voice channel info"),
-    
-    # elyimage.py > SetImage
-    (",setimage", "Set profile image"),
-    
-    # stalk.py > Stalk
-    (",stalk <@user>", "Stalk specified user"),
-    (",stalkstatus", "Check stalking status"),
-    (",stopstalk", "Stop stalking user"),
-    
-    # botstats.py > Statistics
+    (",ban <@member> <reason> <delete_messages>", "Ban a member"),
+    (",blackjack <amount>", "Play blackjack"),
+    (",blacklist <@user>", "Add or remove user from blacklist"),
     (",botstats", "Display bot statistics"),
-    (",resetuptime", "Reset uptime counter"),
-    
-    # statuscmds.py > StatusCommands
+    (",bugreport", "Open the bug report form"),
+    (",channellist", "List all server channels"),
+    (",check_fail", "Test check failure"),
+    (",checkhtml <url> <search_term>", "Check HTML structure"),
+    (",checkinvites", "Check server invites"),
+    (",checkpublish", "Check publishing configuration"),
+    (",clearnotification", "Clear notifications"),
+    (",clearcurrency", "Clear all currency data"),
+    (",clearoldlogs", "Clear old log files"),
+    (",clearq", "Clear YouTube queue"),
+    (",cleartransactions", "Clear transaction history"),
+    (",clearrs3drops", "Clear RS3 drops"),
+    (",cleanup_status", "Check cleanup task status"),
+    (",client", "Client info"),
+    (",coinflip", "Flip a coin"),
+    (",compare", "Compare actual commands with hardcoded list"),
+    (",cs2clear", "Clear CS2 update ID"),
+    (",cs2notify", "Toggle CS2 update notifications"),
+    (",cs2status", "Check CS2 tracking status"),
+    (",cs2updates", "Get latest CS2 patch notes"),
+    (",deafen <@user>", "Deafen user"),
+    (",deploy", "Deploy command"),
+    (",deposit <amount>", "Deposit currency"),
+    (",disconnect <@user>", "Disconnect user from voice"),
+    (",dm <@user> <message>", "Send DM"),
+    (",dms <@user>", "Show bot's DMs with a user"),
     (",dnd", "Set bot status to Do Not Disturb"),
-    (",offline", "Set bot status to Offline"),
-    (",online", "Set bot status to Online"),
+    (",downtime", "Check bot downtime"),
+    (",drag <@user>", "Move user to your voice channel"),
+    (",emoji", "Get emoji details"),
+    (",emojiadd <link>", "Create emoji"),
+    (",emojiremove <name>", "Delete emoji"),
+    (",emojis", "List server emojis"),
+    (",flower", "Flower poker"),
+    (",forcevos", "Force Voice of Seren update"),
+    (",gather <#channel>", "Move all users to voice channel"),
+    (",hello", "Hello world"),
+    (",housestats", "Display house gambling stats"),
+    (",houseprofits", "Display house profit statistics"),
+    (",index_error", "Test index error"),
+    (",inspect_embed", "Inspect embed structure"),
+    (",invite", "Get bot invite link"),
+    (",inviteserver", "Create server invite"),
+    (",join <channel>", "Join voice channel"),
+    (",kick <@user(s)> <reason>", "Kick user(s)"),
+    (",kill", "Kill bot"),
+    (",leaveserver", "Leave current server"),
+    (",leavevc", "Leave voice channel"),
+    (",level <@user>", "Check user level"),
+    (",levels", "Display level leaderboard"),
+    (",limits", "Show gambling limits"),
+    (",list", "Display command list"),
+    (",listcogs", "List all cogs"),
+    (",logstatus", "Check logging status"),
+    (",long_task", "Long running task"),
+    (",maintenance", "Toggle maintenance mode"),
+    (",messages", "Read server messages"),
+    (",mock <@user>", "Toggle mocking"),
+    (",mp3 <filename>", "Play MP3"),
+    (",mp3list", "List MP3 files"),
+    (",mystats", "Display your command usage stats"),
+    (",myaccess", "View your access permissions"),
+    (",myalerts", "Display your alerts"),
+    (",names <@user>", "Get old nicknames"),
+    (",nickname <name>", "Set your nickname"),
+    (",notification", "Send notification"),
+    (",notify <item> <price> <h/l>", "Set RS3 price alert"),
+    (",offline", "Set bot offline"),
+    (",online", "Set bot online"),
+    (",osrsclog", "OSRS clog"),
+    (",osrsclogclear", "Clear OSRS clog"),
+    (",osrsclogview", "View OSRS clog"),
+    (",ping", "Ping command"),
+    (",play <URL/Search>", "Play YouTube music"),
+    (",profile <@user>", "Display user profile"),
+    (",publish", "Start auto-publishing"),
+    (",publishing", "Check auto-publishing channels"),
+    (",purge <limit> <#channel>", "Delete messages"),
+    (",pvpflip", "PvP coin flip"),
+    (",q", "Show YouTube queue"),
+    (",react <emoji>", "Add reaction"),
+    (",recent", "Check recent RS3 prices"),
+    (",removerole <@user> <@role>", "Remove role"),
+    (",remove <amount>", "Remove currency"),
+    (",removealert <item>", "Remove RS3 alert"),
+    (",removegz", "Remove gz entry"),
+    (",resetname", "Reset bot name"),
     (",resetstatus", "Reset bot status"),
+    (",resetstats", "Reset gambling stats"),
+    (",resetuptime", "Reset uptime counter"),
+    (",role <@user> <@role>", "Toggle role"),
+    (",roles", "List server roles"),
+    (",say <#channel> 'TEXT'", "Bot says text"),
+    (",searchlog <query>", "Search log files"),
+    (",serverjoin", "Join server voice channel"),
+    (",serverlist", "List servers"),
+    (",servermembers", "List server members"),
+    (",setbalance <amount>", "Set balance"),
+    (",set_cleanup_interval <minutes>", "Set cleanup interval"),
+    (",setfirstseen <@user>", "Set first seen date"),
+    (",setimage", "Set profile image"),
+    (",setnotification", "Set up notifications"),
     (",setstatus <type> <status>", "Set custom bot status"),
-    
-    # sync.py > Sync
+    (",simulate <boss_name> <kill_count>", "Simulate boss kills"),
+    (",slots", "Slot machine"),
+    (",stalk <@user>", "Stalk user"),
+    (",stalkstatus", "Check stalking status"),
+    (",startauto", "Start Twitch auto updates"),
+    (",starthb", "Start heartbeat"),
+    (",stats", "Display gambling stats"),
+    (",stockupdate", "Update merchant stock"),
+    (",stop", "Stop audio"),
+    (",stopauto", "Stop Twitch auto updates"),
+    (",stopstalk", "Stop stalking"),
+    (",stophb", "Stop heartbeat"),
+    (",stoppublish", "Stop auto-publishing"),
+    (",sysinfo", "Display system info"),
     (",sync", "Sync slash commands"),
-    
-    # syncguild.py > SyncGuild
-    (",clearcache", "Clear guild cache"),
     (",syncguild", "Sync guild data"),
-    
-    # sysevents.py > SystemEvents
     (",testsys", "Test system events"),
-    
-    # sysinfo.py > SystemMonitor
-    (",sysinfo", "Display system information"),
-    
-    # tts.py > TextToSpeech
-    (",tts <text>", "Text to speech in voice channel"),
-    
-    # timeout.py > Timeout
-    (",timeout <@user> <duration> <reason>", "Timeout a user"),
-    (",untimeout <@user>", "Remove timeout from user"),
-    
-    # deepseamerch.py > TravellingMerchant
-    (",addchannel", "Add channel to merchant notifications"),
-    (",listemoji", "List available emojis"),
-    (",listsubscribed", "List subscribed channels"),
-    (",merch", "Check travelling merchant"),
-    (",merchusers", "List merchant subscribers"),
-    (",sendmerch", "Send merchant update"),
-    (",stock", "Check merchant stock"),
-    (",testmerchant", "Test merchant functionality"),
-    (",unaddchannel", "Remove channel from merchant notifications"),
-    
-    # ttv.py > Twitch
+    (",timeout <@user> <duration> <reason>", "Timeout user"),
+    (",transfer <@user> <amount>", "Transfer currency"),
+    (",tts <text>", "Text to speech"),
     (",ttv", "Twitch command"),
     (",ttvlist", "List Twitch streams"),
     (",ttvsort", "Sort Twitch streams"),
-    
-    # twitchbot.py > TwitchCog
-    (",autostate", "Toggle auto state updates"),
-    (",startauto", "Start automatic updates"),
-    (",stopauto", "Stop automatic updates"),
-    (",twitchconfig", "Configure Twitch settings"),
-    
-    # updateely.py > UpdateEly
-    (",testdaily", "Test daily update"),
+    (",untimeout <@user>", "Remove timeout"),
     (",updateely", "Update Ely data"),
-    
-    # uptime.py > Uptime
-    (",uptime", "Display bot uptime"),
-    
-    # usercmds.py > UserCommands
-    (",afk", "Toggle AFK status"),
-    (",avatar <@user>", "Display user's avatar"),
-    (",names <@user>", "Get old nicknames of user"),
-    (",nickname <name>", "Set your nickname"),
-    (",user <@user>", "Display user information"),
-    
-    # vip.py > VIPSystem
-    (",vip", "VIP system commands"),
-    
-    # voiceofseren.py > VoSCog
-    (",addvos", "Add Voice of Seren"),
-    (",forcevos", "Force Voice of Seren update"),
-    (",removevos", "Remove Voice of Seren"),
-    (",test_vos", "Test Voice of Seren"),
+    (",uptime", "Display uptime"),
+    (",user <@user>", "Display user info"),
+    (",vault", "Access vault"),
+    (",viewbugs", "View bug reports"),
+    (",viewroles", "View all roles"),
     (",vos", "Check Voice of Seren"),
-    
-    # voicecmds.py > VoiceCommands
-    (",deafen <@user>", "Deafen user in voice channel"),
-    (",disconnect <@user>", "Disconnect user from voice channel"),
-    (",drag <@user>", "Move user to your voice channel"),
-    (",gather <#channel>", "Move all users to specified voice channel"),
-    (",join <channel>", "Join voice channel"),
-    (",mute <@user>", "Mute user in voice channel"),
-    
-    # webstats.py > WebStatsReporter
-    (",teststats", "Test web statistics reporting"),
-    
-    # welcome.py > Welcome
+    (",volume <1-100>", "Set bot volume"),
     (",welcome", "Welcome message settings"),
-    
-    # youtubecmds.py > YouTubeCommands
-    (",clearq", "Clear YouTube queue"),
-    (",leave", "Leave voice channel"),
-    (",play <URL/Search>", "Play YouTube music"),
-    (",q", "Show YouTube queue"),
-    
-    # Slash Commands
-    ("/setup", "Bot setup info (This is the only /slash command)"),
+    ("/ticket", "Create support ticket"),
 ]
+
 
 
 

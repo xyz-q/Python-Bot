@@ -9,6 +9,7 @@ class Sync(commands.Cog):
         self.tree = bot.tree 
 
     @commands.command(name='sync', description='Sync slash commands.')
+    @commands.is_owner()
     async def sync_slash_commands(self, ctx):
         await ctx.send("Syncing slash commands...")
         try:
