@@ -196,6 +196,7 @@ class SystemMonitor(commands.Cog):
             color=status_color(cpu_percent, memory.percent, worst_disk_percent),
             timestamp=now,
         )
+        embed.set_footer(text="Last updated")
 
         cpu_lines = [
             f"Usage: {cpu_percent:.1f}%",
