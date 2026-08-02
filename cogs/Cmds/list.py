@@ -49,7 +49,7 @@ commands_list = [
     (",cs2updates", "Get latest CS2 patch notes"),
     (",deafen <@user>", "Deafen user"),
     (",deploy", "Deploy command"),
-    (",deposit <amount>", "Deposit currency"),
+    (",deposit <amount>", "Deposit currency into account."),
     (",devlist", "List all available commands"),
     (",disconnect <@user>", "Disconnect user from voice"),
     (",dm <@user> <message>", "Send DM"),
@@ -176,6 +176,8 @@ commands_list = [
     (",vos", "Check Voice of Seren"),
     (",volume <1-100>", "Set bot volume"),
     (",welcome", "Welcome message settings"),
+    (",withdraw <amount>", "Withdraw currency from account"),
+
     ("/ticket", "Create support ticket"),
 ]
 
