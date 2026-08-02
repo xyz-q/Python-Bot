@@ -31,6 +31,34 @@ async def wear_autocomplete(interaction: Interaction, current: str):
 async def skin_type_autocomplete(interaction: Interaction, current: str):
     return [app_commands.Choice(name=s, value=s) for s in SKIN_TYPES if current.lower() in s.lower()][:25]
 
+async def skin_autocomplete(interaction: Interaction, current: str):
+    weapon = interaction.namespace.weapon or ''
+    query = f"{weapon} | {current}" if weapon else current
+    if len(query.strip()) < 2:
+        return []
+    api_key = os.getenv('CSFLOAT_API_KEY', '')
+    headers = {'Authorization': api_key} if api_key else {}
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                'https://csfloat.com/api/v1/meta/search',
+                params={'query': query, 'limit': 25},
+                headers=headers
+            ) as resp:
+                if resp.status != 200:
+                    return []
+                data = await resp.json()
+                items = data if isinstance(data, list) else data.get('data', [])
+                skins = []
+                for item in items:
+                    name = item.get('market_hash_name', '')
+                    if ' | ' in name:
+                        skin_part = name.split(' | ', 1)[1].split(' (')[0]
+                        skins.append(app_commands.Choice(name=skin_part[:100], value=skin_part))
+                return skins[:25]
+    except Exception:
+        return []
+
 
 class CSFloatSearch2(commands.Cog):
     def __init__(self, bot):
@@ -41,32 +69,6 @@ class CSFloatSearch2(commands.Cog):
     @property
     def _headers(self):
         return {'Authorization': self.api_key} if self.api_key else {}
-
-    async def skin_autocomplete(self, interaction: Interaction, current: str):
-        weapon = interaction.namespace.weapon or ''
-        query = f"{weapon} | {current}" if weapon else current
-        if len(query.strip()) < 2:
-            return []
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    'https://csfloat.com/api/v1/meta/search',
-                    params={'query': query, 'limit': 25},
-                    headers=self._headers
-                ) as resp:
-                    if resp.status != 200:
-                        return []
-                    data = await resp.json()
-                    items = data if isinstance(data, list) else data.get('data', [])
-                    skins = []
-                    for item in items:
-                        name = item.get('market_hash_name', '')
-                        if ' | ' in name:
-                            skin_part = name.split(' | ', 1)[1].split(' (')[0]
-                            skins.append(app_commands.Choice(name=skin_part[:100], value=skin_part))
-                    return skins[:25]
-        except Exception:
-            return []
 
     @app_commands.command(name="price", description="Look up lowest CSFloat prices for a CS2 skin")
     @app_commands.autocomplete(weapon=weapon_autocomplete, skin=skin_autocomplete, wear=wear_autocomplete, skin_type=skin_type_autocomplete)
