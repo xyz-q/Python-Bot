@@ -76,37 +76,6 @@ class AdminCommands(commands.Cog):
     async def hello(self, ctx):
         await ctx.send("Hello world!")
 
-    @commands.command()
-    async def kill2(self, ctx):
-        if ctx.author.id == 110927272210354176: 
-            warning_message = await ctx.send(":warning: Are you sure you want to TERMINATE the bot? This action cannot be undone.")
-            await warning_message.add_reaction("🔴")  
-            await warning_message.add_reaction("🟢")  
-
-            def check(reaction, user):
-                return user == ctx.author and str(reaction.emoji) in ["🔴", "🟢"]
-            try:
-                reaction, _ = await self.bot.wait_for("reaction_add", timeout=10, check=check)
-                if str(reaction.emoji) == "🔴":
-                    await warning_message.clear_reactions()  
-                    await warning_message.edit(content=" :orange_circle: Bot TERMINATION cancelled.")
-                    print("Bot termination CANCELLED")
-                elif str(reaction.emoji) == "🟢":
-                    await warning_message.clear_reactions()  
-                    await warning_message.edit(content=":warning: Bot instance(s) TERMINATED.")
-                    print("\033[96m" + f"BOT HAS BEEN TERMINATED BY: {ctx.author.name} ({ctx.author.id})" + "\033[0m")
-                    guild = self.bot.get_guild(1056994840925192252)  
-                    channel = discord.utils.get(guild.text_channels, name="bot-status")
-                    if channel:
-                        await channel.send(":red_circle: xyz is now offline [Killed]")
-                    sys.exit()
-            except asyncio.TimeoutError:
-                await warning_message.edit(content=":clock1:  Bot TERMINATION cancelled due to inactivity.")
-                print("Bot termination CANCELLED from inactivity")
-                await warning_message.clear_reactions()  
-        else:
-            await ctx.send(f":warning: [ERROR] {ctx.author.mention} is not permitted to operate this command.")
-            print("\033[96m" + f"USER TRYING TO KILL BOT: {ctx.author.name} ({ctx.author.id})" + "\033[0m")
 
  
     @commands.command()

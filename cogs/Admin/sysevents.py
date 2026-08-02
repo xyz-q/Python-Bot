@@ -14,6 +14,7 @@ class SystemEvents(commands.Cog):
         self.admin_ids = [110927272210354176, 311612585524854805]
         self.last_known_latency = None
         self.disconnect_times = []  # Track disconnect times
+        self.connection_monitor.start()
 
 
 
@@ -305,6 +306,7 @@ class SystemEvents(commands.Cog):
         try:
             print(f"\033[91mCommand Error: {str(error)}\033[0m")
             
+            warning = None
 
             if isinstance(error, commands.CommandNotFound):
                 try:
@@ -361,12 +363,13 @@ class SystemEvents(commands.Cog):
                 return
 
             else:
-                warning = print(f" ")
-                #warning = print(f" An unexpected error occurred: {str(error)}")
+                print(f"\033[91mUnhandled command error: {str(error)}\033[0m")
+                traceback.print_exception(type(error), error, error.__traceback__)
                 
             try:
-                await asyncio.sleep(7)
-                await warning.delete()
+                if warning is not None:
+                    await asyncio.sleep(7)
+                    await warning.delete()
                 if ctx.message:
                     await ctx.message.delete()
             except (discord.Forbidden, discord.NotFound, AttributeError):
@@ -406,7 +409,7 @@ class SystemEvents(commands.Cog):
                     print(f"\033[91mError handling DM: {str(e)}\033[0m")
                     return
 
-            allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send', ',cf', ',pvpflip', ',ticket', ',vault', ',accept', ',profile', ',history', ',transactions', ',notification', 'alchables')
+            allowed_commands = (',pc', ',help', ',invite', ',slots', ',flower', ',bal', ',balance', ',staking', ',deposit', ',withdraw', ',stats', ',transfer', ',send', ',cf', ',pvpflip', ',ticket', ',vault', ',accept', ',profile', ',history', ',transactions', ',notification', ',alchables')
 
             if not message.content.startswith(','):
                 return
@@ -421,12 +424,12 @@ class SystemEvents(commands.Cog):
                 await self.bot.process_commands(message)
                 return
 
+            content_lower = message.content.lower()
             if message.content.startswith(','):
-                message.content = message.content.lower() 
-                print(f"\033[0;32mCommand: {message.content} by {message.author}\033[0m")
+                print(f"\033[0;32mCommand: {content_lower} by {message.author}\033[0m")
                 
-            if message.content.startswith(allowed_commands):
-                print(f"\033[0;32mAllowed Command: {message.content} by {message.author}\033[0m")
+            if content_lower.startswith(allowed_commands):
+                print(f"\033[0;32mAllowed Command: {content_lower} by {message.author}\033[0m")
                 await self.bot.process_commands(message)
                 return
 
@@ -435,14 +438,11 @@ class SystemEvents(commands.Cog):
                 print(f"\033[91m User {message.author} tried to use command: {message.content} outside of #admin-commands \033[0m")
                 await message.delete()
                 await asyncio.sleep(7)
-                
                 await warningmsg.delete()
-                return
             except Exception as e:
                 print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
-            
+            return
  
-            await self.bot.process_commands(message)
 
         except Exception as e:
             print(f"\033[91mError in on_message: {str(e)}\033[0m")
@@ -465,15 +465,16 @@ class SystemEvents(commands.Cog):
 
                     # Store the original ws
                     original_ws = self.bot._connection._ws if hasattr(self.bot._connection, '_ws') else None
-                    
+
                     # Set our mock ws with the test code
                     self.bot._connection._ws = MockWebSocket(code)
-                    
-                    await ctx.send(f"Testing disconnect event with code {code}...")
-                    await self.on_disconnect()
-                    
-                    # Restore original ws
-                    self.bot._connection._ws = original_ws
+
+                    try:
+                        await ctx.send(f"Testing disconnect event with code {code}...")
+                        await self.on_disconnect()
+                    finally:
+                        # Always restore the original ws, even if on_disconnect() raised
+                        self.bot._connection._ws = original_ws
                 else:
                     await ctx.send("Testing normal disconnect event...")
                     await self.on_disconnect()
@@ -512,6 +513,9 @@ class SystemEvents(commands.Cog):
     @commands.Cog.listener()
     async def on_error(self, event, *args, **kwargs):
         print(f"\033[91mError in event {event}: {args} {kwargs}\033[0m")
+
+    def cog_unload(self):
+        self.connection_monitor.cancel()
 
 async def setup(bot):
     await bot.add_cog(SystemEvents(bot))
