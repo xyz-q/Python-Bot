@@ -49,6 +49,18 @@ class LogManager(commands.Cog):
         self.auto_status.cancel()
         self.channel_cleanup.cancel()
         self._log_worker_task.cancel()
+        # Flush remaining queue entries synchronously
+        while not self._log_queue.empty():
+            entry = self._log_queue.get_nowait()
+            try:
+                current_date = datetime.now().strftime('%Y-%m-%d')
+                log_file = self.log_dir / f"discord_log_{current_date}.txt"
+                with open(log_file, 'a', encoding='utf-8') as f:
+                    f.write(f"{entry}\n")
+            except Exception as e:
+                print(f"Flush write error: {e}")
+            finally:
+                self._log_queue.task_done()
 
     def format_size(self, size_bytes):
         for unit in ['B', 'KB', 'MB', 'GB']:
