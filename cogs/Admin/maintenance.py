@@ -1,12 +1,63 @@
 import discord
 from discord.ext import commands
 import json
+from datetime import datetime, timezone
+
 
 class Maintenance(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config_file = ".json/maintenance.json"
         self.maintenance_mode = self.load_maintenance_state()
+
+    def create_embed(self, enabled: bool):
+        if enabled:
+            embed = discord.Embed(
+                title="🔧 Bot Maintenance",
+                description=(
+                    "The bot is currently undergoing maintenance.\n\n"
+                    "Commands have temporarily been disabled for users.\n"
+                    "The bot will return once maintenance is complete."
+                ),
+                color=discord.Color.orange(),
+                timestamp=datetime.now(timezone.utc)
+            )
+
+            embed.add_field(
+                name="Status",
+                value="<a:orangealert:1336885812062584862> Maintenance Active",
+                inline=True
+            )
+
+            embed.add_field(
+                name="Access",
+                value="Owner testing enabled",
+                inline=True
+            )
+
+        else:
+            embed = discord.Embed(
+                title="<a:greenalert:1336886706216894524> Bot Online",
+                description=(
+                    "Maintenance has been completed.\n\n"
+                    "All commands are now available again."
+                ),
+                color=discord.Color.green(),
+                timestamp=datetime.now(timezone.utc)
+            )
+
+            embed.add_field(
+                name="Status",
+                value="<a:greenalert:1336886706216894524> Online",
+                inline=True
+            )
+
+        embed.set_footer(text="ZXPQ Bot Maintenance")
+
+        if self.bot.user:
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+
+        return embed
 
     def load_maintenance_state(self):
         """Load maintenance state from file"""
@@ -28,26 +79,20 @@ class Maintenance(commands.Cog):
             print(f"Error saving maintenance state: {e}")
 
     async def notify_guild_owners(self, enabled: bool):
-        """DM all guild owners when maintenance starts or ends"""
-        title = "Bot Maintenance Started" if enabled else "Bot Maintenance Complete"
-        desc = (
-            "The bot is currently undergoing maintenance.\n"
-            "Commands are temporarily disabled for users.\n"
-            "The bot will return once maintenance is complete."
-            if enabled else
-            "The bot is back online and commands are available again."
-        )
+        embed = self.create_embed(enabled)
 
         for guild in self.bot.guilds:
             owner = guild.owner
+
             if owner is None:
                 continue
 
             try:
-                await owner.send(f"**{title}**\n\n{desc}")
+                await owner.send(embed=embed)
+
             except discord.Forbidden:
-                # Owner has DMs disabled — ignore silently
                 pass
+
             except Exception as e:
                 print(f"Failed to notify owner of {guild.name}: {e}")
 
@@ -62,8 +107,9 @@ class Maintenance(commands.Cog):
         # Notify guild owners
         await self.notify_guild_owners(self.maintenance_mode)
 
-        status = "enabled" if self.maintenance_mode else "disabled"
-        await ctx.send(f"Maintenance mode {status}")
+        await ctx.send(
+            embed=self.create_embed(self.maintenance_mode)
+        )
 
     @commands.command()
     @commands.is_owner()
@@ -131,9 +177,11 @@ async def maintenance_check(ctx):
 
     # If maintenance mode is active, block all commands
     if cog.maintenance_mode:
+        embed = cog.create_embed(True)
+
         await ctx.send(
-            "The bot is currently in maintenance mode. Commands are disabled.",
-            delete_after=7
+            embed=embed,
+            delete_after=5
         )
         return False
 
