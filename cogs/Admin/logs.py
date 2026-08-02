@@ -17,7 +17,7 @@ MAX_DAYS = 30
 class LogManager(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.status_channel_id = 1337674275427061871
+        self.status_channel_id = 1533368464981360640
         self.status_message_id = None
         self._load_status_message_id()
 

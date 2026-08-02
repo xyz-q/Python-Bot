@@ -16,7 +16,7 @@ class HeartbeatCog(commands.Cog):
         self.heartbeat_enabled = True
         self.history = []  # rolling list of bools, max 20
         self.message_id = None
-        self.channel_id = 1428618460946104351
+        self.channel_id = 1533368291702214708
         self._load_message_id()
         self.heartbeat_task.start()
         self.channel_cleanup.start()
