@@ -1,674 +1,452 @@
 import discord
 from discord.ext import commands, tasks
 import os
-from datetime import datetime, timedelta
+import json
 import gzip
-from pathlib import Path
 import shutil
 import asyncio
 import io
+from datetime import datetime, timedelta
+from pathlib import Path
+
+STATUS_FILE = ".json/logstatus_message.json"
+MAX_FILE_SIZE = 128 * 1024 * 1024  # 128MB
+MAX_DAYS = 30
+
 
 class LogManager(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        
-        # Configuration
-        self.max_file_size = 128 * 1024 * 1024  # 128MB before rotation
-        self.max_days = 30  # Days to keep logs
-        self.check_interval = 24  # Hours between cleanup checks
-        self.status_channel_id = 1337674275427061871  # Add this line
-        self.status_interval = 12  # Hours between status updates, adjust as needed
-        
-        # Setup directories
+        self.status_channel_id = 1337674275427061871
+        self.status_message_id = None
+        self._load_status_message_id()
+
         self.log_dir = Path('logs')
         self.archive_dir = self.log_dir / 'archived'
         self.log_dir.mkdir(exist_ok=True)
         self.archive_dir.mkdir(exist_ok=True)
-        
-        # Start background tasks
+
         self.cleanup_old_logs.start()
-        self.auto_status.start()  # Add this line
+        self.auto_status.start()
+        self.channel_cleanup.start()
+
+    def _load_status_message_id(self):
+        try:
+            with open(STATUS_FILE, 'r') as f:
+                self.status_message_id = json.load(f).get("message_id")
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+
+    def _save_status_message_id(self):
+        os.makedirs(".json", exist_ok=True)
+        with open(STATUS_FILE, 'w') as f:
+            json.dump({"message_id": self.status_message_id}, f)
 
     def cog_unload(self):
         self.cleanup_old_logs.cancel()
-        self.auto_status.cancel()  # Add this line
+        self.auto_status.cancel()
+        self.channel_cleanup.cancel()
 
     def format_size(self, size_bytes):
-        """Convert bytes to human readable format like Windows"""
-        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-            if size_bytes < 1024 or unit == 'TB':
-                if unit == 'B':
-                    return f"{size_bytes} {unit}"
-                return f"{size_bytes:.2f} {unit}"
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size_bytes < 1024 or unit == 'GB':
+                return f"{size_bytes:.2f} {unit}" if unit != 'B' else f"{size_bytes} B"
             size_bytes /= 1024
 
-    def get_directory_size(self, directory):
-        """Calculate total size of a directory"""
-        total = 0
+    async def log_to_file(self, log_entry: str):
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        log_file = self.log_dir / f"discord_log_{current_date}.txt"
+
+        # Size-based rotation
+        if log_file.exists() and log_file.stat().st_size >= MAX_FILE_SIZE:
+            await self.rotate_log(log_file)
+
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(f"{log_entry}\n")
+
+    async def rotate_log(self, log_file: Path):
         try:
-            for entry in os.scandir(directory):
-                if entry.is_file():
-                    total += entry.stat().st_size
-                elif entry.is_dir():
-                    total += self.get_directory_size(entry.path)
+            if not log_file.exists() or log_file.stat().st_size <= 10:
+                if log_file.exists():
+                    log_file.unlink()
+                return
+
+            timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+            archive_name = self.archive_dir / f"{log_file.stem}_{timestamp}.gz"
+
+            with open(log_file, 'rb') as f_in:
+                with gzip.open(archive_name, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+
+            if archive_name.exists() and archive_name.stat().st_size > 0:
+                log_file.unlink()
+                print(f"Archived {log_file.name} -> {archive_name.name}")
+            else:
+                log_file.unlink()
         except Exception as e:
-            print(f"Error calculating size for {directory}: {e}")
-        return total
+            print(f"Error rotating {log_file}: {e}")
+            try:
+                log_file.unlink()
+            except:
+                pass
 
     async def get_status_embed(self):
-        """Create status embed for logging system"""
-        # Calculate total bot size (all cogs and files)
-        bot_total_size = self.get_directory_size('.')  # Current directory
-        
-        # Calculate logging specific sizes
         logs_current_size = 0
         logs_archive_size = 0
         num_files = 0
         num_archives = 0
-        
-        # Get current log files info
-        for log_file in self.log_dir.glob('*.txt'):
-            file_size = log_file.stat().st_size
-            logs_current_size += file_size
+        oldest_date = None
+        today_size = 0
+        today_str = datetime.now().strftime('%Y-%m-%d')
+
+        for log_file in self.log_dir.glob('discord_log_*.txt'):
+            size = log_file.stat().st_size
+            logs_current_size += size
             num_files += 1
-            
-        # Get archived files info
+            if today_str in log_file.name:
+                today_size = size
+            try:
+                date_str = log_file.stem.split('discord_log_')[1][:10]
+                d = datetime.strptime(date_str, '%Y-%m-%d')
+                if oldest_date is None or d < oldest_date:
+                    oldest_date = d
+            except (ValueError, IndexError):
+                pass
+
         for archive in self.archive_dir.glob('*.gz'):
-            file_size = archive.stat().st_size
-            logs_archive_size += file_size
+            logs_archive_size += archive.stat().st_size
             num_archives += 1
+            try:
+                date_str = archive.stem.split('discord_log_')[1][:10]
+                d = datetime.strptime(date_str, '%Y-%m-%d')
+                if oldest_date is None or d < oldest_date:
+                    oldest_date = d
+            except (ValueError, IndexError):
+                pass
 
-        logs_total_size = logs_current_size + logs_archive_size
+        next_cleanup = (datetime.now() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M')
+        oldest_str = oldest_date.strftime('%Y-%m-%d') if oldest_date else 'N/A'
 
-        embed = discord.Embed(
-            title="📊 Log Status",
-            color=discord.Color.gold(),
-            timestamp=datetime.now()
-        )
-        
-        # Total Bot Storage
+        embed = discord.Embed(title="Log Status", color=discord.Color.gold(), timestamp=datetime.now())
+
         embed.add_field(
-            name="Total Bot Storage",
-            value=f"Size: `{self.format_size(bot_total_size)}`",
-            inline=False
-        )
-
-               
-        # File Counts
-        embed.add_field(
-            name="Log Files", 
-            value=f"Current: `{num_files}`\n"
-                  f"Archived: `{num_archives}`\n"
-                  f"Total: `{num_files + num_archives}`",
+            name="Log Files",
+            value=f"Current: `{num_files}`\nArchived: `{num_archives}`\nOldest: `{oldest_str}`",
             inline=True
         )
-                
-        # Logging System Status
         embed.add_field(
-            name="Logging System",
-            value=f"Current: `{self.format_size(logs_current_size)}`\n"
-                  f"Archives: `{self.format_size(logs_archive_size)}`\n"
-                  f"Total Logs: `{self.format_size(logs_total_size)}`\n",
+            name="Storage",
+            value=f"Today: `{self.format_size(today_size)}`\nCurrent: `{self.format_size(logs_current_size)}`\nArchives: `{self.format_size(logs_archive_size)}`",
             inline=True
         )
-        # Settings
-
-        
-        # Add last update time
+        embed.add_field(
+            name="Settings",
+            value=f"Retention: `{MAX_DAYS} days`\nRotation: `{self.format_size(MAX_FILE_SIZE)}`\nNext cleanup: `{next_cleanup}`",
+            inline=True
+        )
         embed.set_footer(text="Last Updated")
-        
         return embed
 
-    async def should_send_status(self, channel):
-        """Check if enough time has passed since last status message"""
-        try:
-            # Get the last message in the channel
-            messages = [msg async for msg in channel.history(limit=1)]
-            if not messages:
-                return True  # No messages found, okay to send
-
-            last_message = messages[0]
-            time_since_last = datetime.now(last_message.created_at.tzinfo) - last_message.created_at
-            hours_since_last = time_since_last.total_seconds() / 3600
-
-            # Check if it's been long enough since the last message
-            return hours_since_last >= self.status_interval
-        except Exception as e:
-            print(f"Error checking message history: {e}")
-            return False
-
-    @tasks.loop(hours=1)  # Check every hour
-    async def auto_status(self):
-        """Automatically post status updates if enough time has passed"""
+    async def _update_status_message(self):
         try:
             channel = self.bot.get_channel(self.status_channel_id)
-            if channel and await self.should_send_status(channel):
-                embed = await self.get_status_embed()
-                await channel.send(embed=embed)
+            if not channel:
+                return
+            embed = await self.get_status_embed()
+            if self.status_message_id:
+                try:
+                    msg = await channel.fetch_message(self.status_message_id)
+                    await msg.edit(embed=embed)
+                    return
+                except discord.NotFound:
+                    pass
+            msg = await channel.send(embed=embed)
+            self.status_message_id = msg.id
+            self._save_status_message_id()
         except Exception as e:
-            print(f"Error in auto_status: {e}")
+            print(f"Error updating log status message: {e}")
+
+    @tasks.loop(hours=1)
+    async def auto_status(self):
+        await self._update_status_message()
 
     @auto_status.before_loop
     async def before_auto_status(self):
         await self.bot.wait_until_ready()
 
-    # Update the existing logstatus command to use the new embed
-    @commands.command()
-    @commands.has_permissions(administrator=True)
-    async def logstatus(self, ctx):
-        """Show status of logging system"""
-        embed = await self.get_status_embed()
-        await ctx.send(embed=embed)
-
-    # Add a command to change the status channel
-    @commands.command()
-    @commands.has_permissions(administrator=True)
-    async def setstatuschannel(self, ctx, channel: discord.TextChannel = None):
-        """Set the channel for automatic status updates"""
-        if channel is None:
-            channel = ctx.channel
-        
-        self.status_channel_id = channel.id
-        await ctx.send(f"Status updates will now be sent to {channel.mention}")
-
-    # Add a command to change the status interval
-
-            
-        self.status_interval = hours
-        self.auto_status.change_interval(hours=hours)
-        await ctx.send(f"Status update interval changed to {hours} hours")
-
-
-    async def log_to_file(self, log_entry: str):
-        """Write log entry and check for daily rotation"""
-        current_date = datetime.now().strftime('%Y-%m-%d')
-        log_file = self.log_dir / f"discord_log_{current_date}.txt"
-        
-        # Check for previous day's log and rotate it
-        for old_log in self.log_dir.glob('*.txt'):
-            if old_log.name != log_file.name:  # If it's not today's log file
-                await self.rotate_log(old_log)
-            
-        # Write new log entry
-        with open(log_file, 'a', encoding='utf-8') as f:
-            f.write(f"{log_entry}\n")
-
-
-    async def rotate_log(self, log_file: Path):
-        """Compress and archive the log file"""
+    @tasks.loop(minutes=5)
+    async def channel_cleanup(self):
         try:
-            if not log_file.exists():
+            channel = self.bot.get_channel(self.status_channel_id)
+            if not channel or not self.status_message_id:
                 return
-                
-            # If file is empty or very small, just delete it
-            if log_file.stat().st_size <= 10:
-                log_file.unlink()
-                print(f"Deleted empty log file: {log_file}")
-                return
-                
-            timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-            archive_name = self.archive_dir / f"{log_file.stem}_{timestamp}.gz"
-            
-            # Compress the file
-            with open(log_file, 'rb') as f_in:
-                with gzip.open(archive_name, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-            
-            # Verify the archive was created successfully
-            if archive_name.exists() and archive_name.stat().st_size > 0:
-                # Remove the original file after successful compression
-                log_file.unlink()
-                print(f"Successfully archived {log_file} to {archive_name}")
-            else:
-                print(f"Failed to create archive for {log_file}, deleting original")
-                log_file.unlink()  # Delete the original even if archiving failed
-                
+            async for msg in channel.history(limit=100):
+                if msg.id != self.status_message_id:
+                    try:
+                        await msg.delete()
+                        await asyncio.sleep(0.5)
+                    except (discord.Forbidden, discord.NotFound):
+                        pass
         except Exception as e:
-            print(f"Error archiving log file {log_file}: {e}")
-            # Force delete the file if rotation fails
-            try:
-                if log_file.exists():
-                    log_file.unlink()
-                    print(f"Force deleted problematic log file: {log_file}")
-            except:
-                pass
+            print(f"Error in log channel cleanup: {e}")
 
+    @channel_cleanup.before_loop
+    async def before_channel_cleanup(self):
+        await self.bot.wait_until_ready()
 
     @tasks.loop(hours=24)
     async def cleanup_old_logs(self):
-        """Remove logs older than max_days"""
-        cutoff_date = datetime.now() - timedelta(days=self.max_days)
-        
-        # Check archived logs
-        for archive_file in self.archive_dir.glob('*.gz'):
-            try:
-                # Delete malformed temp files
-                if archive_file.name.startswith('temp_'):
-                    print(f"Deleting malformed temp file: {archive_file}")
-                    archive_file.unlink()
-                    continue
-                    
-                # Extract date from filename (discord_log_2024-01-20_15-30-45.gz)
-                filename_parts = archive_file.stem.split('_')
-                if len(filename_parts) >= 3 and filename_parts[0] == 'discord' and filename_parts[1] == 'log':
-                    date_str = filename_parts[2]  # Gets YYYY-MM-DD
-                    # Validate date format
-                    if len(date_str) == 10 and date_str.count('-') == 2:
-                        file_date = datetime.strptime(date_str, '%Y-%m-%d')
-                        
-                        if file_date < cutoff_date:
-                            print(f"Removing old archive: {archive_file}")
-                            archive_file.unlink()
-                    else:
-                        continue  # Skip invalid date format
-                else:
-                    continue  # Skip malformed filenames
-            except (ValueError, IndexError):
-                continue  # Silently skip problematic files
-                
-        # Also check current logs
-        for log_file in self.log_dir.glob('*.txt'):
-            try:
-                # Only process discord_log files
-                if not log_file.name.startswith('discord_log_'):
-                    continue
-                    
-                # Extract date from filename: discord_log_2025-02-12.txt -> 2025-02-12
-                filename_parts = log_file.stem.split('_')
-                if len(filename_parts) >= 3 and filename_parts[0] == 'discord' and filename_parts[1] == 'log':
-                    date_str = '_'.join(filename_parts[2:])  # Handle cases with multiple underscores
-                    
-                    # Validate date format
-                    if len(date_str) == 10 and date_str.count('-') == 2:
-                        file_date = datetime.strptime(date_str, '%Y-%m-%d')
-                        
-                        # Only process files older than 7 days
-                        seven_days_ago = datetime.now() - timedelta(days=7)
-                        if file_date < seven_days_ago:
-                            print(f"Deleting old log (7+ days): {log_file}")
-                            log_file.unlink()
-                        elif file_date < cutoff_date:
-                            # Files between 1-7 days old, try to rotate
-                            print(f"Rotating old log: {log_file}")
-                            await self.rotate_log(log_file)
-                            # Double check if file still exists after rotation
-                            if log_file.exists():
-                                print(f"Failed to rotate {log_file}, will try again later")
-                                # Don't delete, let it try again later
-                    else:
-                        continue  # Skip invalid date format
-                else:
-                    continue  # Skip malformed filenames
-            except (ValueError, IndexError):
-                continue  # Silently skip problematic files
+        cutoff = datetime.now() - timedelta(days=MAX_DAYS)
 
+        for log_file in self.log_dir.glob('discord_log_*.txt'):
+            try:
+                date_str = log_file.stem.split('discord_log_')[1][:10]
+                if datetime.strptime(date_str, '%Y-%m-%d') < cutoff:
+                    await self.rotate_log(log_file)
+            except (ValueError, IndexError):
+                continue
+
+        for archive in self.archive_dir.glob('*.gz'):
+            try:
+                date_str = archive.stem.split('discord_log_')[1][:10]
+                if datetime.strptime(date_str, '%Y-%m-%d') < cutoff:
+                    archive.unlink()
+                    print(f"Deleted old archive: {archive.name}")
+            except (ValueError, IndexError):
+                continue
 
     @cleanup_old_logs.before_loop
     async def before_cleanup(self):
         await self.bot.wait_until_ready()
 
+    @commands.command()
+    @commands.is_owner()
+    async def logstatus(self, ctx):
+        await self._update_status_message()
 
-    # All your existing event listeners:
+    @commands.command()
+    @commands.is_owner()
+    async def clearoldlogs(self, ctx):
+        await self.cleanup_old_logs()
+        await ctx.send("Done.")
+
+    @commands.command()
+    @commands.is_owner()
+    async def searchlog(self, ctx, month: int, date: int, year: int):
+        try:
+            date_str = datetime(year, month, date).strftime('%Y-%m-%d')
+        except ValueError:
+            await ctx.send("Invalid date.")
+            return
+
+        MAX_SIZE = 7_340_032
+        found = False
+
+        current_log = self.log_dir / f"discord_log_{date_str}.txt"
+        if current_log.exists():
+            if current_log.stat().st_size <= MAX_SIZE:
+                with open(current_log, 'rb') as f:
+                    buf = io.BytesIO(f.read())
+                await ctx.send("Current log:", file=discord.File(fp=buf, filename=f"log_{date_str}.txt"))
+                found = True
+            else:
+                await ctx.send(f"Current log too large to send ({self.format_size(current_log.stat().st_size)}).")
+
+        for i, archive in enumerate(sorted(self.archive_dir.glob(f"discord_log_{date_str}*.gz")), 1):
+            try:
+                with gzip.open(archive, 'rb') as f:
+                    data = f.read()
+                if len(data) <= MAX_SIZE:
+                    await ctx.send(f"Archive {i}:", file=discord.File(fp=io.BytesIO(data), filename=f"log_{date_str}_{i}.txt"))
+                    found = True
+                else:
+                    await ctx.send(f"Archive {i} too large ({self.format_size(len(data))}).")
+            except Exception as e:
+                await ctx.send(f"Error reading archive {i}: {e}")
+            await asyncio.sleep(1)
+
+        if not found:
+            await ctx.send(f"No logs found for {date_str}.")
+
     # Message Events
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author.bot:
+        if message.author.bot or not message.guild:
             return
-
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{message.guild.name}] MESSAGE - #{message.channel.name} - {message.author.name}: {message.content}"
-        
-        if message.attachments:
-            for attachment in message.attachments:
-                log_entry += f"\nATTACHMENT: {attachment.url}"
-        
-        if message.embeds:
-            for embed in message.embeds:
-                log_entry += f"\nEMBED: {embed.title}"
-
-        await self.log_to_file(log_entry)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        entry = f"[{ts}] [{message.guild.name}] MESSAGE - #{message.channel.name} - {message.author.name}: {message.content}"
+        for a in message.attachments:
+            entry += f"\nATTACHMENT: {a.url}"
+        for e in message.embeds:
+            entry += f"\nEMBED: {e.title}"
+        await self.log_to_file(entry)
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
-        try:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Check if message.guild exists
-            guild_name = message.guild.name if message.guild else "Direct Message"
-            
-            # Check if message.author exists
-            author_name = message.author.name if message.author else "Unknown User"
-            
-            log_entry = f"[{timestamp}] [{guild_name}] MESSAGE DELETED - {author_name}: {message.content}"
-            await self.log_to_file(log_entry)
-        except Exception as e:
-            # Safely handle any errors that might occur during logging
-            print(f"Error logging deleted message: {e}")
-
+        if not message.guild:
+            return
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        author = message.author.name if message.author else "Unknown"
+        await self.log_to_file(f"[{ts}] [{message.guild.name}] MESSAGE DELETED - {author}: {message.content}")
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
-        # Skip logging for DMs
-        if before.guild is None:
+        if not before.guild:
             return
-            
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{before.guild.name}] MESSAGE EDITED - {before.author.name}: {before.content} -> {after.content}"
-        await self.log_to_file(log_entry)
-
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await self.log_to_file(f"[{ts}] [{before.guild.name}] MESSAGE EDITED - {before.author.name}: {before.content} -> {after.content}")
 
     # Member Events
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{member.guild.name}] MEMBER JOINED - {member.name}"
-        await self.log_to_file(log_entry)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await self.log_to_file(f"[{ts}] [{member.guild.name}] MEMBER JOINED - {member.name}")
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{member.guild.name}] MEMBER LEFT - {member.name}"
-        await self.log_to_file(log_entry)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await self.log_to_file(f"[{ts}] [{member.guild.name}] MEMBER LEFT - {member.name}")
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         changes = []
-        
         if before.nick != after.nick:
             changes.append(f"nickname: {before.nick} -> {after.nick}")
-        if before.roles != after.roles:
-            added_roles = set(after.roles) - set(before.roles)
-            removed_roles = set(before.roles) - set(after.roles)
-            if added_roles:
-                changes.append(f"added roles: {', '.join(role.name for role in added_roles)}")
-            if removed_roles:
-                changes.append(f"removed roles: {', '.join(role.name for role in removed_roles)}")
-                
+        added = set(after.roles) - set(before.roles)
+        removed = set(before.roles) - set(after.roles)
+        if added:
+            changes.append(f"added roles: {', '.join(r.name for r in added)}")
+        if removed:
+            changes.append(f"removed roles: {', '.join(r.name for r in removed)}")
         if changes:
-            log_entry = f"[{timestamp}] [{before.guild.name}] MEMBER UPDATED - {before.name} changes: {', '.join(changes)}"
-            await self.log_to_file(log_entry)
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            await self.log_to_file(f"[{ts}] [{before.guild.name}] MEMBER UPDATED - {before.name}: {', '.join(changes)}")
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{guild.name}] MEMBER BANNED - {user.name}"
-        await self.log_to_file(log_entry)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await self.log_to_file(f"[{ts}] [{guild.name}] MEMBER BANNED - {user.name}")
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild, user):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{guild.name}] MEMBER UNBANNED - {user.name}"
-        await self.log_to_file(log_entry)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await self.log_to_file(f"[{ts}] [{guild.name}] MEMBER UNBANNED - {user.name}")
 
     # Voice Events
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        if before.channel != after.channel:
-            if after.channel:
-                log_entry = f"[{timestamp}] [{member.guild.name}] VOICE JOIN - {member.name} joined {after.channel.name}"
-            else:
-                log_entry = f"[{timestamp}] [{member.guild.name}] VOICE LEFT - {member.name} left {before.channel.name}"
-            await self.log_to_file(log_entry)
-
-
-    @commands.Cog.listener()
-    async def on_guild_channel_create(self, channel):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] CHANNEL CREATED - #{channel.name}"
-        await self.log_to_file(log_entry)
-
-    @commands.Cog.listener()
-    async def on_guild_channel_delete(self, channel):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] CHANNEL DELETED - #{channel.name}"
-        await self.log_to_file(log_entry)
-
-    @commands.Cog.listener()
-    async def on_guild_role_create(self, role):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] ROLE CREATED - {role.name}"
-        await self.log_to_file(log_entry)
-
-    @commands.Cog.listener()
-    async def on_guild_role_delete(self, role):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] ROLE DELETED - {role.name}"
-        await self.log_to_file(log_entry)
-
-
+        if before.channel == after.channel:
+            return
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if after.channel:
+            await self.log_to_file(f"[{ts}] [{member.guild.name}] VOICE JOIN - {member.name} joined {after.channel.name}")
+        else:
+            await self.log_to_file(f"[{ts}] [{member.guild.name}] VOICE LEFT - {member.name} left {before.channel.name}")
 
     # Channel Events
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{channel.guild.name}] CHANNEL CREATED - #{channel.name}"
-        await self.log_to_file(log_entry)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await self.log_to_file(f"[{ts}] [{channel.guild.name}] CHANNEL CREATED - #{channel.name}")
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{channel.guild.name}] CHANNEL DELETED - #{channel.name}"
-        await self.log_to_file(log_entry)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await self.log_to_file(f"[{ts}] [{channel.guild.name}] CHANNEL DELETED - #{channel.name}")
 
     @commands.Cog.listener()
     async def on_guild_channel_update(self, before, after):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         changes = []
-        
         if before.name != after.name:
             changes.append(f"name: {before.name} -> {after.name}")
-        if before.position != after.position:
-            changes.append(f"position: {before.position} -> {after.position}")
         if before.category != after.category:
             changes.append(f"category: {before.category} -> {after.category}")
-            
         if changes:
-            log_entry = f"[{timestamp}] [{before.guild.name}] CHANNEL UPDATED - #{before.name} changes: {', '.join(changes)}"
-            await self.log_to_file(log_entry)
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            await self.log_to_file(f"[{ts}] [{before.guild.name}] CHANNEL UPDATED - #{before.name}: {', '.join(changes)}")
 
     # Role Events
     @commands.Cog.listener()
     async def on_guild_role_create(self, role):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{role.guild.name}] ROLE CREATED - {role.name}"
-        await self.log_to_file(log_entry)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await self.log_to_file(f"[{ts}] [{role.guild.name}] ROLE CREATED - {role.name}")
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{role.guild.name}] ROLE DELETED - {role.name}"
-        await self.log_to_file(log_entry)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await self.log_to_file(f"[{ts}] [{role.guild.name}] ROLE DELETED - {role.name}")
 
     @commands.Cog.listener()
     async def on_guild_role_update(self, before, after):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         changes = []
-        
         if before.name != after.name:
             changes.append(f"name: {before.name} -> {after.name}")
         if before.color != after.color:
             changes.append(f"color: {before.color} -> {after.color}")
         if before.permissions != after.permissions:
             changes.append("permissions changed")
-            
         if changes:
-            log_entry = f"[{timestamp}] [{before.guild.name}] ROLE UPDATED - {before.name} changes: {', '.join(changes)}"
-            await self.log_to_file(log_entry)
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            await self.log_to_file(f"[{ts}] [{before.guild.name}] ROLE UPDATED - {before.name}: {', '.join(changes)}")
 
-    # Guild/Server Events
+    # Guild Events
     @commands.Cog.listener()
     async def on_guild_update(self, before, after):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         changes = []
-        
         if before.name != after.name:
             changes.append(f"name: {before.name} -> {after.name}")
         if before.icon != after.icon:
             changes.append("icon changed")
         if before.banner != after.banner:
             changes.append("banner changed")
-            
         if changes:
-            log_entry = f"[{timestamp}] [{before.name}] SERVER UPDATED - changes: {', '.join(changes)}"
-            await self.log_to_file(log_entry)
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            await self.log_to_file(f"[{ts}] [{before.name}] SERVER UPDATED - {', '.join(changes)}")
 
     @commands.Cog.listener()
     async def on_guild_emojis_update(self, guild, before, after):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        added_emojis = set(after) - set(before)
-        removed_emojis = set(before) - set(after)
-        
-        if added_emojis:
-            log_entry = f"[{timestamp}] [{guild.name}] EMOJIS ADDED - {', '.join(str(emoji) for emoji in added_emojis)}"
-            await self.log_to_file(log_entry)
-        if removed_emojis:
-            log_entry = f"[{timestamp}] [{guild.name}] EMOJIS REMOVED - {', '.join(str(emoji) for emoji in removed_emojis)}"
-            await self.log_to_file(log_entry)
-
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        added = set(after) - set(before)
+        removed = set(before) - set(after)
+        if added:
+            await self.log_to_file(f"[{ts}] [{guild.name}] EMOJIS ADDED - {', '.join(str(e) for e in added)}")
+        if removed:
+            await self.log_to_file(f"[{ts}] [{guild.name}] EMOJIS REMOVED - {', '.join(str(e) for e in removed)}")
 
     # Thread Events
     @commands.Cog.listener()
     async def on_thread_create(self, thread):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{thread.guild.name}] THREAD CREATED - #{thread.name} in #{thread.parent.name}"
-        await self.log_to_file(log_entry)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await self.log_to_file(f"[{ts}] [{thread.guild.name}] THREAD CREATED - #{thread.name} in #{thread.parent.name}")
 
     @commands.Cog.listener()
     async def on_thread_delete(self, thread):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] [{thread.guild.name}] THREAD DELETED - #{thread.name}"
-        await self.log_to_file(log_entry)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await self.log_to_file(f"[{ts}] [{thread.guild.name}] THREAD DELETED - #{thread.name}")
 
     @commands.Cog.listener()
     async def on_thread_update(self, before, after):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         changes = []
-        
         if before.name != after.name:
             changes.append(f"name: {before.name} -> {after.name}")
         if before.archived != after.archived:
             changes.append(f"archived: {before.archived} -> {after.archived}")
         if before.locked != after.locked:
             changes.append(f"locked: {before.locked} -> {after.locked}")
-            
         if changes:
-            log_entry = f"[{timestamp}] [{before.guild.name}] THREAD UPDATED - #{before.name} changes: {', '.join(changes)}"
-            await self.log_to_file(log_entry)
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            await self.log_to_file(f"[{ts}] [{before.guild.name}] THREAD UPDATED - #{before.name}: {', '.join(changes)}")
 
     # Sticker Events
     @commands.Cog.listener()
     async def on_guild_stickers_update(self, guild, before, after):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        added_stickers = set(after) - set(before)
-        removed_stickers = set(before) - set(after)
-        
-        if added_stickers:
-            log_entry = f"[{timestamp}] [{guild.name}] STICKERS ADDED - {', '.join(sticker.name for sticker in added_stickers)}"
-            await self.log_to_file(log_entry)
-        if removed_stickers:
-            log_entry = f"[{timestamp}] [{guild.name}] STICKERS REMOVED - {', '.join(sticker.name for sticker in removed_stickers)}"
-            await self.log_to_file(log_entry)
-
-    # Commands and Error Handling
-
-
-    @commands.command()
-    @commands.has_permissions(administrator=True)
-    async def clearoldlogs(self, ctx):
-        """Manually trigger cleanup of old logs"""
-        try:
-            await self.cleanup_old_logs()
-            await ctx.send("Old logs have been cleaned up successfully.")
-        except Exception as e:
-            await ctx.send(f"Error cleaning up logs: {str(e)}")
-
-
-    @commands.command()
-    @commands.has_permissions(administrator=True)
-    async def searchlog(self, ctx, month: int, date: int, year: int):
-        """Search for and send log file for specific date"""
-        try:
-            # Format the date to match log file naming
-            search_date = datetime(year, month, date)
-            date_str = search_date.strftime('%Y-%m-%d')
-            
-            found_logs = False
-            MAX_SIZE = 7_340_032  # ~7MB to be safe
-            
-            # Check current logs folder first
-            current_log = self.log_dir / f"discord_log_{date_str}.txt"
-            if current_log.exists():
-                if current_log.stat().st_size <= MAX_SIZE:
-                    try:
-                        # Read file contents into buffer first
-                        with open(current_log, 'rb') as f:
-                            file_data = f.read()
-                        
-                        # Create a BytesIO object
-                        file_buffer = io.BytesIO(file_data)
-                        file_buffer.seek(0)
-                        
-                        # Send the file
-                        await ctx.send(
-                            "Current log:", 
-                            file=discord.File(fp=file_buffer, filename=f"log_{date_str}.txt")
-                        )
-                        found_logs = True
-                        await asyncio.sleep(1)
-                    except Exception as e:
-                        await ctx.send(f"Error sending current log: {str(e)}")
-
-            # Check archives for any logs from that day
-            archives = list(self.archive_dir.glob(f"discord_log_{date_str}*.gz"))
-            
-            for i, archive in enumerate(archives, 1):
-                if found_logs:
-                    await asyncio.sleep(1)  # Add delay between files
-                    
-                try:
-                    # Read and decompress archive directly into memory
-                    with gzip.open(archive, 'rb') as f:
-                        file_data = f.read()
-                    
-                    if len(file_data) <= MAX_SIZE:
-                        # Create a BytesIO object
-                        file_buffer = io.BytesIO(file_data)
-                        file_buffer.seek(0)
-                        
-                        # Send the file
-                        await ctx.send(
-                            f"Archive {i}:", 
-                            file=discord.File(fp=file_buffer, filename=f"log_{date_str}_{i}.txt")
-                        )
-                        found_logs = True
-                    else:
-                        await ctx.send(f"Archive {i} is too large to send directly.")
-                        
-                except Exception as e:
-                    await ctx.send(f"Error processing archive {i}: {str(e)}")
-
-            if not found_logs:
-                await ctx.send(f"No logs found for {date_str}")
-                
-        except ValueError:
-            await ctx.send("Invalid date format. Please use: ,searchlog month date year\nExample: ,searchlog 1 15 2024")
-        except Exception as e:
-            await ctx.send(f"Error searching logs: {str(e)}")
-
-
-
-
-
-
-
-
-
-
-
-
-
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        added = set(after) - set(before)
+        removed = set(before) - set(after)
+        if added:
+            await self.log_to_file(f"[{ts}] [{guild.name}] STICKERS ADDED - {', '.join(s.name for s in added)}")
+        if removed:
+            await self.log_to_file(f"[{ts}] [{guild.name}] STICKERS REMOVED - {', '.join(s.name for s in removed)}")
 
 
 async def setup(bot):

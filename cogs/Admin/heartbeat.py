@@ -45,7 +45,7 @@ class HeartbeatCog(commands.Cog):
         current_time = local_time.strftime("%Y-%m-%d %H:%M:%S %Z")
 
         embed = discord.Embed(
-            title="💓 Heartbeat Status",
+            title="Heartbeat Status",
             color=0x00ff00 if success else 0xff0000,
             timestamp=utc_time
         )
