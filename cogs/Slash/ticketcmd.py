@@ -480,6 +480,31 @@ class ticketcmd(commands.Cog):
         self.bot.add_view(CloseTicketButton())
 
     @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot:
+            return
+        if not isinstance(message.channel, discord.TextChannel):
+            return
+        if message.channel.name != "tickets":
+            return
+        await message.delete()
+        await message.channel.send(f"{message.author.mention} Don't type in this channel.", delete_after=5)
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        for guild in self.bot.guilds:
+            channel = discord.utils.get(guild.text_channels, name="tickets")
+            if not channel:
+                continue
+            try:
+                async for msg in channel.history(limit=50):
+                    if msg.author == guild.me and not msg.embeds:
+                        await msg.delete()
+                        await asyncio.sleep(0.5)
+            except discord.HTTPException:
+                pass
+
+    @commands.Cog.listener()
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
         tickets = await _read()
         key = f"pending_{payload.message_id}"
