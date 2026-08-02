@@ -318,7 +318,7 @@ class Welcome(commands.Cog):
                 color=discord.Color.gold()
             )
             if member.avatar:
-                embed.set_thumbnail(url=member.avatar.url)
+                embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"Member #{member_count}")
             await channel.send(embed=embed)
 
@@ -345,7 +345,7 @@ class Welcome(commands.Cog):
                 color=discord.Color.red()
             )
             if member.avatar:
-                embed.set_thumbnail(url=member.avatar.url)
+                embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"User ID: {member.id}")
             await channel.send(embed=embed)
 
