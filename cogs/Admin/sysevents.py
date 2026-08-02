@@ -271,14 +271,13 @@ class SystemEvents(commands.Cog):
                 cog = self.bot.get_cog("Maintenance")
 
                 if cog:
-                    warning = await ctx.send(
+                    await ctx.send(
                         embed=cog.create_blocked_embed(),
                         delete_after=5
                     )
 
-                return            
-            if isinstance(error, MaintenanceMode):
-                return
+                return         
+
             
             
             elif isinstance(error, commands.CommandNotFound):
