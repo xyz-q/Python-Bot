@@ -165,6 +165,7 @@ class Maintenance(commands.Cog):
                 print(f"Missing permissions to update nickname in {guild.name}: {e}")
 
 
+
     @commands.Cog.listener()
     async def on_ready(self):
         """Update nicknames when bot starts up"""

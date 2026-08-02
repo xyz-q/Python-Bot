@@ -266,6 +266,17 @@ class SystemEvents(commands.Cog):
         try:
             print(f"\033[91mCommand Error: {str(error)}\033[0m")
             warning = None
+            
+            if isinstance(error, MaintenanceMode):
+                cog = self.bot.get_cog("Maintenance")
+
+                if cog:
+                    warning = await ctx.send(
+                        embed=cog.create_blocked_embed(),
+                        delete_after=5
+                    )
+
+                return            
             if isinstance(error, MaintenanceMode):
                 return
             
