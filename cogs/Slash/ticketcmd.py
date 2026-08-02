@@ -532,7 +532,7 @@ class ticketcmd(commands.Cog):
                 await interaction.followup.send(f"Error: {e}", ephemeral=True)
 
     @app_commands.command(name="ticketadd", description="Add a user to this ticket")
-    @app_commands.default_member_permissions(administrator=True)
+    @app_commands.default_permissions(administrator=True)
     async def ticket_add(self, interaction: discord.Interaction, user: discord.Member):
         if not interaction.guild:
             await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
@@ -550,7 +550,7 @@ class ticketcmd(commands.Cog):
         await interaction.response.send_message(f"{user.mention} has been added to this ticket.")
 
     @app_commands.command(name="ticketlogs", description="View ticket history")
-    @app_commands.default_member_permissions(administrator=True)
+    @app_commands.default_permissions(administrator=True)
     async def ticket_logs(self, interaction: discord.Interaction, user: discord.Member = None, page: int = 1):
         if not interaction.guild:
             await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
