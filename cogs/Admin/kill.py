@@ -30,9 +30,7 @@ class AdminCog(commands.Cog):
                     terminated_message = await self.message.edit(content=":warning: Bot instance(s) TERMINATED.", view=None)
                     print(f"\033[96mBOT HAS BEEN TERMINATED BY: {self.ctx.author.name} ({self.ctx.author.id})\033[0m")
                     guild = self.ctx.bot.get_guild(1056994840925192252)
-                    channel = discord.utils.get(guild.text_channels, name="bot-status")
-                    if channel:
-                        await channel.send(":red_circle: xyz is now offline [Killed]")
+
                     self.stop()
                     await self.ctx.bot.close()
                     sys.exit()  
