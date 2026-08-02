@@ -164,14 +164,6 @@ class Maintenance(commands.Cog):
             except discord.Forbidden as e:
                 print(f"Missing permissions to update nickname in {guild.name}: {e}")
 
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
-        if isinstance(error, MaintenanceMode):
-            await ctx.send(
-                embed=self.create_blocked_embed(),
-                delete_after=5
-            )
-            return
 
     @commands.Cog.listener()
     async def on_ready(self):
