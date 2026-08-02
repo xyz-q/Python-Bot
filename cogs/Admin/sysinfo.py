@@ -56,6 +56,8 @@ def get_disk_partitions():
             usage = psutil.disk_usage(part.mountpoint)
         except (PermissionError, OSError):
             continue
+        if usage.total < 1024 ** 3:
+            continue
         seen_mounts.add(part.mountpoint)
         partitions.append((part.mountpoint, usage))
     return partitions
@@ -151,22 +153,16 @@ class SystemMonitor(commands.Cog):
             except Exception:
                 temps = {}
 
-        fans = {}
-        try:
-            fans = psutil.sensors_fans()
-        except (AttributeError, Exception):
-            fans = {}
-
         load_avg = None
         try:
             load_avg = psutil.getloadavg()
         except (AttributeError, OSError):
             load_avg = None
 
-        return cpu_percent, cpu_freq, temps, fans, load_avg
+        return cpu_percent, cpu_freq, temps, load_avg
 
     async def get_system_stats(self):
-        cpu_percent, cpu_freq, temps, fans, load_avg = await asyncio.to_thread(self._blocking_stats)
+        cpu_percent, cpu_freq, temps, load_avg = await asyncio.to_thread(self._blocking_stats)
 
         now = datetime.now()
 
@@ -222,21 +218,10 @@ class SystemMonitor(commands.Cog):
             mem_lines.append(f"Swap: {swap.percent:.1f}% ({swap.used / (1024 ** 3):.2f}/{swap.total / (1024 ** 3):.2f} GB)")
         embed.add_field(name="Memory", value="\n".join(mem_lines), inline=True)
 
-        fan_lines = []
-        for chip, entries in fans.items():
-            for entry in entries:
-                label = entry.label or chip
-                fan_lines.append(f"{label}: {entry.current} RPM")
-        embed.add_field(
-            name="Fans",
-            value="\n".join(fan_lines[:6]) if fan_lines else "Not available",
-            inline=True,
-        )
-
         disk_lines = [f"Read: {read_speed:.2f} MB/s  Write: {write_speed:.2f} MB/s", ""]
-        for mountpoint, usage in disk_partitions[:6]:
+        for i, (mountpoint, usage) in enumerate(disk_partitions[:6], start=1):
             disk_lines.append(
-                f"{mountpoint}: {usage.percent:.1f}% ({usage.used / (1024 ** 3):.0f}/{usage.total / (1024 ** 3):.0f} GB)"
+                f"Disk {i}: {usage.percent:.1f}% ({usage.used / (1024 ** 3):.0f}/{usage.total / (1024 ** 3):.0f} GB)"
             )
         if not disk_partitions:
             disk_lines.append("No partitions found")
