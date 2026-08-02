@@ -56,7 +56,7 @@ class HeartbeatCog(commands.Cog):
         embed.add_field(name="Bot Status", value=bot_status, inline=True)
         if not success and error_msg:
             embed.add_field(name="Error", value=error_msg, inline=False)
-        embed.set_footer(text=f"Last updated: {current_time}")
+        embed.set_footer(text=f"Last updated")
         return embed
 
     async def _update_message(self, embed):
