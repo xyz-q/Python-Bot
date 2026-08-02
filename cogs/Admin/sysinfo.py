@@ -59,7 +59,7 @@ class SystemMonitor(commands.Cog):
     async def on_message(self, message):
         if message.channel.id != MONITOR_CHANNEL_ID:
             return
-        if self.monitor_message and message.id == self.monitor_message.id:
+        if message.author.id == self.bot.user.id:
             return
         try:
             await message.delete()
