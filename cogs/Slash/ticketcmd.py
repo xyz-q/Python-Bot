@@ -479,6 +479,13 @@ class ticketcmd(commands.Cog):
         self.bot.add_view(TicketButtons())
         self.bot.add_view(CloseTicketButton())
 
+    @commands.Cog.listener()
+    async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
+        tickets = await _read()
+        key = f"pending_{payload.message_id}"
+        if key in tickets:
+            await remove_pending_ticket(payload.message_id)
+
     @app_commands.command(name="ticket", description="Submit a support ticket")
     async def ticket_command(self, interaction: discord.Interaction):
         if not interaction.guild:
