@@ -81,6 +81,15 @@ async def is_ticket_channel(channel_id: int) -> bool:
 _accept_lock = asyncio.Lock()
 
 
+async def has_pending_ticket(user_id: int, guild_id: int) -> bool:
+    tickets = await _read()
+    return any(
+        isinstance(t, dict) and t.get("status") == "pending"
+        and t.get("user_id") == user_id and t.get("guild_id") == guild_id
+        for t in tickets.values()
+    )
+
+
 async def has_active_ticket(user_id: int, guild_id: int, bot: discord.Client = None) -> bool:
     """
     Returns True if the user has an open ticket whose channel still exists.
@@ -476,6 +485,9 @@ class ticketcmd(commands.Cog):
             await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
             return
         try:
+            if await has_pending_ticket(interaction.user.id, interaction.guild.id):
+                await interaction.response.send_message("You already have a pending ticket.", ephemeral=True)
+                return
             if await has_active_ticket(interaction.user.id, interaction.guild.id, interaction.client):
                 await interaction.response.send_message("You already have an active ticket.", ephemeral=True)
                 return
