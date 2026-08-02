@@ -18,7 +18,7 @@ def owner_only():
 class FileManager(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.base_directory = os.getenv('Media_Storage', '/home/user/Media_Storage')  # Replace with your path
+        self.base_directory = os.getenv('Media_Storage', str(os.path.expanduser('~')))
         self.waiting_for_upload = {} 
         self.owner_id = bot.owner_id
         
@@ -140,8 +140,8 @@ class FileManager(commands.Cog):
 
     @owner_only()
     @app_commands.default_member_permissions(administrator=True)
-    @app_commands.autocomplete(path=file_autocomplete)
     @app_commands.command(name="uploadfile", description="Upload a file to the server")
+    @app_commands.autocomplete(path=file_autocomplete)
     async def upload_file(self, interaction: discord.Interaction, path: str = ""):
         """Start the file upload process"""
         try:
@@ -515,9 +515,8 @@ class FileManager(commands.Cog):
     async def check_perms(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         try:
-            current_user = os.getuid()
-            current_username = os.getlogin()
-            result = f"Running as:\nUID: {current_user}\nUsername: {current_username}"
+            username = os.environ.get('USERNAME') or os.environ.get('USER') or 'Unknown'
+            result = f"Running as: `{username}`\nBase directory: `{self.base_directory}`"
             await interaction.followup.send(result, ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"Error: {str(e)}", ephemeral=True)
