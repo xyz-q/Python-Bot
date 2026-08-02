@@ -66,7 +66,8 @@ class CSFloatSearch2(commands.Cog):
                     if resp.status != 200:
                         await interaction.followup.send(f"CSFloat API error: HTTP {resp.status}", ephemeral=True)
                         return
-                    listings = await resp.json()
+                    data = await resp.json()
+                    listings = data.get('data', data) if isinstance(data, dict) else data
 
             if not listings:
                 await interaction.followup.send(f"No listings found for `{query}`.", ephemeral=True)
