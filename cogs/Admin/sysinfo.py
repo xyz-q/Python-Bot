@@ -217,6 +217,7 @@ class SystemMonitor(commands.Cog):
         if swap.total:
             mem_lines.append(f"Swap: {swap.percent:.1f}% ({swap.used / (1024 ** 3):.2f}/{swap.total / (1024 ** 3):.2f} GB)")
         embed.add_field(name="Memory", value="\n".join(mem_lines), inline=True)
+        embed.add_field(name="\u200b", value="\u200b", inline=False)
 
         disk_lines = [f"Read: {read_speed:.2f} MB/s  Write: {write_speed:.2f} MB/s", ""]
         for i, (mountpoint, usage) in enumerate(disk_partitions[:6], start=1):
@@ -235,8 +236,6 @@ class SystemMonitor(commands.Cog):
             f"Total Up: {bytes_sent:.2f} MB",
         ]
         embed.add_field(name="Network", value="\n".join(net_lines), inline=True)
-
-        embed.add_field(name="\u200b", value="\u200b", inline=True)
 
         return embed
 
