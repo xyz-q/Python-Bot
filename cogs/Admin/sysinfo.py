@@ -2,185 +2,240 @@ import discord
 from discord.ext import commands, tasks
 import psutil
 import platform
-from datetime import datetime
+import asyncio
 import subprocess
-import platform
+from datetime import datetime, timedelta
+
+MONITOR_CHANNEL_ID = 1338669385082208296
+BAR_LENGTH = 14
+
+
+def make_bar(percent, length=BAR_LENGTH):
+    filled = round((percent / 100) * length)
+    filled = max(0, min(length, filled))
+    return "█" * filled + "░" * (length - filled)
+
+
+def status_color(*percents):
+    worst = max(percents)
+    if worst >= 85:
+        return discord.Color.red()
+    if worst >= 60:
+        return discord.Color.orange()
+    return discord.Color.green()
+
+
+def format_uptime(seconds):
+    delta = timedelta(seconds=int(seconds))
+    days = delta.days
+    hours, remainder = divmod(delta.seconds, 3600)
+    minutes, _ = divmod(remainder, 60)
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    parts.append(f"{minutes}m")
+    return " ".join(parts)
 
 
 class SystemMonitor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.monitor_message = None
+
+        now = datetime.now()
         self.last_net_io = psutil.net_io_counters()
-        self.last_disk_io = psutil.disk_io_counters()  # Add this line
-        self.last_check_time = datetime.now()
+        self.last_net_time = now
+        self.last_disk_io = psutil.disk_io_counters()
+        self.last_disk_time = now
+
         self.monitor_loop.start()
 
-        
     def cog_unload(self):
         self.monitor_loop.cancel()
 
-    @tasks.loop(seconds=120)  # Update every 10 seconds
-    async def monitor_loop(self):
-        channel = self.bot.get_channel(1338669385082208296)
-        if channel:
-            # Delete any messages that aren't our monitor message
-            async for message in channel.history(limit=None):
-                if message != self.monitor_message:
-                    await message.delete()
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.channel.id != MONITOR_CHANNEL_ID:
+            return
+        if self.monitor_message and message.id == self.monitor_message.id:
+            return
+        try:
+            await message.delete()
+        except (discord.NotFound, discord.Forbidden):
+            pass
 
-            embed = await self.get_system_stats()
-            
-            if self.monitor_message is None:
-                # If no message exists, send a new one
-                self.monitor_message = await channel.send(embed=embed, view=None)
-            else:
-                try:
-                    # Try to edit the existing message
-                    await self.monitor_message.edit(embed=embed, view=None)
-                except discord.NotFound:
-                    # If the message was deleted, send a new one
-                    self.monitor_message = await channel.send(embed=embed, view=None)
+    @tasks.loop(seconds=120)
+    async def monitor_loop(self):
+        channel = self.bot.get_channel(MONITOR_CHANNEL_ID)
+        if not channel:
+            return
+
+        embed = await self.get_system_stats()
+
+        if self.monitor_message is None:
+            self.monitor_message = await channel.send(embed=embed)
+        else:
+            try:
+                await self.monitor_message.edit(embed=embed)
+            except discord.NotFound:
+                self.monitor_message = await channel.send(embed=embed)
 
     @monitor_loop.before_loop
     async def before_monitor_loop(self):
         await self.bot.wait_until_ready()
-        channel = self.bot.get_channel(1338669385082208296)
+        channel = self.bot.get_channel(MONITOR_CHANNEL_ID)
         if channel:
-            # Clear all messages in the channel
             await channel.purge()
-            # Create new monitor message
             embed = await self.get_system_stats()
-            self.monitor_message = await channel.send(embed=embed, view=None)
+            self.monitor_message = await channel.send(embed=embed)
+
+    def _blocking_stats(self):
+        cpu_percent = psutil.cpu_percent(interval=1)
+        cpu_freq = psutil.cpu_freq()
+
+        temps = {}
+        try:
+            temps = psutil.sensors_temperatures()
+        except (AttributeError, Exception):
+            temps = {}
+
+        if not temps:
+            try:
+                sensors_output = subprocess.check_output(["sensors"], timeout=3).decode()
+                parsed = {}
+                for line in sensors_output.split("\n"):
+                    if ":" in line and "\u00b0C" in line and "N/A" not in line:
+                        name, rest = line.split(":", 1)
+                        value = rest.split("(")[0].strip()
+                        if value:
+                            parsed.setdefault("sensors", []).append((name.strip(), value))
+                temps = {"sensors_cli": [type("T", (), {"label": n, "current": v}) for n, v in parsed.get("sensors", [])]} if parsed else {}
+            except Exception:
+                temps = {}
+
+        fans = {}
+        try:
+            fans = psutil.sensors_fans()
+        except (AttributeError, Exception):
+            fans = {}
+
+        load_avg = None
+        try:
+            load_avg = psutil.getloadavg()
+        except (AttributeError, OSError):
+            load_avg = None
+
+        return cpu_percent, cpu_freq, temps, fans, load_avg
 
     async def get_system_stats(self):
+        cpu_percent, cpu_freq, temps, fans, load_avg = await asyncio.to_thread(self._blocking_stats)
 
-        # Calculate network speed
+        now = datetime.now()
+
+        net_time_delta = max((now - self.last_net_time).total_seconds(), 0.001)
         current_net_io = psutil.net_io_counters()
-        current_time = datetime.now()
-        time_delta = (current_time - self.last_check_time).total_seconds()
-        
-        upload_speed = (current_net_io.bytes_sent - self.last_net_io.bytes_sent) / time_delta / 1024  # KB/s
-        download_speed = (current_net_io.bytes_recv - self.last_net_io.bytes_recv) / time_delta / 1024  # KB/s
-        
+        upload_speed = (current_net_io.bytes_sent - self.last_net_io.bytes_sent) / net_time_delta / 1024
+        download_speed = (current_net_io.bytes_recv - self.last_net_io.bytes_recv) / net_time_delta / 1024
+        bytes_sent = current_net_io.bytes_sent / (1024 ** 2)
+        bytes_recv = current_net_io.bytes_recv / (1024 ** 2)
         self.last_net_io = current_net_io
-        self.last_check_time = current_time
+        self.last_net_time = now
 
-        # Bot latency (ping)
-        latency = round(self.bot.latency * 1000)  # Convert to ms
-        
-
-        # Network usage (add with other psutil calls)
-        network = psutil.net_io_counters()
-        bytes_sent = f"{network.bytes_sent / (1024**2):.2f}"
-        bytes_recv = f"{network.bytes_recv / (1024**2):.2f}"
-
-        # Temperature (some systems might not support this)
-        try:
-            if platform.system() == "Linux":
-                sensors_output = subprocess.check_output(['sensors']).decode()
-                temp_info = []
-                
-                for line in sensors_output.split('\n'):
-                    if ':' in line and '°C' in line:
-                        # Only include lines with actual temperature readings
-                        if 'N/A' not in line:
-                            # Split at first colon to get sensor name and value
-                            parts = line.split(':', 1)
-                            if len(parts) == 2:
-                                name = parts[0].strip()
-                                # Extract the actual temperature value
-                                temp = parts[1].split('(')[0].strip()
-                                if '+' in temp or '-' in temp:  # Make sure we have a temperature value
-                                    temp_info.append(f"{name}: {temp}")
-                
-                temp_text = '\n'.join(temp_info) if temp_info else "No temperature readings found"
-            else:
-                temp_text = f"N/A ({platform.system()})"
-        except Exception as e:
-            temp_text = f"Temperature monitoring unavailable: {str(e)}"
-
-
-
-        
-        # CPU Info
-        cpu_percent = psutil.cpu_percent(interval=1)
-        cpu_freq = psutil.cpu_freq().current
-        
-        # Memory Info
-        memory = psutil.virtual_memory()
-        memory_percent = memory.percent
-        memory_used = f"{memory.used / (1024 ** 3):.2f} GB"
-        memory_total = f"{memory.total / (1024 ** 3):.2f} GB"
-
-
-
-
-        # Disk Info
-        disk = psutil.disk_usage('/')
-        disk_percent = disk.percent
-        disk_used = f"{disk.used / (1024 ** 3):.0f} GB"
-        disk_total = f"{disk.total / (1024 ** 3):.0f} GB"
-
+        disk_time_delta = max((now - self.last_disk_time).total_seconds(), 0.001)
         current_disk_io = psutil.disk_io_counters()
-        current_time = datetime.now()
-        time_delta = (current_time - self.last_check_time).total_seconds()
-        
-        # Calculate read and write speeds in MB/s
-        read_speed = (current_disk_io.read_bytes - self.last_disk_io.read_bytes) / time_delta / (1024 * 1024)
-        write_speed = (current_disk_io.write_bytes - self.last_disk_io.write_bytes) / time_delta / (1024 * 1024)
-        
-        # Update last values
+        read_speed = (current_disk_io.read_bytes - self.last_disk_io.read_bytes) / disk_time_delta / (1024 * 1024)
+        write_speed = (current_disk_io.write_bytes - self.last_disk_io.write_bytes) / disk_time_delta / (1024 * 1024)
         self.last_disk_io = current_disk_io
+        self.last_disk_time = now
+
+        latency = round(self.bot.latency * 1000)
+
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage("/")
+
+        uptime_seconds = now.timestamp() - psutil.boot_time()
 
         embed = discord.Embed(
             title="System Monitor",
-            description=f"System stats for {platform.node()}",
-            color=discord.Color.gold(),
-            timestamp=datetime.now()
+            description=f"{platform.node()}  •  Uptime: {format_uptime(uptime_seconds)}",
+            color=status_color(cpu_percent, memory.percent, disk.percent),
+            timestamp=now,
         )
 
-        embed.add_field(
-            name="CPU",
-            value=f"Usage: {cpu_percent}%\nFrequency: {cpu_freq:.2f} MHz\n{temp_text}",
-            inline=True
-        )
-        embed.add_field(
-            name="Network Speed",
-            value=f"Latency: {latency}ms\n"
-                  f"Download: {download_speed:.2f} KB/s\n"
-                  f"Upload: {upload_speed:.2f} KB/s\n"
-                  f"Total Up: {bytes_sent} MB\n"
-                  f"Total Down: {bytes_recv} MB\n",
+        cpu_lines = [
+            f"```",
+            f"{make_bar(cpu_percent)} {cpu_percent:>5.1f}%",
+            f"```",
+            f"Freq: {cpu_freq.current:.0f} MHz" if cpu_freq else "Freq: N/A",
+        ]
+        if load_avg:
+            cpu_lines.append(f"Load: {load_avg[0]:.2f} / {load_avg[1]:.2f} / {load_avg[2]:.2f}")
 
-            inline=True
+        temp_lines = []
+        for chip, entries in temps.items():
+            for entry in entries:
+                label = entry.label or chip
+                temp_lines.append(f"{label}: {entry.current:.1f}\u00b0C")
+        if temp_lines:
+            cpu_lines.append("")
+            cpu_lines.extend(temp_lines[:6])
+        else:
+            cpu_lines.append("Temps: not available")
+
+        embed.add_field(name="CPU", value="\n".join(cpu_lines), inline=True)
+
+        mem_lines = [
+            "```",
+            f"{make_bar(memory.percent)} {memory.percent:>5.1f}%",
+            "```",
+            f"{memory.used / (1024 ** 3):.2f} / {memory.total / (1024 ** 3):.2f} GB",
+        ]
+        swap = psutil.swap_memory()
+        if swap.total:
+            mem_lines.append(f"Swap: {swap.percent:.1f}% ({swap.used / (1024 ** 3):.2f}/{swap.total / (1024 ** 3):.2f} GB)")
+        embed.add_field(name="Memory", value="\n".join(mem_lines), inline=True)
+
+        fan_lines = []
+        for chip, entries in fans.items():
+            for entry in entries:
+                label = entry.label or chip
+                fan_lines.append(f"{label}: {entry.current} RPM")
+        embed.add_field(
+            name="Fans",
+            value="\n".join(fan_lines[:6]) if fan_lines else "Not available",
+            inline=True,
         )
+
+        disk_lines = [
+            "```",
+            f"{make_bar(disk.percent)} {disk.percent:>5.1f}%",
+            "```",
+            f"{disk.used / (1024 ** 3):.0f} / {disk.total / (1024 ** 3):.0f} GB",
+            f"Read:  {read_speed:.2f} MB/s",
+            f"Write: {write_speed:.2f} MB/s",
+        ]
+        embed.add_field(name="Disk", value="\n".join(disk_lines), inline=True)
+
+        net_lines = [
+            f"Latency: {latency} ms",
+            f"Down: {download_speed:.2f} KB/s",
+            f"Up: {upload_speed:.2f} KB/s",
+            f"Total Down: {bytes_recv:.2f} MB",
+            f"Total Up: {bytes_sent:.2f} MB",
+        ]
+        embed.add_field(name="Network", value="\n".join(net_lines), inline=True)
+
         embed.add_field(name="\u200b", value="\u200b", inline=True)
-        embed.add_field(
-            name="Memory",
-            value=f"Usage: {memory_percent}%\nUsed: {memory_used}/{memory_total}",
-            inline=True
-        )
-        
-        embed.add_field(
-            name="Disk",
-            value=f"Usage: {disk_percent}%\n"
-                f"{disk_used}/{disk_total}\n"
-                f"Read: {read_speed:.2f} MB/s\n"
-                f"Write: {write_speed:.2f} MB/s",
-            inline=True
-        )
-        embed.add_field(name="\u200b", value="\u200b", inline=True)
-
-
 
         return embed
 
     @commands.command()
     async def sysinfo(self, ctx):
-        """Get current system information"""
         embed = await self.get_system_stats()
-        await ctx.send(embed=embed, view=None)
+        await ctx.send(embed=embed)
+
 
 async def setup(bot):
     await bot.add_cog(SystemMonitor(bot))
