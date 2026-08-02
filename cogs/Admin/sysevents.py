@@ -6,7 +6,7 @@ import difflib
 import json
 import os
 from datetime import datetime, timezone, timedelta
-from cogs.maintenance import MaintenanceMode
+from cogs.Admin.maintenance import MaintenanceMode
 
 STATUS_FILE = ".json/status_message.json"
 

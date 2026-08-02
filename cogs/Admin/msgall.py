@@ -8,7 +8,7 @@ class MessageAll(commands.Cog):
 
     @commands.is_owner()
     @app_commands.command(name="msgall", description="Send a message to all channels")
-    @app_commands.default_member_permissions(administrator=True)
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(message="The message to send", times="Number of times to send (default: 1)")
     async def msgall(self, interaction: discord.Interaction, message: str, times: int = 1):
         if interaction.user.id != 110927272210354176:
