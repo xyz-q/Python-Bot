@@ -10,6 +10,14 @@ class Maintenance(commands.Cog):
         self.config_file = ".json/maintenance.json"
         self.maintenance_mode = self.load_maintenance_state()
 
+    def create_blocked_embed(self):
+        return discord.Embed(
+            title="🔧 Maintenance Mode",
+            description="Commands are temporarily disabled while the bot is being updated.",
+            color=discord.Color.orange(),
+            timestamp=datetime.now(timezone.utc)
+        )
+
     def create_embed(self, enabled: bool):
         if enabled:
             embed = discord.Embed(
@@ -22,6 +30,8 @@ class Maintenance(commands.Cog):
                 color=discord.Color.orange(),
                 timestamp=datetime.now(timezone.utc)
             )
+
+
 
             embed.add_field(
                 name="Status",
@@ -177,7 +187,7 @@ async def maintenance_check(ctx):
 
     # If maintenance mode is active, block all commands
     if cog.maintenance_mode:
-        embed = cog.create_embed(True)
+        embed = cog.create_blocked_embed()
 
         await ctx.send(
             embed=embed,
