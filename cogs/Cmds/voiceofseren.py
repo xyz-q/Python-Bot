@@ -213,12 +213,13 @@ class VoSCog(commands.Cog):
 
     @commands.command(name='addvos')
     @commands.has_permissions(administrator=True)
-    async def add_vos_channel(self, ctx):
+    async def add_vos_channel(self, ctx, channel: discord.TextChannel = None):
+        channel = channel or ctx.channel
         data = self.load_channels()
-        if ctx.channel.id not in data['channels']:
-            data['channels'].append(ctx.channel.id)
+        if channel.id not in data['channels']:
+            data['channels'].append(channel.id)
             self.save_channels(data)
-            msg = await ctx.send('<:add:1328511998647861390> This channel will now receive Voice of Seren updates!')
+            msg = await ctx.send(f'<:add:1328511998647861390> {channel.mention} will now receive Voice of Seren updates!')
         else:
             msg = await ctx.send('This channel is already receiving updates!')
         await asyncio.sleep(5)
