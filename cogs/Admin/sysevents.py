@@ -306,7 +306,6 @@ class SystemEvents(commands.Cog):
         try:
             print(f"\033[91mCommand Error: {str(error)}\033[0m")
             
-            warning = None
 
             if isinstance(error, commands.CommandNotFound):
                 try:
@@ -363,8 +362,9 @@ class SystemEvents(commands.Cog):
                 return
 
             else:
-                print(f"\033[91mUnhandled command error: {str(error)}\033[0m")
-                traceback.print_exception(type(error), error, error.__traceback__)
+                print(f"\033[91mUnhandled error: {str(error)}\033[0m")
+                traceback.print_exc()
+                warning = None
                 
             try:
                 if warning is not None:
@@ -425,11 +425,9 @@ class SystemEvents(commands.Cog):
                 return
 
             content_lower = message.content.lower()
-            if message.content.startswith(','):
-                print(f"\033[0;32mCommand: {content_lower} by {message.author}\033[0m")
-                
+
             if content_lower.startswith(allowed_commands):
-                print(f"\033[0;32mAllowed Command: {content_lower} by {message.author}\033[0m")
+                print(f"\033[0;32mAllowed Command: {message.content} by {message.author}\033[0m")
                 await self.bot.process_commands(message)
                 return
 
@@ -442,7 +440,6 @@ class SystemEvents(commands.Cog):
             except Exception as e:
                 print(f"\033[91mError handling wrong channel: {str(e)}\033[0m")
             return
- 
 
         except Exception as e:
             print(f"\033[91mError in on_message: {str(e)}\033[0m")
@@ -465,15 +462,13 @@ class SystemEvents(commands.Cog):
 
                     # Store the original ws
                     original_ws = self.bot._connection._ws if hasattr(self.bot._connection, '_ws') else None
-
+                    
                     # Set our mock ws with the test code
                     self.bot._connection._ws = MockWebSocket(code)
-
                     try:
                         await ctx.send(f"Testing disconnect event with code {code}...")
                         await self.on_disconnect()
                     finally:
-                        # Always restore the original ws, even if on_disconnect() raised
                         self.bot._connection._ws = original_ws
                 else:
                     await ctx.send("Testing normal disconnect event...")
@@ -508,14 +503,12 @@ class SystemEvents(commands.Cog):
     async def before_connection_monitor(self):
         await self.bot.wait_until_ready()
 
-
+    def cog_unload(self):
+        self.connection_monitor.cancel()
 
     @commands.Cog.listener()
     async def on_error(self, event, *args, **kwargs):
         print(f"\033[91mError in event {event}: {args} {kwargs}\033[0m")
-
-    def cog_unload(self):
-        self.connection_monitor.cancel()
 
 async def setup(bot):
     await bot.add_cog(SystemEvents(bot))
