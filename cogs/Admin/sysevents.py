@@ -6,7 +6,7 @@ import difflib
 import json
 import os
 from datetime import datetime, timezone, timedelta
-
+from cogs.maintenance import MaintenanceMode
 
 STATUS_FILE = ".json/status_message.json"
 
@@ -266,8 +266,11 @@ class SystemEvents(commands.Cog):
         try:
             print(f"\033[91mCommand Error: {str(error)}\033[0m")
             warning = None
-
-            if isinstance(error, commands.CommandNotFound):
+            if isinstance(error, MaintenanceMode):
+                return
+            
+            
+            elif isinstance(error, commands.CommandNotFound):
                 try:
                     valid_commands = [f',{command.name}' for command in self.bot.commands]
                     similar_commands = difflib.get_close_matches(ctx.message.content.lower(), valid_commands)

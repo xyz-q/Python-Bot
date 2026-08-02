@@ -3,7 +3,8 @@ from discord.ext import commands
 import json
 from datetime import datetime, timezone
 
-
+class MaintenanceMode(commands.CheckFailure):
+    pass
 class Maintenance(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -164,6 +165,15 @@ class Maintenance(commands.Cog):
                 print(f"Missing permissions to update nickname in {guild.name}: {e}")
 
     @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        if isinstance(error, MaintenanceMode):
+            await ctx.send(
+                embed=self.create_blocked_embed(),
+                delete_after=5
+            )
+            return
+
+    @commands.Cog.listener()
     async def on_ready(self):
         """Update nicknames when bot starts up"""
         await self.update_bot_nickname()
@@ -174,10 +184,10 @@ class Maintenance(commands.Cog):
 # ---------------------------
 
 async def maintenance_check(ctx):
-    """Global check that blocks commands during maintenance"""
+    """Global maintenance lock"""
     cog = ctx.bot.get_cog("Maintenance")
 
-    # If cog not loaded, allow commands
+    # Allow if Maintenance cog isn't loaded
     if not cog:
         return True
 
@@ -185,19 +195,12 @@ async def maintenance_check(ctx):
     if await ctx.bot.is_owner(ctx.author):
         return True
 
-    # If maintenance mode is active, block all commands
+    # Block everyone else
     if cog.maintenance_mode:
-        embed = cog.create_blocked_embed()
-
-        await ctx.send(
-            embed=embed,
-            delete_after=5
-        )
-        return False
+        raise MaintenanceMode()
 
     return True
 
-
 async def setup(bot):
-    bot.add_check(maintenance_check)
     await bot.add_cog(Maintenance(bot))
+    bot.add_check(maintenance_check)
