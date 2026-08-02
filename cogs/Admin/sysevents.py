@@ -54,14 +54,20 @@ class SystemEvents(commands.Cog):
 
         if self.incidents:
             lines = []
-            for inc in reversed(self.incidents):
+            recent = list(reversed(self.incidents))[:4]
+            for inc in recent:
                 ts = inc["time"].strftime("%H:%M:%S UTC")
                 if inc["type"] == "disconnect":
                     lines.append(f"🔴 `{ts}` Disconnected — {inc['detail']}")
                 elif inc["type"] == "resume":
                     lines.append(f"🟢 `{ts}` Reconnected")
                 elif inc["type"] == "high_latency":
-                    lines.append(f"🟡 `{ts}` High latency — {inc['detail']}")
+                    lines.append(f"🟡 `{ts}` High latency started — {inc['detail']}")
+                elif inc["type"] == "high_latency_end":
+                    lines.append(f"🟢 `{ts}` High latency resolved — {inc['detail']}")
+            total = len(self.incidents)
+            if total > 4:
+                lines.append(f"\n+{total - 4} more incidents in the last 24h")
             embed.add_field(name="Incidents (last 24h)", value="\n".join(lines), inline=False)
         else:
             embed.add_field(name="Incidents (last 24h)", value="None", inline=False)
@@ -430,11 +436,23 @@ class SystemEvents(commands.Cog):
             self.last_known_latency = current_latency
 
             if current_latency > 200:
-                self.incidents.append({
-                    "type": "high_latency",
-                    "time": datetime.now(timezone.utc),
-                    "detail": f"{current_latency:.2f}ms"
-                })
+                # Only log when high latency starts
+                last = next((i for i in reversed(self.incidents) if i["type"] in ("high_latency", "high_latency_end")), None)
+                if last is None or last["type"] == "high_latency_end":
+                    self.incidents.append({
+                        "type": "high_latency",
+                        "time": datetime.now(timezone.utc),
+                        "detail": f"{current_latency:.2f}ms"
+                    })
+            else:
+                # Log when high latency ends
+                last = next((i for i in reversed(self.incidents) if i["type"] in ("high_latency", "high_latency_end")), None)
+                if last and last["type"] == "high_latency":
+                    self.incidents.append({
+                        "type": "high_latency_end",
+                        "time": datetime.now(timezone.utc),
+                        "detail": f"{current_latency:.2f}ms"
+                    })
 
             await self._update_status_message()
         except Exception as e:
