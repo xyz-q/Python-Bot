@@ -18,7 +18,7 @@ WEAPON_NAMES = [
     'AWP', 'G3SG1', 'SCAR-20', 'SSG 08', 'Zeus x27'
 ]
 
-WEAR_CONDITIONS = ['Battle-Scarred', 'Well-Worn', 'Field-Tested', 'Minimal Wear', 'Factory New']
+WEAR_CONDITIONS = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred']
 SKIN_TYPES = ['StatTrak™', 'Souvenir']
 
 
@@ -35,11 +35,41 @@ async def skin_type_autocomplete(interaction: Interaction, current: str):
 class CSFloatSearch2(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.api_url = 'https://csfloat.com/api/v1/listings'
+        self.listings_url = 'https://csfloat.com/api/v1/listings'
         self.api_key = os.getenv('CSFLOAT_API_KEY', '')
 
+    @property
+    def _headers(self):
+        return {'Authorization': self.api_key} if self.api_key else {}
+
+    async def skin_autocomplete(self, interaction: Interaction, current: str):
+        weapon = interaction.namespace.weapon or ''
+        query = f"{weapon} | {current}" if weapon else current
+        if len(query.strip()) < 2:
+            return []
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    'https://csfloat.com/api/v1/meta/search',
+                    params={'query': query, 'limit': 25},
+                    headers=self._headers
+                ) as resp:
+                    if resp.status != 200:
+                        return []
+                    data = await resp.json()
+                    items = data if isinstance(data, list) else data.get('data', [])
+                    skins = []
+                    for item in items:
+                        name = item.get('market_hash_name', '')
+                        if ' | ' in name:
+                            skin_part = name.split(' | ', 1)[1].split(' (')[0]
+                            skins.append(app_commands.Choice(name=skin_part[:100], value=skin_part))
+                    return skins[:25]
+        except Exception:
+            return []
+
     @app_commands.command(name="price", description="Look up lowest CSFloat prices for a CS2 skin")
-    @app_commands.autocomplete(weapon=weapon_autocomplete, wear=wear_autocomplete, skin_type=skin_type_autocomplete)
+    @app_commands.autocomplete(weapon=weapon_autocomplete, skin=skin_autocomplete, wear=wear_autocomplete, skin_type=skin_type_autocomplete)
     @app_commands.describe(
         weapon="The CS2 weapon",
         skin="The skin name",
@@ -55,13 +85,12 @@ class CSFloatSearch2(commands.Cog):
             query = f"{skin_type + ' ' if skin_type else ''}{weapon} | {skin} ({wear})"
 
         params = {'market_hash_name': query, 'sort_by': 'lowest_price', 'limit': 50}
-        headers = {'Authorization': self.api_key} if self.api_key else {}
 
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(self.api_url, params=params, headers=headers) as resp:
+                async with session.get(self.listings_url, params=params, headers=self._headers) as resp:
                     if resp.status == 403:
-                        await interaction.followup.send("CSFloat API returned 403 — an API key is required. Set `CSFLOAT_API_KEY` in your environment.", ephemeral=True)
+                        await interaction.followup.send("CSFloat API returned 403 — check your API key.", ephemeral=True)
                         return
                     if resp.status != 200:
                         await interaction.followup.send(f"CSFloat API error: HTTP {resp.status}", ephemeral=True)
@@ -83,14 +112,30 @@ class CSFloatSearch2(commands.Cog):
                     if wear_prices[wear_name] is None or price_dollars < wear_prices[wear_name]:
                         wear_prices[wear_name] = price_dollars
 
-            embed = discord.Embed(title=f"Lowest prices for {query}", color=0xFF0000)
-            for w, p in wear_prices.items():
-                if p is not None:
-                    embed.add_field(name=w, value=f"${p:.2f} USD", inline=False)
-
             if not any(wear_prices.values()):
                 await interaction.followup.send(f"No priced listings found for `{query}`.", ephemeral=True)
                 return
+
+            lowest = min(p for p in wear_prices.values() if p is not None)
+            thumbnail = None
+            for listing in listings:
+                img = listing.get('item', {}).get('icon_url') or listing.get('item', {}).get('image_url')
+                if img:
+                    thumbnail = img if img.startswith('http') else f"https://steamcommunity-a.akamaihd.net/economy/image/{img}"
+                    break
+
+            embed = discord.Embed(
+                title=query,
+                description=f"Lowest available: **${lowest:.2f} USD**",
+                color=discord.Color.gold(),
+                timestamp=discord.utils.utcnow()
+            )
+            if thumbnail:
+                embed.set_thumbnail(url=thumbnail)
+            for w in WEAR_CONDITIONS:
+                if wear_prices[w] is not None:
+                    embed.add_field(name=w, value=f"${wear_prices[w]:.2f} USD", inline=True)
+            embed.set_footer(text="Powered by CSFloat")
 
             await interaction.followup.send(embed=embed)
 
