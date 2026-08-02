@@ -10,6 +10,8 @@ STATE_FILE = "/home/matty0/bot/Python-Bot/deploy_state.json"
 REPO_DIR = "/home/matty0/bot/Python-Bot"
 OWNER_ID = 110927272210354176
 
+CONFIRM_TIMEOUT = 30.0
+
 
 def build_embed(status, description, color, fields=None, footer_extra=None):
     embed = discord.Embed(
@@ -41,6 +43,58 @@ async def get_git_commit():
     except Exception:
         pass
     return None
+
+
+class DeployConfirmView(discord.ui.View):
+    def __init__(self, author_id):
+        super().__init__(timeout=CONFIRM_TIMEOUT)
+        self.author_id = author_id
+        self.value = None
+        self.message = None
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message(
+                "Only the person who ran this command can respond.", ephemeral=True
+            )
+            return False
+        return True
+
+    async def on_timeout(self):
+        self.value = False
+        for item in self.children:
+            item.disabled = True
+        if self.message:
+            embed = build_embed(
+                status="Timed out",
+                description="No response within 30 seconds. Deploy was not started.",
+                color=discord.Color.greyple()
+            )
+            try:
+                await self.message.edit(embed=embed, view=self)
+            except discord.HTTPException:
+                pass
+
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.value = True
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.defer()
+        self.stop()
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.value = False
+        for item in self.children:
+            item.disabled = True
+        embed = build_embed(
+            status="Cancelled",
+            description="Deploy was cancelled.",
+            color=discord.Color.greyple()
+        )
+        await interaction.response.edit_message(embed=embed, view=self)
+        self.stop()
 
 
 class Deploy(commands.Cog):
@@ -77,7 +131,7 @@ class Deploy(commands.Cog):
                 ]
             )
 
-            await msg.edit(content=None, embed=embed)
+            await msg.edit(content=None, embed=embed, view=None)
             print("[DEPLOY LOG] Discord message updated successfully post-restart.")
 
         except Exception as e:
@@ -107,19 +161,36 @@ class Deploy(commands.Cog):
             )
             return await ctx.send(embed=embed)
 
-        async with self.deploy_lock:
-            await self._run_deploy(ctx)
+        commit_before = await get_git_commit()
 
-    async def _run_deploy(self, ctx):
+        confirm_embed = build_embed(
+            status="Waiting for confirmation",
+            description="This will pull the latest changes, run the deploy script, and restart the bot.",
+            color=discord.Color.blurple(),
+            fields=[("Current commit", commit_before or "Unknown", True)],
+            footer_extra="Expires in 30s"
+        )
+        view = DeployConfirmView(author_id=ctx.author.id)
+        msg = await ctx.send(embed=confirm_embed, view=view)
+        view.message = msg
+
+        await view.wait()
+
+        if not view.value:
+            return
+
+        async with self.deploy_lock:
+            await self._run_deploy(ctx, msg, commit_before)
+
+    async def _run_deploy(self, ctx, msg, commit_before):
 
         start_time = time.time()
-        commit_before = await get_git_commit()
         embed = build_embed(
             status="Running deploy script",
             description="Pulling latest changes and installing updates.",
             color=discord.Color.blurple()
         )
-        msg = await ctx.send(embed=embed)
+        await msg.edit(embed=embed, view=None)
 
         # 1. Execute the bash script and check its exit code
         try:
@@ -257,4 +328,3 @@ class Deploy(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Deploy(bot))
-    
