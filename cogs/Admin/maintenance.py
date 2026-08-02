@@ -27,14 +27,41 @@ class Maintenance(commands.Cog):
         except Exception as e:
             print(f"Error saving maintenance state: {e}")
 
+    async def notify_guild_owners(self, enabled: bool):
+        """DM all guild owners when maintenance starts or ends"""
+        title = "Bot Maintenance Started" if enabled else "Bot Maintenance Complete"
+        desc = (
+            "The bot is currently undergoing maintenance.\n"
+            "Commands are temporarily disabled for users.\n"
+            "The bot will return once maintenance is complete."
+            if enabled else
+            "The bot is back online and commands are available again."
+        )
+
+        for guild in self.bot.guilds:
+            owner = guild.owner
+            if owner is None:
+                continue
+
+            try:
+                await owner.send(f"**{title}**\n\n{desc}")
+            except discord.Forbidden:
+                # Owner has DMs disabled — ignore silently
+                pass
+            except Exception as e:
+                print(f"Failed to notify owner of {guild.name}: {e}")
+
     @commands.command()
     @commands.is_owner()
     async def maintenance(self, ctx):
         """Toggle maintenance mode for the bot"""
         self.maintenance_mode = not self.maintenance_mode
-        self.save_maintenance_state()  # Save the new state
+        self.save_maintenance_state()
         await self.update_bot_nickname()
-        
+
+        # Notify guild owners
+        await self.notify_guild_owners(self.maintenance_mode)
+
         status = "enabled" if self.maintenance_mode else "disabled"
         await ctx.send(f"Maintenance mode {status}")
 
@@ -53,10 +80,9 @@ class Maintenance(commands.Cog):
         """Update the bot's nickname in all guilds"""
         for guild in self.bot.guilds:
             try:
-                # Get current nickname
                 current_nickname = guild.me.nick
-                
-                # Extract original name by removing all maintenance prefixes
+
+                # Extract original name
                 if current_nickname:
                     original_name = current_nickname
                     while original_name.startswith("[MAINTENANCE] "):
@@ -64,17 +90,15 @@ class Maintenance(commands.Cog):
                 else:
                     original_name = guild.me.name
 
-                # Build new nickname based on maintenance mode
+                # Build nickname
                 if self.maintenance_mode:
                     new_nickname = f"[MAINTENANCE] {original_name}"
                 else:
                     new_nickname = original_name
 
-                # Ensure nickname doesn't exceed Discord's 32 character limit
-                if len(new_nickname) > 32:
-                    new_nickname = new_nickname[:32]
+                # Discord nickname limit
+                new_nickname = new_nickname[:32]
 
-                # Only update if the nickname is different
                 if guild.me.nick != new_nickname:
                     await guild.me.edit(nick=new_nickname)
 
@@ -88,5 +112,34 @@ class Maintenance(commands.Cog):
         """Update nicknames when bot starts up"""
         await self.update_bot_nickname()
 
+
+# ---------------------------
+# GLOBAL MAINTENANCE CHECK
+# ---------------------------
+
+async def maintenance_check(ctx):
+    """Global check that blocks commands during maintenance"""
+    cog = ctx.bot.get_cog("Maintenance")
+
+    # If cog not loaded, allow commands
+    if not cog:
+        return True
+
+    # Owner bypass
+    if await ctx.bot.is_owner(ctx.author):
+        return True
+
+    # If maintenance mode is active, block all commands
+    if cog.maintenance_mode:
+        await ctx.send(
+            "The bot is currently in maintenance mode. Commands are disabled.",
+            delete_after=7
+        )
+        return False
+
+    return True
+
+
 async def setup(bot):
+    bot.add_check(maintenance_check)
     await bot.add_cog(Maintenance(bot))

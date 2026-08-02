@@ -55,7 +55,7 @@ commands_list = [
     (",dm <@user> <message>", "Send DM"),
     (",dms <@user>", "Show bot's DMs with a user"),
     (",dnd", "Set bot status to Do Not Disturb"),
-    (",downtime", "Check bot downtime"),
+    (",downtime", "Send downtime notice to server owners."),
     (",drag <@user>", "Move user to your voice channel"),
     (",emoji", "Get emoji details"),
     (",emojiadd <link>", "Create emoji"),
