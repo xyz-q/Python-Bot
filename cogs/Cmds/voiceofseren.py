@@ -7,14 +7,16 @@ import aiohttp
 import asyncio
 
 
+STATE_FILE = ".json/vos_state.json"
+
+
 class VoSCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.CHANNELS_FILE = '.json/vos_channels.json'
         self.COMBINED_IMAGES = {}
         self.load_combined_images()
-        # Per-channel state: {channel_id: {"districts": tuple, "is_stale": bool}}
-        self.channel_state = {}
+        self.channel_state = self._load_state()
         self.district_emojis = {
             'Amlodd':    '<:Amlodd_Clan:1336983757210517555>',
             'Cadarn':    '<:Cadarn_Clan:1336983790320488479>',
@@ -26,6 +28,20 @@ class VoSCog(commands.Cog):
             'Trahaearn': '<:Trahaearn_Clan:1336983838945054720>'
         }
         self.check_vos.start()
+
+    def _load_state(self):
+        try:
+            with open(STATE_FILE, 'r') as f:
+                raw = json.load(f)
+                # JSON keys are strings, convert back to int and lists to tuples
+                return {int(k): {"districts": tuple(v["districts"]), "is_stale": v["is_stale"]} for k, v in raw.items()}
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+
+    def _save_state(self):
+        os.makedirs(".json", exist_ok=True)
+        with open(STATE_FILE, 'w') as f:
+            json.dump({str(k): {"districts": list(v["districts"]), "is_stale": v["is_stale"]} for k, v in self.channel_state.items()}, f)
 
     def cog_unload(self):
         self.check_vos.cancel()
@@ -150,29 +166,29 @@ class VoSCog(commands.Cog):
                         # First run — always send
                         await self._send_vos(channel, vos_data)
                         self.channel_state[channel_id] = {"districts": current_districts, "is_stale": is_stale}
+                        self._save_state()
                         continue
 
                     prev_districts = prev["districts"]
                     prev_stale = prev["is_stale"]
 
                     if not is_stale and current_districts != prev_districts:
-                        # Fresh → districts changed: send new
                         await self._send_vos(channel, vos_data)
                         self.channel_state[channel_id] = {"districts": current_districts, "is_stale": False}
+                        self._save_state()
 
                     elif not prev_stale and is_stale:
-                        # Fresh → stale: send stale notice
                         await self._send_vos(channel, vos_data)
                         self.channel_state[channel_id] = {"districts": current_districts, "is_stale": True}
+                        self._save_state()
 
                     elif prev_stale and is_stale:
-                        # Stale → still stale: do nothing
                         pass
 
                     elif prev_stale and not is_stale:
-                        # Stale → fresh: send new
                         await self._send_vos(channel, vos_data)
                         self.channel_state[channel_id] = {"districts": current_districts, "is_stale": False}
+                        self._save_state()
 
                 except Exception as e:
                     print(f"❌ Error updating channel {channel_id}: {e}")
@@ -216,6 +232,7 @@ class VoSCog(commands.Cog):
             data['channels'].remove(ctx.channel.id)
             self.save_channels(data)
             self.channel_state.pop(ctx.channel.id, None)
+            self._save_state()
             await ctx.send('<:remove:1328511957208268800> This channel will no longer receive Voice of Seren updates!')
         else:
             await ctx.send('This channel was not receiving updates!')
@@ -246,6 +263,7 @@ class VoSCog(commands.Cog):
                         "districts": tuple(sorted([vos_data['district1'], vos_data['district2']])),
                         "is_stale": vos_data['is_stale']
                     }
+                    self._save_state()
                     success += 1
                 except Exception as e:
                     print(f"forcevos error in {channel_id}: {e}")
