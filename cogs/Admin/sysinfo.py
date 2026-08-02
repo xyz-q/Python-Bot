@@ -7,13 +7,6 @@ import subprocess
 from datetime import datetime, timedelta
 
 MONITOR_CHANNEL_ID = 1338669385082208296
-BAR_LENGTH = 14
-
-
-def make_bar(percent, length=BAR_LENGTH):
-    filled = round((percent / 100) * length)
-    filled = max(0, min(length, filled))
-    return "█" * filled + "░" * (length - filled)
 
 
 def status_color(*percents):
@@ -23,6 +16,49 @@ def status_color(*percents):
     if worst >= 60:
         return discord.Color.orange()
     return discord.Color.green()
+
+
+SKIP_FS_TYPES = {"squashfs", "tmpfs", "devtmpfs", "overlay", "iso9660"}
+
+
+def get_cpu_temp(temps):
+    package_vals = []
+    core_vals = []
+    all_vals = []
+
+    for chip, entries in temps.items():
+        for entry in entries:
+            label = (entry.label or chip or "").lower()
+            all_vals.append(entry.current)
+            if "package" in label:
+                package_vals.append(entry.current)
+            elif "core" in label:
+                core_vals.append(entry.current)
+
+    if package_vals:
+        return sum(package_vals) / len(package_vals)
+    if core_vals:
+        return sum(core_vals) / len(core_vals)
+    if all_vals:
+        return sum(all_vals) / len(all_vals)
+    return None
+
+
+def get_disk_partitions():
+    partitions = []
+    seen_mounts = set()
+    for part in psutil.disk_partitions(all=False):
+        if part.fstype.lower() in SKIP_FS_TYPES:
+            continue
+        if part.mountpoint in seen_mounts:
+            continue
+        try:
+            usage = psutil.disk_usage(part.mountpoint)
+        except (PermissionError, OSError):
+            continue
+        seen_mounts.add(part.mountpoint)
+        partitions.append((part.mountpoint, usage))
+    return partitions
 
 
 def format_uptime(seconds):
@@ -153,43 +189,32 @@ class SystemMonitor(commands.Cog):
         latency = round(self.bot.latency * 1000)
 
         memory = psutil.virtual_memory()
-        disk = psutil.disk_usage("/")
+        disk_partitions = get_disk_partitions()
+        worst_disk_percent = max((usage.percent for _, usage in disk_partitions), default=0)
 
         uptime_seconds = now.timestamp() - psutil.boot_time()
 
         embed = discord.Embed(
             title="System Monitor",
             description=f"{platform.node()}  •  Uptime: {format_uptime(uptime_seconds)}",
-            color=status_color(cpu_percent, memory.percent, disk.percent),
+            color=status_color(cpu_percent, memory.percent, worst_disk_percent),
             timestamp=now,
         )
 
         cpu_lines = [
-            f"```",
-            f"{make_bar(cpu_percent)} {cpu_percent:>5.1f}%",
-            f"```",
+            f"Usage: {cpu_percent:.1f}%",
             f"Freq: {cpu_freq.current:.0f} MHz" if cpu_freq else "Freq: N/A",
         ]
         if load_avg:
             cpu_lines.append(f"Load: {load_avg[0]:.2f} / {load_avg[1]:.2f} / {load_avg[2]:.2f}")
 
-        temp_lines = []
-        for chip, entries in temps.items():
-            for entry in entries:
-                label = entry.label or chip
-                temp_lines.append(f"{label}: {entry.current:.1f}\u00b0C")
-        if temp_lines:
-            cpu_lines.append("")
-            cpu_lines.extend(temp_lines[:6])
-        else:
-            cpu_lines.append("Temps: not available")
+        cpu_temp = get_cpu_temp(temps)
+        cpu_lines.append(f"Temp: {cpu_temp:.1f}\u00b0C" if cpu_temp is not None else "Temp: not available")
 
         embed.add_field(name="CPU", value="\n".join(cpu_lines), inline=True)
 
         mem_lines = [
-            "```",
-            f"{make_bar(memory.percent)} {memory.percent:>5.1f}%",
-            "```",
+            f"Usage: {memory.percent:.1f}%",
             f"{memory.used / (1024 ** 3):.2f} / {memory.total / (1024 ** 3):.2f} GB",
         ]
         swap = psutil.swap_memory()
@@ -208,14 +233,13 @@ class SystemMonitor(commands.Cog):
             inline=True,
         )
 
-        disk_lines = [
-            "```",
-            f"{make_bar(disk.percent)} {disk.percent:>5.1f}%",
-            "```",
-            f"{disk.used / (1024 ** 3):.0f} / {disk.total / (1024 ** 3):.0f} GB",
-            f"Read:  {read_speed:.2f} MB/s",
-            f"Write: {write_speed:.2f} MB/s",
-        ]
+        disk_lines = [f"Read: {read_speed:.2f} MB/s  Write: {write_speed:.2f} MB/s", ""]
+        for mountpoint, usage in disk_partitions[:6]:
+            disk_lines.append(
+                f"{mountpoint}: {usage.percent:.1f}% ({usage.used / (1024 ** 3):.0f}/{usage.total / (1024 ** 3):.0f} GB)"
+            )
+        if not disk_partitions:
+            disk_lines.append("No partitions found")
         embed.add_field(name="Disk", value="\n".join(disk_lines), inline=True)
 
         net_lines = [
