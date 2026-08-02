@@ -26,9 +26,11 @@ class LogManager(commands.Cog):
         self.log_dir.mkdir(exist_ok=True)
         self.archive_dir.mkdir(exist_ok=True)
 
+        self._log_queue = asyncio.Queue()
         self.cleanup_old_logs.start()
         self.auto_status.start()
         self.channel_cleanup.start()
+        self._log_worker_task = self.bot.loop.create_task(self._log_worker())
 
     def _load_status_message_id(self):
         try:
@@ -46,6 +48,7 @@ class LogManager(commands.Cog):
         self.cleanup_old_logs.cancel()
         self.auto_status.cancel()
         self.channel_cleanup.cancel()
+        self._log_worker_task.cancel()
 
     def format_size(self, size_bytes):
         for unit in ['B', 'KB', 'MB', 'GB']:
@@ -53,16 +56,27 @@ class LogManager(commands.Cog):
                 return f"{size_bytes:.2f} {unit}" if unit != 'B' else f"{size_bytes} B"
             size_bytes /= 1024
 
+    @staticmethod
+    def _sanitize(text: str) -> str:
+        return text.replace('\n', '\\n').replace('\r', '') if text else ''
+
     async def log_to_file(self, log_entry: str):
-        current_date = datetime.now().strftime('%Y-%m-%d')
-        log_file = self.log_dir / f"discord_log_{current_date}.txt"
+        await self._log_queue.put(log_entry)
 
-        # Size-based rotation
-        if log_file.exists() and log_file.stat().st_size >= MAX_FILE_SIZE:
-            await self.rotate_log(log_file)
-
-        with open(log_file, 'a', encoding='utf-8') as f:
-            f.write(f"{log_entry}\n")
+    async def _log_worker(self):
+        while True:
+            entry = await self._log_queue.get()
+            try:
+                current_date = datetime.now().strftime('%Y-%m-%d')
+                log_file = self.log_dir / f"discord_log_{current_date}.txt"
+                if log_file.exists() and log_file.stat().st_size >= MAX_FILE_SIZE:
+                    await self.rotate_log(log_file)
+                with open(log_file, 'a', encoding='utf-8') as f:
+                    f.write(f"{entry}\n")
+            except Exception as e:
+                print(f"Log write error: {e}")
+            finally:
+                self._log_queue.task_done()
 
     async def rotate_log(self, log_file: Path):
         try:
@@ -82,13 +96,9 @@ class LogManager(commands.Cog):
                 log_file.unlink()
                 print(f"Archived {log_file.name} -> {archive_name.name}")
             else:
-                log_file.unlink()
+                print(f"Compression failed for {log_file.name}, original kept")
         except Exception as e:
             print(f"Error rotating {log_file}: {e}")
-            try:
-                log_file.unlink()
-            except:
-                pass
 
     async def get_status_embed(self):
         logs_current_size = 0
@@ -181,7 +191,7 @@ class LogManager(commands.Cog):
             if not channel or not self.status_message_id:
                 return
             async for msg in channel.history(limit=100):
-                if msg.id != self.status_message_id:
+                if msg.id != self.status_message_id and msg.author == channel.guild.me:
                     try:
                         await msg.delete()
                         await asyncio.sleep(0.5)
@@ -274,11 +284,12 @@ class LogManager(commands.Cog):
         if message.author.bot or not message.guild:
             return
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        entry = f"[{ts}] [{message.guild.name}] MESSAGE - #{message.channel.name} - {message.author.name}: {message.content}"
+        content = self._sanitize(message.content)
+        entry = f"[{ts}] [{message.guild.name}] MESSAGE - #{message.channel.name} - {message.author.name}: {content}"
         for a in message.attachments:
-            entry += f"\nATTACHMENT: {a.url}"
+            entry += f" | ATTACHMENT: {a.url}"
         for e in message.embeds:
-            entry += f"\nEMBED: {e.title}"
+            entry += f" | EMBED: {self._sanitize(e.title)}"
         await self.log_to_file(entry)
 
     @commands.Cog.listener()
@@ -287,14 +298,14 @@ class LogManager(commands.Cog):
             return
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         author = message.author.name if message.author else "Unknown"
-        await self.log_to_file(f"[{ts}] [{message.guild.name}] MESSAGE DELETED - {author}: {message.content}")
+        await self.log_to_file(f"[{ts}] [{message.guild.name}] MESSAGE DELETED - {author}: {self._sanitize(message.content)}")
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
         if not before.guild:
             return
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        await self.log_to_file(f"[{ts}] [{before.guild.name}] MESSAGE EDITED - {before.author.name}: {before.content} -> {after.content}")
+        await self.log_to_file(f"[{ts}] [{before.guild.name}] MESSAGE EDITED - {before.author.name}: {self._sanitize(before.content)} -> {self._sanitize(after.content)}")
 
     # Member Events
     @commands.Cog.listener()
