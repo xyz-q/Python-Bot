@@ -3,6 +3,19 @@ from discord.ext import commands
 from discord import app_commands
 from typing import Optional
 
+async def delete_days_autocomplete(interaction: discord.Interaction, current: str):
+    options = [
+        ("Don't delete any", 0),
+        ("Previous hour", 3600),
+        ("Previous 6 hours", 21600),
+        ("Previous 12 hours", 43200),
+        ("Previous 24 hours", 86400),
+        ("Previous 3 days", 259200),
+        ("Previous 7 days", 604800),
+    ]
+    return [app_commands.Choice(name=name, value=val) for name, val in options]
+
+
 class BanSystem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -14,6 +27,7 @@ class BanSystem(commands.Cog):
         reason="The reason for the ban",
         delete_messages="Number of days worth of messages to delete (0-7)"
     )
+    @app_commands.autocomplete(delete_messages=delete_days_autocomplete)
     async def ban(
         self, 
         ctx: commands.Context, 
@@ -33,7 +47,7 @@ class BanSystem(commands.Cog):
             await ctx.send("I cannot ban this member as their role is higher than mine!")
             return
 
-        delete_messages = max(0, min(7, delete_messages))
+        delete_messages = max(0, min(604800, delete_messages))
 
         try:
             try:
@@ -41,7 +55,7 @@ class BanSystem(commands.Cog):
             except discord.HTTPException:
                 pass
 
-            await member.ban(reason=reason, delete_message_days=delete_messages)
+            await member.ban(reason=reason, delete_message_seconds=delete_messages)
             embed = discord.Embed(
                 title="Member Banned",
                 color=discord.Color.red()
