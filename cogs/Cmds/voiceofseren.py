@@ -141,6 +141,7 @@ class VoSCog(commands.Cog):
         if isinstance(channel, discord.TextChannel) and channel.is_news():
             try:
                 await msg.publish()
+                await msg.add_reaction('📢')
             except (discord.Forbidden, discord.HTTPException):
                 pass
 
